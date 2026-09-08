@@ -282,6 +282,36 @@ test('허용된 원문 호스트에서만 og:image를 제한적으로 조회한�
   );
 });
 
+test('원문 이미지 조회는 뽐뿌가 허용하는 브라우저 호환 요청 헤더를 보낸다', async () => {
+  let requestHeaders;
+  const image = await fetchOpenGraphImage('https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=1', {
+    allowedHosts: ['www.ppomppu.co.kr'],
+    allowedImageHosts: ['ppomppu.co.kr'],
+    fetchImpl: async (_url, options) => {
+      requestHeaders = options.headers;
+      const userAgent = requestHeaders?.['User-Agent'] || '';
+      if (!userAgent.startsWith('Mozilla/5.0')) {
+        return {
+          ok: false,
+          status: 403,
+          headers: { get: () => null },
+          body: { cancel: async () => {} },
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/html; charset=euc-kr' : null },
+        text: async () => '<meta property="og:image" content="https://cdn4.ppomppu.co.kr/item.jpg">',
+      };
+    },
+  });
+
+  assert.equal(image, 'https://cdn4.ppomppu.co.kr/item.jpg');
+  assert.match(requestHeaders['User-Agent'], /^Mozilla\/5\.0/);
+  assert.match(requestHeaders.Accept, /text\/html/);
+});
+
 test('og:image 페이지 리다이렉트와 응답 본문을 안전하게 처리한다', async () => {
   let cancelled = false;
   await assert.rejects(

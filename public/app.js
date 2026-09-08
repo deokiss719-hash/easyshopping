@@ -61,7 +61,7 @@ function showToast(message) {
 
 function productCard(deal) {
   const image = deal.imageUrl
-    ? `<img class="product-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
+    ? `<img class="product-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
     : '';
   return `
     <article class="deal-card" tabindex="0" data-deal-url="${escapeHtml(deal.url)}" aria-label="${escapeHtml(deal.title)}, ${formatPrice(deal.price)}">
@@ -80,25 +80,31 @@ function productCard(deal) {
 }
 
 function popularItem(deal, index) {
+  const visual = deal.imageUrl
+    ? `<span class="popular-visual"><span class="rank-heat">실시간</span><img class="popular-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" /></span>`
+    : '<span class="rank-heat">실시간</span>';
   return `
     <article class="popular-item" tabindex="0" data-deal-url="${escapeHtml(deal.url)}">
-      <div class="rank-line"><span class="rank-number">${index + 1}</span><span class="rank-heat">실시간</span></div>
+      <div class="rank-line"><span class="rank-number">${index + 1}</span>${visual}</div>
       <h3>${escapeHtml(deal.title)}</h3>
       <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>
     </article>`;
 }
 
 function latestItem(deal) {
+  const image = deal.imageUrl
+    ? `<img class="latest-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
+    : '';
   return `
     <article class="latest-item" tabindex="0" data-deal-url="${escapeHtml(deal.url)}">
-      <span class="latest-icon" aria-hidden="true">${categoryEmoji(deal.category)}</span>
+      <span class="latest-media" aria-hidden="true"><span class="latest-icon">${categoryEmoji(deal.category)}</span>${image}</span>
       <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}</small></div>
       <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>
     </article>`;
 }
 
 function bindImageFallbacks(container) {
-  container.querySelectorAll('.product-image').forEach((image) => {
+  container.querySelectorAll('.deal-image').forEach((image) => {
     image.addEventListener('error', () => image.remove(), { once: true });
   });
 }
@@ -182,6 +188,7 @@ async function loadPopular() {
     const deals = data.deals.map((deal) => DealUtils.normalizeDeal(deal));
     elements.popularList.classList.remove('skeleton-list');
     elements.popularList.innerHTML = deals.map(popularItem).join('');
+    bindImageFallbacks(elements.popularList);
     bindDealClicks(elements.popularList);
   } catch (error) {
     console.error('인기 핫딜을 불러오지 못했습니다.', error);
@@ -195,6 +202,7 @@ function renderLatest(deals) {
   if (!latest.length) {
     elements.latestList.innerHTML = '<p style="color:#91a6c8">조건에 맞는 최신 핫딜이 없어요.</p>';
   }
+  bindImageFallbacks(elements.latestList);
   bindDealClicks(elements.latestList);
 }
 

@@ -26,6 +26,7 @@ const firstDeal = {
   priceAmount: 199000,
   merchant: '테스트몰',
   originalUrl: 'https://example.com/deals/101',
+  imageUrl: 'https://cdn.example.com/deals/101.jpg',
   publishedAt: '2026-09-08T09:00:00.000Z',
 };
 
@@ -45,6 +46,7 @@ test('upsert inserts a deal and exposes it through the listing API', async () =>
   assert.equal(result.items[0].title, firstDeal.title);
   assert.equal(result.items[0].priceAmount, 199000);
   assert.equal(result.items[0].source, 'approved-feed');
+  assert.equal(result.items[0].imageUrl, firstDeal.imageUrl);
   await pool.end();
 });
 
@@ -114,6 +116,7 @@ test('partial upsert preserves optional values that are temporarily missing', as
   assert.equal(result.items[0].priceText, '199,000원');
   assert.equal(result.items[0].priceAmount, 199000);
   assert.equal(result.items[0].merchant, '테스트몰');
+  assert.equal(result.items[0].imageUrl, firstDeal.imageUrl);
   await pool.end();
 });
 

@@ -24,3 +24,14 @@ test('로그인과 MY UI 및 관련 동작 코드가 제거되어 있다', () =>
 test('MY 제거 후 모바일 메뉴는 기존 네 항목을 균등 배치한다', () => {
   assert.match(styles, /\.bottom-nav\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*1fr\)/);
 });
+
+test('메인·실시간·최신 상품 영역은 실제 이미지와 기존 fallback을 함께 지원한다', () => {
+  assert.match(script, /class="product-image[^"']*deal-image/);
+  assert.match(script, /class="popular-image[^"']*deal-image/);
+  assert.match(script, /class="latest-image[^"']*deal-image/);
+  assert.match(script, /class="latest-icon"/);
+  assert.match(script, /querySelectorAll\('\.deal-image'\)/);
+  assert.match(styles, /\.product-image[^}]*object-fit:\s*cover/);
+  assert.match(styles, /\.popular-image[^}]*object-fit:\s*cover/);
+  assert.match(styles, /\.latest-image[^}]*object-fit:\s*cover/);
+});

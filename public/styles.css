@@ -134,6 +134,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .rank-line { display: flex; align-items: center; justify-content: space-between; }
 .rank-number { color: var(--primary); font-size: 22px; font-weight: 900; }
 .rank-heat { color: var(--text-tertiary); font-size: 11px; font-weight: 650; }
+.popular-visual { display: flex; align-items: center; gap: 6px; }
+.popular-image { width: 46px; height: 32px; object-fit: cover; background: white; border-radius: 8px; }
 .popular-item:nth-child(-n+3) .rank-heat { color: var(--accent-red); }
 .popular-item h3 { height: 42px; margin: 17px 0 15px; overflow: hidden; color: var(--text); font-size: 14px; line-height: 1.5; letter-spacing: -.02em; }
 .rank-price { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
@@ -207,7 +209,9 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .latest-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
 .latest-item { min-width: 0; padding: 18px; display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 13px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; cursor: pointer; transition: background .18s, transform .18s; }
 .latest-item:hover { background: rgba(255,255,255,.11); transform: translateY(-2px); }
+.latest-media { position: relative; width: 44px; height: 44px; overflow: hidden; border-radius: 13px; }
 .latest-icon { width: 44px; height: 44px; display: grid; place-items: center; color: white; background: var(--primary); border-radius: 13px; font-size: 18px; }
+.latest-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: white; }
 .latest-copy { min-width: 0; }
 .latest-copy strong { display: block; overflow: hidden; color: white; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .latest-copy small { display: block; margin-top: 4px; color: #91a6c8; font-size: 10px; }

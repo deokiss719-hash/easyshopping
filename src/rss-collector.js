@@ -291,7 +291,9 @@ async function fetchOpenGraphImage(pageUrl, {
     const response = await fetchImpl(url, {
       headers: {
         Accept: 'text/html, application/xhtml+xml',
-        'User-Agent': 'easyshopping-image-collector/0.1 (+https://easyshoopping.com)',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.7',
+        Referer: `${url.origin}/`,
+        'User-Agent': 'Mozilla/5.0 (compatible; EasyHotDeal/1.0; +https://easyshoopping.com)',
       },
       redirect: 'manual',
       signal,
