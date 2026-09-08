@@ -290,10 +290,14 @@ async function fetchOpenGraphImage(pageUrl, {
   for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
     const response = await fetchImpl(url, {
       headers: {
-        Accept: 'text/html, application/xhtml+xml',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
         'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.7',
         Referer: `${url.origin}/`,
-        'User-Agent': 'Mozilla/5.0 (compatible; EasyHotDeal/1.0; +https://easyshoopping.com)',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
       },
       redirect: 'manual',
       signal,

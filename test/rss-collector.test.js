@@ -308,8 +308,12 @@ test('원문 이미지 조회는 뽐뿌가 허용하는 브라우저 호환 요�
   });
 
   assert.equal(image, 'https://cdn4.ppomppu.co.kr/item.jpg');
-  assert.match(requestHeaders['User-Agent'], /^Mozilla\/5\.0/);
+  assert.match(requestHeaders['User-Agent'], /^Mozilla\/5\.0 .* Chrome\/\d+\.0\.0\.0 Safari\/537\.36$/);
   assert.match(requestHeaders.Accept, /text\/html/);
+  assert.equal(requestHeaders.Referer, 'https://www.ppomppu.co.kr/');
+  assert.equal(requestHeaders['Sec-Fetch-Dest'], 'document');
+  assert.equal(requestHeaders['Sec-Fetch-Mode'], 'navigate');
+  assert.equal(requestHeaders['Upgrade-Insecure-Requests'], '1');
 });
 
 test('og:image 페이지 리다이렉트와 응답 본문을 안전하게 처리한다', async () => {
