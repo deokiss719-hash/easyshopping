@@ -136,7 +136,7 @@ async function start() {
         source,
         feedUrl,
         allowedHosts: ['www.ppomppu.co.kr'],
-        enrichImages: true,
+        enrichImages: false,
         store,
       }),
       intervalMs,
