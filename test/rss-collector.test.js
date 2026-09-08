@@ -60,6 +60,16 @@ test('RSS 링크의 XML 기본 엔티티를 정상 URL 문자로 복원한다', 
   assert.equal(deal.originalUrl, 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123');
 });
 
+test('괄호 안 상품가를 포인트 금액보다 우선하고 원 없는 배송 표기도 인식한다', () => {
+  const xml = `<rss><channel>
+    <item><title>[11번가] 김치찜 5개입 (15,200/무료)</title><link>https://feed.example/1</link><guid>p1</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>[롯데온] 커피믹스 400T + 네이버페이 2000원 (56,660원/무료)</title><link>https://feed.example/2</link><guid>p2</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+  </channel></rss>`;
+
+  const deals = parseFeed(xml, { source: 'approved-feed', feedUrl: 'https://feed.example/rss.xml' });
+  assert.deepEqual(deals.map((deal) => deal.priceAmount), [15200, 56660]);
+});
+
 test('제목 앞 대괄호에서 쇼핑몰명을 추출한다', () => {
   const xml = `<rss><channel><item><title>[G마켓] 키보드 19,900원</title><link>https://feed.example/2</link><pubDate>Tue, 08 Sep 2026 08:10:00 GMT</pubDate></item></channel></rss>`;
   const [deal] = parseFeed(xml, {

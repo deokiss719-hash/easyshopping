@@ -32,7 +32,15 @@ function cleanText(value) {
 }
 
 function parseKrw(text) {
-  const match = String(text).match(/(\d{1,3}(?:,\d{3})+|\d+)\s*원/);
+  const value = String(text || '');
+  const parentheticalGroups = [...value.matchAll(/\(([^()]*)\)/g)].map((match) => match[1]).reverse();
+  for (const group of parentheticalGroups) {
+    const deliveredPrice = group.match(/(\d{1,3}(?:,\d{3})+|\d+)\s*(?:원)?\s*(?=\/|$)/);
+    if (deliveredPrice) return Number(deliveredPrice[1].replaceAll(',', ''));
+  }
+
+  const wonAmounts = [...value.matchAll(/(\d{1,3}(?:,\d{3})+|\d+)\s*원/g)];
+  const match = wonAmounts.at(-1);
   return match ? Number(match[1].replaceAll(',', '')) : null;
 }
 
@@ -78,7 +86,7 @@ function parseFeed(xml, { source, feedUrl }) {
         sourceItemId: cleanText(item.guid) || originalUrl,
         title,
         originalUrl,
-        priceAmount: parseKrw(`${title} ${description}`),
+        priceAmount: parseKrw(title) ?? parseKrw(description),
         currency: 'KRW',
         merchant: parseMerchant(title),
         publishedAt: publishedDate.toISOString(),
