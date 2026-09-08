@@ -127,6 +127,23 @@ test('pagination rejects malformed values and caps excessively large pages', asy
   await pool.end();
 });
 
+test('marks only stale deals from the selected source as ended', async () => {
+  const { pool, store } = await makeStore();
+  await store.upsert({ ...firstDeal, sourceItemId: 'old', publishedAt: '2026-09-01T00:00:00.000Z' });
+  await store.upsert({ ...firstDeal, sourceItemId: 'fresh', originalUrl: 'https://example.com/deals/fresh', publishedAt: '2026-09-08T00:00:00.000Z' });
+
+  const ended = await store.markEndedBefore('approved-feed', '2026-09-05T00:00:00.000Z');
+  const active = await store.list({ source: 'approved-feed' });
+  const old = await pool.query("SELECT is_ended, ended_at FROM deals WHERE source_item_id = 'old'");
+
+  assert.equal(ended, 1);
+  assert.equal(active.total, 1);
+  assert.equal(active.items[0].sourceItemId, 'fresh');
+  assert.equal(old.rows[0].is_ended, true);
+  assert.ok(old.rows[0].ended_at);
+  await pool.end();
+});
+
 test('keyword search treats percent and underscore as literal characters', async () => {
   const { pool, store } = await makeStore();
   await store.upsert({ ...firstDeal, title: '100% 할인 모니터' });

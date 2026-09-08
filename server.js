@@ -3,6 +3,8 @@ const path = require('path');
 const { Pool } = require('pg');
 const { migrate, createDealStore } = require('./src/deal-store');
 const { createLiveDealsRouter } = require('./src/live-deals-api');
+const { runRssCollector } = require('./src/rss-collector');
+const { startPollingCollector } = require('./src/polling-collector');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -76,7 +78,7 @@ function withComputedFields(deal) {
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, service: 'easyshopping', version: '0.3.0', database: databaseMode });
+  res.json({ ok: true, service: 'easyshopping', version: '0.4.0', database: databaseMode });
 });
 
 app.get('/api/deals', (req, res) => {
@@ -121,6 +123,20 @@ async function start() {
     await migrate(pool);
     store = createDealStore(pool);
     databaseMode = 'postgresql';
+
+    const feedUrl = process.env.RSS_FEED_URL
+      || 'https://www.ppomppu.co.kr/rss.php?id=ppomppu';
+    const source = process.env.RSS_FEED_SOURCE || 'ppomppu';
+    const intervalMs = Number(process.env.RSS_POLL_INTERVAL_MS || 600000);
+    startPollingCollector({
+      collect: () => runRssCollector({
+        source,
+        feedUrl,
+        allowedHosts: ['www.ppomppu.co.kr'],
+        store,
+      }),
+      intervalMs,
+    });
   }
 
   app.use('/api/live-deals', createLiveDealsRouter(store));

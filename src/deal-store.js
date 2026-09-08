@@ -117,6 +117,23 @@ function createDealStore(pool) {
       return mapDeal(result.rows[0]);
     },
 
+    async markEndedBefore(source, cutoff) {
+      const normalizedSource = String(source || '').trim();
+      const cutoffDate = new Date(cutoff);
+      if (!normalizedSource || Number.isNaN(cutoffDate.getTime())) {
+        throw new TypeError('source and valid cutoff are required');
+      }
+      const result = await pool.query(
+        `UPDATE deals
+         SET is_ended = TRUE, ended_at = CURRENT_TIMESTAMP
+         WHERE source = $1
+           AND is_ended = FALSE
+           AND published_at < $2`,
+        [normalizedSource, cutoffDate.toISOString()],
+      );
+      return result.rowCount;
+    },
+
     async list({ q = '', source = '', page = 1, size = 20 } = {}) {
       const safePage = positiveInteger(page, 'page', 1, MAX_PAGE);
       const safeSize = positiveInteger(size, 'size', 20, MAX_PAGE_SIZE);
