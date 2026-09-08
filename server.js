@@ -1,8 +1,12 @@
 const express = require('express');
 const path = require('path');
+const { Pool } = require('pg');
+const { migrate, createDealStore } = require('./src/deal-store');
+const { createLiveDealsRouter } = require('./src/live-deals-api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+let databaseMode = 'fixture';
 
 const deals = [
   {
@@ -72,7 +76,7 @@ function withComputedFields(deal) {
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, service: 'easyshopping', version: '0.2.0' });
+  res.json({ ok: true, service: 'easyshopping', version: '0.3.0', database: databaseMode });
 });
 
 app.get('/api/deals', (req, res) => {
@@ -109,6 +113,23 @@ app.get('/api/popular', (_req, res) => {
   res.json({ deals: popular });
 });
 
-app.listen(PORT, () => {
-  console.log(`이지쇼핑 실행 중: http://localhost:${PORT}`);
+async function start() {
+  let store = null;
+
+  if (process.env.DATABASE_URL) {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    await migrate(pool);
+    store = createDealStore(pool);
+    databaseMode = 'postgresql';
+  }
+
+  app.use('/api/live-deals', createLiveDealsRouter(store));
+  app.listen(PORT, () => {
+    console.log(`이지쇼핑 실행 중: http://localhost:${PORT} (${databaseMode})`);
+  });
+}
+
+start().catch((error) => {
+  console.error('이지쇼핑 시작 실패:', error);
+  process.exitCode = 1;
 });
