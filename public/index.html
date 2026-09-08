@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="여러 쇼핑몰의 인기 할인 정보를 한눈에 확인하는 쉬운쇼핑" />
+  <title>쉬운쇼핑 — 핫딜 찾기, 이제 쉽게</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="header">
+    <a class="brand" href="/" aria-label="쉬운쇼핑 홈">
+      <span class="brand-mark">S</span>
+      <span>쉬운쇼핑</span>
+    </a>
+    <nav aria-label="주요 메뉴">
+      <a class="active" href="#deals">실시간 핫딜</a>
+      <a href="#coming">가격 추적</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">REAL-TIME DEAL FINDER</span>
+        <h1>핫딜 찾기,<br><strong>이제 쉽게.</strong></h1>
+        <p>여러 곳에 흩어진 인기 할인 정보를<br>쉬운쇼핑이 한눈에 모아드려요.</p>
+      </div>
+      <div class="hero-panel" aria-hidden="true">
+        <div class="pulse-ring"><span>98°</span></div>
+        <p>지금 가장 뜨거운 딜</p>
+      </div>
+    </section>
+
+    <section class="deals-section" id="deals">
+      <div class="section-heading">
+        <div>
+          <span class="live-dot"></span>
+          <h2>실시간 핫딜</h2>
+          <p id="updatedAt">할인 정보를 불러오는 중이에요.</p>
+        </div>
+        <label class="search">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="상품 또는 쇼핑몰 검색" autocomplete="off" />
+        </label>
+      </div>
+
+      <div class="filters" aria-label="카테고리 필터">
+        <button class="filter active" data-category="전체">전체</button>
+        <button class="filter" data-category="디지털">디지털</button>
+        <button class="filter" data-category="식품">식품</button>
+        <button class="filter" data-category="생활">생활</button>
+        <button class="filter" data-category="여행">여행</button>
+      </div>
+
+      <div id="dealGrid" class="deal-grid" aria-live="polite"></div>
+      <div id="emptyState" class="empty" hidden>조건에 맞는 핫딜이 아직 없어요.</div>
+    </section>
+
+    <section class="coming" id="coming">
+      <span>COMING NEXT</span>
+      <h2>원하는 상품의 가격이 내려가면<br>알려드릴게요.</h2>
+      <p>가격 추적과 할인 알림 기능을 준비하고 있어요.</p>
+    </section>
+  </main>
+
+  <footer>
+    <strong>쉬운쇼핑</strong>
+    <p>상품 구매는 각 판매처에서 진행되며, 가격과 재고는 변경될 수 있습니다.</p>
+    <small>© 2026 easyshopping.kr</small>
+  </footer>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
