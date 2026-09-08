@@ -2,92 +2,149 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="이지폰이 만든 쉽고 빠른 실시간 핫딜 서비스, 쉬운쇼핑" />
-  <title>쉬운쇼핑 | 이지폰이 찾은 실시간 핫딜</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="오늘 뭐가 싸지? 지금 가장 반응 좋은 온라인 쇼핑 핫딜을 한눈에 확인하세요." />
+  <meta name="theme-color" content="#FFFFFF" />
+  <title>이지쇼핑 — 오늘 뭐가 싸지?</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <header class="header">
-    <a class="brand" href="/" aria-label="쉬운쇼핑 홈">
-      <img src="/assets/ezphone-logo.png" alt="이지폰 캐릭터 로고" />
-      <span class="brand-copy">
-        <strong>쉬운쇼핑</strong>
-        <small>by 이지폰</small>
-      </span>
-    </a>
-    <nav aria-label="주요 메뉴">
-      <a class="active" href="#deals">실시간 핫딜</a>
-      <a href="#coming">가격 알림</a>
-    </nav>
-    <a class="channel-button" href="#coming">카카오 채널</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="wordmark" href="/" aria-label="이지쇼핑 홈">
+        <span class="wordmark-symbol">E</span>
+        <span class="wordmark-name">이지쇼핑</span>
+      </a>
+      <nav class="desktop-nav" aria-label="주요 메뉴">
+        <a class="active" href="#all-deals">핫딜</a>
+        <a href="#popular">인기</a>
+        <a href="#latest">최신</a>
+        <a href="#categories">카테고리</a>
+      </nav>
+      <div class="header-actions">
+        <button class="icon-button search-trigger" type="button" aria-label="검색창으로 이동">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.15A7.5 7.5 0 1 1 4 11.5a7.5 7.5 0 0 1 15 0Z"/></svg>
+        </button>
+        <button class="my-button" type="button">로그인 <span>/ MY</span></button>
+      </div>
+    </div>
   </header>
 
   <main>
-    <section class="hero">
-      <div class="hero-pattern pattern-one"></div>
-      <div class="hero-pattern pattern-two"></div>
+    <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <span class="brand-label">휴대폰성지 이지폰이 만든</span>
-        <h1>핫딜 찾기,<br><em>쉽게 끝내자!</em></h1>
-        <p>여기저기 돌아다니지 마세요.<br><strong>진짜 할인 정보만</strong> 한곳에 모아드려요.</p>
-        <a class="hero-cta" href="#deals">지금 핫딜 보기 <span>↓</span></a>
+        <span class="eyebrow">EASY SHOPPING</span>
+        <h1 id="hero-title">오늘 뭐가 싸지?</h1>
+        <p>지금 가장 반응 좋은 핫딜만 모았어요.</p>
       </div>
-      <div class="mascot-wrap">
-        <span class="spark spark-one">✦</span>
-        <span class="spark spark-two">✦</span>
-        <img src="/assets/ezphone-logo.png" alt="휴대폰성지 이지폰 캐릭터" />
-        <div class="mascot-sticker">매일<br><strong>업데이트!</strong></div>
-      </div>
-    </section>
-
-    <section class="deals-section" id="deals">
-      <div class="section-heading">
-        <div class="title-block">
-          <span class="mini-label"><i></i> LIVE</span>
-          <h2>지금 뜨는 <mark>실시간 핫딜</mark></h2>
-          <p id="updatedAt">할인 정보를 불러오는 중이에요.</p>
-        </div>
-        <label class="search">
-          <span aria-hidden="true">⌕</span>
-          <input id="searchInput" type="search" placeholder="어떤 핫딜을 찾으세요?" autocomplete="off" />
+      <div class="hero-search-wrap">
+        <label class="hero-search" for="searchInput">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.15A7.5 7.5 0 1 1 4 11.5a7.5 7.5 0 0 1 15 0Z"/></svg>
+          <input id="searchInput" type="search" placeholder="어떤 핫딜을 찾고 있나요?" autocomplete="off" />
+          <kbd>⌘ K</kbd>
         </label>
+        <div class="search-suggestions" aria-label="추천 검색어">
+          <span>추천</span>
+          <button type="button">아이폰</button><button type="button">갤럭시</button><button type="button">에어팟</button><button type="button">노트북</button><button type="button">닌텐도</button><button type="button">생필품</button>
+        </div>
       </div>
-
-      <div class="filters" aria-label="카테고리 필터">
-        <button class="filter active" data-category="전체">전체</button>
-        <button class="filter" data-category="디지털">디지털</button>
-        <button class="filter" data-category="식품">식품</button>
-        <button class="filter" data-category="생활">생활</button>
-        <button class="filter" data-category="여행">여행</button>
+      <div class="quick-menu" aria-label="빠른 메뉴">
+        <a href="#popular"><span class="quick-icon red">🔥</span><strong>실시간 인기</strong><small>지금 뜨는 상품</small></a>
+        <a href="#latest"><span class="quick-icon yellow">⚡</span><strong>최신 핫딜</strong><small>방금 올라온 딜</small></a>
+        <button type="button" data-quick-category="디지털"><span class="quick-icon blue">📱</span><strong>디지털</strong><small>IT·모바일</small></button>
+        <button type="button" data-quick-category="식품"><span class="quick-icon mint">🍔</span><strong>식품</strong><small>먹거리 특가</small></button>
       </div>
-
-      <div id="dealGrid" class="deal-grid" aria-live="polite"></div>
-      <div id="emptyState" class="empty" hidden>조건에 맞는 핫딜이 아직 없어요.</div>
     </section>
 
-    <section class="coming" id="coming">
-      <div class="coming-copy">
-        <span>COMING SOON</span>
-        <h2>놓치기 싫은 가격,<br><mark>이지폰이 알려드릴게요!</mark></h2>
-        <p>원하는 상품을 등록하면 가격이 내려갔을 때 바로 알려드려요.</p>
+    <section class="popular-section section" id="popular" aria-labelledby="popular-title">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker"><i></i> 실시간 반응</span>
+          <h2 id="popular-title">지금 사람들이 많이 보는 핫딜</h2>
+        </div>
+        <a href="#all-deals" class="text-link">전체 보기 <span>→</span></a>
       </div>
-      <img src="/assets/ezphone-logo.png" alt="이지폰 캐릭터" />
+      <div id="popularList" class="popular-list skeleton-list" aria-live="polite">
+        <div class="rank-skeleton"></div><div class="rank-skeleton"></div><div class="rank-skeleton"></div>
+      </div>
+    </section>
+
+    <section class="category-section section" id="categories" aria-labelledby="category-title">
+      <div class="section-head compact">
+        <div><h2 id="category-title">카테고리</h2><p>관심 있는 상품만 빠르게 찾아보세요.</p></div>
+      </div>
+      <div id="categoryList" class="category-list" role="list">
+        <button class="category-item active" data-category="전체"><span>✨</span><strong>전체</strong></button>
+        <button class="category-item" data-category="디지털"><span>📱</span><strong>디지털</strong></button>
+        <button class="category-item" data-category="가전"><span>📺</span><strong>가전</strong></button>
+        <button class="category-item" data-category="식품"><span>🍜</span><strong>식품</strong></button>
+        <button class="category-item" data-category="생활"><span>🧻</span><strong>생활</strong></button>
+        <button class="category-item" data-category="패션"><span>👟</span><strong>패션</strong></button>
+        <button class="category-item" data-category="뷰티"><span>🧴</span><strong>뷰티</strong></button>
+        <button class="category-item" data-category="육아"><span>🍼</span><strong>육아</strong></button>
+        <button class="category-item" data-category="게임"><span>🎮</span><strong>게임</strong></button>
+        <button class="category-item" data-category="기타"><span>＋</span><strong>기타</strong></button>
+      </div>
+    </section>
+
+    <section class="deals-section section" id="all-deals" aria-labelledby="deals-title">
+      <div class="section-head deals-head">
+        <div>
+          <h2 id="deals-title">전체 핫딜</h2>
+          <p id="resultSummary">놓치기 아까운 딜을 가격순으로 정리했어요.</p>
+        </div>
+        <div class="sort-control" role="group" aria-label="상품 정렬">
+          <button class="active" data-sort="popular">인기순</button>
+          <button data-sort="latest">최신순</button>
+          <button data-sort="discount">할인율순</button>
+          <button data-sort="price-low">가격순</button>
+        </div>
+      </div>
+      <div id="dealGrid" class="deal-grid skeleton-grid" aria-live="polite">
+        <div class="card-skeleton"></div><div class="card-skeleton"></div><div class="card-skeleton"></div><div class="card-skeleton"></div>
+      </div>
+      <div id="emptyState" class="empty-state" hidden>
+        <div class="empty-illustration" aria-hidden="true">?</div>
+        <h3>아직 이 상품의 핫딜이 없어요.</h3>
+        <p>다른 상품을 검색해볼까요?</p>
+        <button id="resetSearch" type="button">전체 핫딜 보기</button>
+      </div>
+      <button id="loadMore" class="load-more" type="button">핫딜 더 보기</button>
+    </section>
+
+    <section class="latest-section" id="latest" aria-labelledby="latest-title">
+      <div class="section latest-inner">
+        <div class="section-head light">
+          <div><span class="section-kicker">JUST IN</span><h2 id="latest-title">방금 올라온 최신 핫딜</h2></div>
+          <button id="latestRefresh" class="refresh-button" type="button" aria-label="최신 핫딜 새로고침">↻ 새로고침</button>
+        </div>
+        <div id="latestList" class="latest-list"></div>
+      </div>
     </section>
   </main>
 
-  <footer>
-    <div class="footer-brand">
-      <img src="/assets/ezphone-logo.png" alt="" />
-      <div><strong>쉬운쇼핑</strong><span>by 이지폰</span></div>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div>
+        <a class="wordmark footer-wordmark" href="/"><span class="wordmark-symbol">E</span><span class="wordmark-name">이지쇼핑</span></a>
+        <p>어렵게 찾지 말고, 쉽게 비교하세요.</p>
+      </div>
+      <div class="footer-links"><a href="#">서비스 소개</a><a href="#">이용약관</a><a href="#">개인정보처리방침</a><a href="#">제휴 문의</a></div>
+      <div class="footer-note"><span>EASY SHOPPING by EASY</span><p>상품 정보는 판매처 사정에 따라 변경될 수 있으며, 구매는 각 판매처에서 진행됩니다.</p><small>© 2026 EASY SHOPPING</small></div>
     </div>
-    <p>상품 구매는 각 판매처에서 진행되며, 가격과 재고는 변경될 수 있습니다.</p>
-    <small>© 2026 easyshopping.kr</small>
   </footer>
 
+  <nav class="bottom-nav" aria-label="모바일 메뉴">
+    <a class="active" href="/"><span>⌂</span>홈</a>
+    <a href="#all-deals"><span>⚡</span>핫딜</a>
+    <button class="mobile-search-trigger" type="button"><span>⌕</span>검색</button>
+    <a href="#popular"><span>♨</span>인기</a>
+    <button type="button"><span>○</span>MY</button>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/app.js" defer></script>
 </body>
 </html>
