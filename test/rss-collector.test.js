@@ -428,6 +428,196 @@ test('비 HTML 페이지 응답은 본문을 취소하고 이미지로 사용하
   assert.equal(cancelled, true);
 });
 
+test('원문 이미지 조회 실패 원인을 민감정보 없이 구조화해 진단한다', async () => {
+  const diagnostics = [];
+  const onDiagnostic = (detail) => diagnostics.push(detail);
+
+  assert.equal(await fetchOpenGraphImage('https://feed.example/deals/403?token=secret', {
+    allowedHosts: ['feed.example'],
+    onDiagnostic,
+    fetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/html' : null },
+      body: { cancel: async () => {} },
+    }),
+  }), null);
+
+  assert.equal(await fetchOpenGraphImage('https://feed.example/deals/no-image', {
+    allowedHosts: ['feed.example'],
+    onDiagnostic,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null },
+      text: async () => '<html><head></head></html>',
+    }),
+  }), null);
+
+  await assert.rejects(fetchOpenGraphImage('https://feed.example/deals/large', {
+    allowedHosts: ['feed.example'],
+    maxBytes: 1024,
+    onDiagnostic,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: (name) => {
+        if (name.toLowerCase() === 'content-type') return 'text/html';
+        if (name.toLowerCase() === 'content-length') return '2048';
+        return null;
+      } },
+      body: { cancel: async () => {} },
+    }),
+  }), /too large/);
+
+  await assert.rejects(fetchOpenGraphImage('https://feed.example/deals/slow', {
+    allowedHosts: ['feed.example'],
+    timeoutMs: 5,
+    onDiagnostic,
+    fetchImpl: async (_url, { signal }) => new Promise((resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    }),
+  }), /timeout/i);
+
+  await assert.rejects(fetchOpenGraphImage('https://feed.example/deals/redirect', {
+    allowedHosts: ['feed.example'],
+    onDiagnostic,
+    fetchImpl: async () => ({
+      ok: false,
+      status: 302,
+      headers: { get: (name) => name.toLowerCase() === 'location' ? 'https://evil.example/private' : null },
+      body: { cancel: async () => {} },
+    }),
+  }), /not allowed/);
+
+  assert.deepEqual(diagnostics.map((entry) => entry.reason), [
+    'http_status',
+    'og_image_missing',
+    'response_too_large',
+    'timeout',
+    'hostname_validation_failed',
+  ]);
+  assert.deepEqual(diagnostics[0], {
+    reason: 'http_status',
+    hostname: 'feed.example',
+    finalRedirectHostname: 'feed.example',
+    httpStatus: 403,
+    contentType: 'text/html',
+    timeout: false,
+    responseTooLarge: false,
+    ogImageMissing: false,
+    hostnameValidationFailed: false,
+  });
+  assert.equal(diagnostics[1].ogImageMissing, true);
+  assert.equal(diagnostics[2].responseTooLarge, true);
+  assert.equal(diagnostics[3].timeout, true);
+  assert.equal(diagnostics[4].finalRedirectHostname, 'evil.example');
+  assert.equal(diagnostics[4].hostnameValidationFailed, true);
+
+  assert.equal(await fetchOpenGraphImage('https://feed.example/deals/file', {
+    allowedHosts: ['feed.example'],
+    onDiagnostic,
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'application/octet-stream' : null },
+      body: { cancel: async () => {} },
+    }),
+  }), null);
+  assert.equal(diagnostics[5].reason, 'content_type');
+  assert.equal(diagnostics[5].contentType, 'application/octet-stream');
+  assert.doesNotMatch(JSON.stringify(diagnostics), /secret|cookie|authorization/i);
+});
+
+test('이미지 보조 수집 실패 로그는 최소 상품 식별자와 안전한 진단 정보만 남긴다', async () => {
+  const warnings = [];
+  const store = {
+    upsert: async () => ({ imageUrl: null }),
+    markEndedBefore: async () => 0,
+  };
+
+  await runRssCollector({
+    source: 'approved-feed',
+    feedUrl: 'https://feed.example/rss.xml',
+    allowedHosts: ['feed.example'],
+    store,
+    enrichImages: true,
+    imageAttemptCache: new Map(),
+    logger: { warn: (message, detail) => warnings.push({ message, detail }) },
+    fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => RSS }),
+    pageFetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/html' : null },
+      body: { cancel: async () => {} },
+    }),
+  });
+
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0].message, '이미지 보조 수집 실패');
+  assert.match(warnings[0].detail.itemId, /^url-sha256:[a-f0-9]{16}$/);
+  assert.deepEqual(warnings[0].detail, {
+    source: 'approved-feed',
+    itemId: warnings[0].detail.itemId,
+    hostname: 'feed.example',
+    finalRedirectHostname: 'feed.example',
+    httpStatus: 403,
+    contentType: 'text/html',
+    timeout: false,
+    responseTooLarge: false,
+    ogImageMissing: false,
+    hostnameValidationFailed: false,
+    reason: 'http_status',
+  });
+  assert.doesNotMatch(JSON.stringify(warnings), /무료배송|authorization|cookie/i);
+});
+
+test('URL 형태 상품 식별자는 쿼리 비밀값 대신 비가역 참조값으로 기록한다', async () => {
+  const warnings = [];
+  const secretFeed = `<rss><channel><item><title>상품 1,000원</title><link>https://feed.example/item?token=TOP_SECRET</link><pubDate>Tue, 08 Sep 2026 08:10:00 GMT</pubDate></item></channel></rss>`;
+
+  await runRssCollector({
+    source: 'approved-feed',
+    feedUrl: 'https://feed.example/rss.xml',
+    allowedHosts: ['feed.example'],
+    store: { upsert: async () => ({ imageUrl: null }), markEndedBefore: async () => 0 },
+    enrichImages: true,
+    imageAttemptCache: new Map(),
+    logger: { warn: (_message, detail) => warnings.push(detail) },
+    fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => secretFeed }),
+    pageFetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      headers: { get: () => 'text/html' },
+      body: { cancel: async () => {} },
+    }),
+  });
+
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0].itemId, /^url-sha256:[a-f0-9]{16}$/);
+  assert.doesNotMatch(JSON.stringify(warnings), /TOP_SECRET|token=|https:\/\//i);
+
+  const ppomppuWarnings = [];
+  const ppomppuFeed = `<rss><channel><item><title>상품 1,000원</title><link>https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&amp;no=123</link><pubDate>Tue, 08 Sep 2026 08:10:00 GMT</pubDate></item></channel></rss>`;
+  await runRssCollector({
+    source: 'ppomppu',
+    feedUrl: 'https://www.ppomppu.co.kr/rss.php?id=ppomppu',
+    allowedHosts: ['www.ppomppu.co.kr'],
+    store: { upsert: async () => ({ imageUrl: null }), markEndedBefore: async () => 0 },
+    enrichImages: true,
+    imageAttemptCache: new Map(),
+    logger: { warn: (_message, detail) => ppomppuWarnings.push(detail) },
+    fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => ppomppuFeed }),
+    pageFetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      headers: { get: () => 'text/html' },
+      body: { cancel: async () => {} },
+    }),
+  });
+  assert.equal(ppomppuWarnings[0].itemId, 'ppomppu:123');
+});
+
 test('이미지 보조 수집은 동시성 상한을 지키고 실패 URL을 재조회하지 않는다', async () => {
   const items = Array.from({ length: 4 }, (_, index) => `
     <item><title>상품 ${index}</title><link>https://feed.example/${index}</link><guid>${index}</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>`).join('');

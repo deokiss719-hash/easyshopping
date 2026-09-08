@@ -1,4 +1,5 @@
 const net = require('node:net');
+const { createHash } = require('node:crypto');
 const { XMLParser } = require('fast-xml-parser');
 const { classifyDeal } = require('./deal-category');
 
@@ -281,48 +282,101 @@ async function fetchOpenGraphImage(pageUrl, {
   fetchImpl = fetch,
   maxBytes = DEFAULT_HTML_MAX_BYTES,
   timeoutMs = 8000,
+  onDiagnostic = () => {},
 } = {}) {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1024) {
     throw new TypeError('maxBytes must be a safe integer of at least 1024');
   }
-  let url = validateFeedUrl(pageUrl, allowedHosts);
-  const signal = AbortSignal.timeout(timeoutMs);
-  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
-    const response = await fetchImpl(url, {
-      headers: {
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.7',
-        Referer: `${url.origin}/`,
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'same-origin',
-        'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
-      },
-      redirect: 'manual',
-      signal,
-    });
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers?.get?.('location');
-      await cancelResponseBody(response);
-      if (redirectCount === MAX_REDIRECTS) throw new Error('Too many page redirects');
-      if (!location) throw new Error('Page redirect is missing Location');
-      url = validateFeedUrl(new URL(location, url).href, allowedHosts);
-      continue;
-    }
-    if (!response.ok) {
-      await cancelResponseBody(response);
-      return null;
-    }
-    const contentType = response.headers?.get?.('content-type');
-    if (contentType && !/text\/html|application\/xhtml\+xml/i.test(contentType)) {
-      await cancelResponseBody(response);
-      return null;
-    }
-    const html = await readLimitedBody(response, maxBytes, 'Page');
-    return extractOpenGraphImage(html, url.href, allowedImageHosts);
+
+  let hostname = null;
+  try {
+    hostname = new URL(pageUrl).hostname.toLowerCase();
+  } catch {
+    // validateFeedUrl below returns the canonical validation error.
   }
-  return null;
+  let finalRedirectHostname = hostname;
+  let httpStatus = null;
+  let contentType = null;
+  let reported = false;
+  const report = (reason, overrides = {}) => {
+    if (reported) return;
+    reported = true;
+    onDiagnostic({
+      reason,
+      hostname,
+      finalRedirectHostname,
+      httpStatus,
+      contentType,
+      timeout: false,
+      responseTooLarge: false,
+      ogImageMissing: false,
+      hostnameValidationFailed: false,
+      ...overrides,
+    });
+  };
+
+  try {
+    let url = validateFeedUrl(pageUrl, allowedHosts);
+    hostname = url.hostname;
+    finalRedirectHostname = url.hostname;
+    const signal = AbortSignal.timeout(timeoutMs);
+    for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+      const response = await fetchImpl(url, {
+        headers: {
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.7',
+          Referer: `${url.origin}/`,
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'same-origin',
+          'Upgrade-Insecure-Requests': '1',
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+        },
+        redirect: 'manual',
+        signal,
+      });
+      httpStatus = response.status;
+      contentType = response.headers?.get?.('content-type') || null;
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers?.get?.('location');
+        await cancelResponseBody(response);
+        if (redirectCount === MAX_REDIRECTS) throw new Error('Too many page redirects');
+        if (!location) throw new Error('Page redirect is missing Location');
+        const redirectUrl = new URL(location, url);
+        finalRedirectHostname = redirectUrl.hostname.toLowerCase();
+        url = validateFeedUrl(redirectUrl.href, allowedHosts);
+        continue;
+      }
+      if (!response.ok) {
+        await cancelResponseBody(response);
+        report('http_status');
+        return null;
+      }
+      if (contentType && !/text\/html|application\/xhtml\+xml/i.test(contentType)) {
+        await cancelResponseBody(response);
+        report('content_type');
+        return null;
+      }
+      const html = await readLimitedBody(response, maxBytes, 'Page');
+      const imageUrl = extractOpenGraphImage(html, url.href, allowedImageHosts);
+      if (!imageUrl) report('og_image_missing', { ogImageMissing: true });
+      return imageUrl;
+    }
+    return null;
+  } catch (error) {
+    const message = String(error?.message || '');
+    const timeout = error?.name === 'TimeoutError' || /timeout/i.test(message);
+    const responseTooLarge = error instanceof RangeError && /response is too large/i.test(message);
+    const hostnameValidationFailed = /not allowed|must use HTTPS|must not include credentials|must use the default port/i.test(message);
+    let reason = 'request_error';
+    if (timeout) reason = 'timeout';
+    else if (responseTooLarge) reason = 'response_too_large';
+    else if (hostnameValidationFailed) reason = 'hostname_validation_failed';
+    else if (/Too many page redirects/i.test(message)) reason = 'redirect_limit';
+    else if (/missing Location/i.test(message)) reason = 'redirect_missing_location';
+    report(reason, { timeout, responseTooLarge, hostnameValidationFailed });
+    throw error;
+  }
 }
 
 async function runWithConcurrency(items, concurrency, worker) {
@@ -342,6 +396,22 @@ function cacheFailedImageAttempt(cache, key, timestamp) {
   cache.set(key, timestamp);
 }
 
+function diagnosticItemId(originalUrl) {
+  try {
+    const url = new URL(originalUrl);
+    if (isAllowedImageHost(url.hostname, ['ppomppu.co.kr'])) {
+      const board = url.searchParams.get('id');
+      const number = url.searchParams.get('no');
+      if (/^[a-z0-9_-]{1,32}$/i.test(board || '') && /^\d{1,20}$/.test(number || '')) {
+        return `${board}:${number}`;
+      }
+    }
+  } catch {
+    // Invalid URLs are represented only by a non-reversible reference below.
+  }
+  return `url-sha256:${createHash('sha256').update(String(originalUrl || '')).digest('hex').slice(0, 16)}`;
+}
+
 async function runRssCollector({
   source,
   feedUrl,
@@ -358,6 +428,7 @@ async function runRssCollector({
   maxBytes = DEFAULT_MAX_BYTES,
   maxAgeMs = 72 * 60 * 60 * 1000,
   now = () => new Date(),
+  logger = console,
 }) {
   if (!source || typeof store?.upsert !== 'function') {
     throw new TypeError('source and DealStore are required');
@@ -399,11 +470,13 @@ async function runRssCollector({
   }
 
   await runWithConcurrency(enrichmentQueue, imageConcurrency, async (deal) => {
+    let diagnostic = null;
     try {
       const imageUrl = await fetchOpenGraphImage(deal.originalUrl, {
         allowedHosts,
         allowedImageHosts,
         fetchImpl: pageFetchImpl,
+        onDiagnostic: (detail) => { diagnostic = detail; },
       });
       if (imageUrl) {
         await store.upsert({ ...deal, imageUrl });
@@ -412,6 +485,26 @@ async function runRssCollector({
       }
     } catch {
       // Image enrichment is best-effort and must never stop deal collection.
+    }
+    const itemId = diagnosticItemId(deal.originalUrl);
+    try {
+      logger?.warn?.('이미지 보조 수집 실패', {
+        source,
+        itemId,
+        ...(diagnostic || {
+          hostname: new URL(deal.originalUrl).hostname.toLowerCase(),
+          finalRedirectHostname: null,
+          httpStatus: null,
+          contentType: null,
+          timeout: false,
+          responseTooLarge: false,
+          ogImageMissing: false,
+          hostnameValidationFailed: false,
+          reason: 'request_error',
+        }),
+      });
+    } catch {
+      // Diagnostic logging must not stop deal collection.
     }
     cacheFailedImageAttempt(imageAttemptCache, deal.originalUrl, attemptedAt);
   });
