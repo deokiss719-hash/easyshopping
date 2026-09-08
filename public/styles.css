@@ -171,7 +171,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .product-media.tone-purple { background: #f3efff; }
 .product-media.tone-dark { background: #e8eaee; }
 .product-media.tone-orange { background: #fff1e8; }
-.product-placeholder { position: relative; width: 72%; height: 60%; display: grid; place-items: center; color: var(--navy); background: rgba(255,255,255,.8); border-radius: 24px; box-shadow: 0 15px 35px rgba(0,27,94,.1); font-size: clamp(16px,2vw,23px); font-weight: 900; letter-spacing: -.025em; transform: rotate(-2deg); }
+.product-placeholder { position: relative; width: 68%; height: 58%; padding: 18px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 9px; color: var(--navy); background: rgba(255,255,255,.82); border: 1px solid rgba(0,91,255,.08); border-radius: 22px; box-shadow: 0 15px 35px rgba(0,27,94,.1); text-align: center; }
+.product-placeholder > span { width: 44px; height: 44px; display: grid; place-items: center; background: var(--light-blue); border-radius: 15px; font-size: 23px; }
+.product-placeholder > strong { font-size: 13px; font-weight: 800; letter-spacing: -.02em; }
+.product-image { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; background: white; }
 .product-placeholder::before, .product-placeholder::after { content: ""; position: absolute; border-radius: 50%; background: rgba(0,91,255,.12); }
 .product-placeholder::before { width: 38px; height: 38px; top: -15px; right: -13px; }
 .product-placeholder::after { width: 22px; height: 22px; bottom: -8px; left: -7px; background: rgba(255,178,28,.5); }

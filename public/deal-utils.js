@@ -3,21 +3,10 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.DealUtils = api;
 })(typeof globalThis === 'object' ? globalThis : this, function createDealUtils() {
-  const categoryRules = [
-    ['디지털', /아이폰|갤럭시|스마트폰|휴대폰|태블릿|아이패드|노트북|컴퓨터|모니터|키보드|마우스|이어폰|헤드폰|SSD|메모리|카메라/i],
-    ['가전', /냉장고|세탁기|건조기|청소기|에어컨|공기청정기|TV|텔레비전|전자레인지|에어프라이어|밥솥/i],
-    ['식품', /라면|김치|고기|소고기|돼지고기|닭|과자|커피|음료|생수|쌀|과일|식품|밀키트|치킨|피자/i],
-    ['생활', /휴지|세제|샴푸|칫솔|치약|수건|마스크|주방|생활용품|물티슈/i],
-    ['패션', /신발|운동화|티셔츠|셔츠|바지|자켓|재킷|코트|가방|의류|패딩/i],
-    ['뷰티', /화장품|크림|에센스|선크림|향수|마스크팩|뷰티/i],
-    ['육아', /기저귀|분유|유아|아기|키즈|장난감/i],
-    ['게임', /게임|플레이스테이션|PS5|닌텐도|스위치|엑스박스|Xbox/i],
-  ];
-
-  function categoryFromTitle(title) {
-    const text = String(title || '');
-    return categoryRules.find(([, pattern]) => pattern.test(text))?.[0] || '기타';
-  }
+  const categories = new Set([
+    '디지털/가전', '식품', '생활/주방', '패션/의류', '뷰티', '건강', '육아/아동',
+    '게임', '스포츠/레저', '반려동물', '자동차', '여행/숙박', '상품권/쿠폰', '기타',
+  ]);
 
   function relativeTime(value, now = new Date()) {
     const date = new Date(value);
@@ -40,20 +29,42 @@
     }
   }
 
+  function safeImageUrl(value) {
+    try {
+      const url = new URL(String(value || ''));
+      if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return '';
+      const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+      const allowed = host === 'ppomppu.co.kr' || host.endsWith('.ppomppu.co.kr');
+      if (!allowed) return '';
+      if (host === 'localhost' || host.endsWith('.localhost') || host.includes(':')) return '';
+      const octets = host.split('.').map(Number);
+      if (octets.length === 4 && octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {
+        if (octets[0] === 0 || octets[0] === 10 || octets[0] === 127
+          || (octets[0] === 169 && octets[1] === 254)
+          || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+          || (octets[0] === 192 && octets[1] === 168)) return '';
+      }
+      return url.href;
+    } catch {
+      return '';
+    }
+  }
+
   function normalizeDeal(raw, now = new Date()) {
+    const category = categories.has(raw.category) ? raw.category : '기타';
     return {
       id: String(raw.id),
       badge: raw.isEnded ? '종료' : 'LIVE',
       title: String(raw.title || ''),
       price: Number.isSafeInteger(raw.price) && raw.price >= 0 ? raw.price : null,
       store: String(raw.store || raw.source || '판매처 확인'),
-      category: categoryFromTitle(raw.title),
+      category,
       source: String(raw.source || ''),
       publishedAt: raw.publishedAt || null,
       postedAt: relativeTime(raw.publishedAt, now),
-      imageUrl: raw.imageUrl || null,
+      imageUrl: safeImageUrl(raw.imageUrl) || null,
       imageTone: 'blue',
-      imageLabel: categoryFromTitle(raw.title),
+      imageLabel: category,
       url: safeExternalUrl(raw.url),
       isEnded: Boolean(raw.isEnded),
     };
@@ -94,5 +105,8 @@
     return all.slice(0, total);
   }
 
-  return { categoryFromTitle, relativeTime, normalizeDeal, filterAndSortDeals, fetchAllLiveDeals };
+  return {
+    safeImageUrl, relativeTime, normalizeDeal,
+    filterAndSortDeals, fetchAllLiveDeals,
+  };
 });

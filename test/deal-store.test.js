@@ -127,6 +127,57 @@ test('pagination rejects malformed values and caps excessively large pages', asy
   await pool.end();
 });
 
+test('기존 상품을 ID와 핵심 데이터 손상 없이 재분류한다', async () => {
+  const { pool, store } = await makeStore();
+  const before = await store.upsert(firstDeal);
+
+  const updated = await store.reclassify((deal) => deal.title.includes('모니터') ? '디지털/가전' : '기타');
+  const result = await store.list();
+
+  assert.equal(updated, 1);
+  assert.equal(result.items[0].id, before.id);
+  assert.equal(result.items[0].category, '디지털/가전');
+  assert.equal(result.items[0].title, firstDeal.title);
+  assert.equal(result.items[0].originalUrl, firstDeal.originalUrl);
+  assert.equal(result.items[0].priceAmount, firstDeal.priceAmount);
+  assert.equal(result.items[0].merchant, firstDeal.merchant);
+  assert.equal(result.items[0].source, firstDeal.source);
+  await pool.end();
+});
+
+test('재분류 대상 행을 PostgreSQL FOR UPDATE로 잠근다', async () => {
+  const queries = [];
+  const client = {
+    query: async (sql) => {
+      queries.push(sql);
+      if (/^SELECT/i.test(sql)) return { rows: [] };
+      return { rowCount: 0, rows: [] };
+    },
+    release() {},
+  };
+  const store = createDealStore({ connect: async () => client });
+
+  await store.reclassify(() => '기타');
+
+  assert.ok(queries.some((sql) => /SELECT id, title, category FROM deals WHERE category IS NULL OR category = '기타' FOR UPDATE/i.test(sql)));
+});
+
+test('이미 유효한 카테고리는 시작 시 재분류로 덮어쓰지 않는다', async () => {
+  const { pool, store } = await makeStore();
+  await store.upsert({
+    ...firstDeal,
+    title: '오늘의 특가',
+    category: '디지털/가전',
+  });
+
+  const updated = await store.reclassify(() => '기타');
+  const result = await store.list();
+
+  assert.equal(updated, 0);
+  assert.equal(result.items[0].category, '디지털/가전');
+  await pool.end();
+});
+
 test('marks only stale deals from the selected source as ended', async () => {
   const { pool, store } = await makeStore();
   await store.upsert({ ...firstDeal, sourceItemId: 'old', publishedAt: '2026-09-01T00:00:00.000Z' });

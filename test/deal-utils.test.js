@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { normalizeDeal, filterAndSortDeals, fetchAllLiveDeals } = require('../public/deal-utils');
 
@@ -9,6 +11,8 @@ const rawDeal = {
   title: '[G마켓] 아이폰 17 케이스 19,900원',
   price: 19900,
   store: 'G마켓',
+  category: '디지털/가전',
+  imageUrl: 'https://cdn4.ppomppu.co.kr/item.jpg',
   source: 'ppomppu',
   publishedAt: '2026-09-08T10:00:00.000Z',
   url: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=1',
@@ -18,13 +22,22 @@ const rawDeal = {
 test('실데이터를 가짜 반응 수치 없이 카드 표시 모델로 변환한다', () => {
   const deal = normalizeDeal(rawDeal, new Date('2026-09-08T11:30:00.000Z'));
 
-  assert.equal(deal.category, '디지털');
+  assert.equal(deal.category, '디지털/가전');
+  assert.equal(deal.imageUrl, 'https://cdn4.ppomppu.co.kr/item.jpg');
   assert.equal(deal.postedAt, '1시간 전');
   assert.equal(deal.url, rawDeal.url);
   assert.equal(deal.price, 19900);
   assert.equal('views' in deal, false);
   assert.equal('discountRate' in deal, false);
   assert.equal(normalizeDeal({ ...rawDeal, url: 'javascript:alert(1)' }).url, '');
+  assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'http://cdn.example/item.jpg' }).imageUrl, null);
+  assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'https://127.0.0.1/item.jpg' }).imageUrl, null);
+  assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'https://evil.example/item.jpg' }).imageUrl, null);
+  assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'https://evilppomppu.co.kr/item.jpg' }).imageUrl, null);
+  assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'https://cdn.ppomppu.co.kr/item.jpg' }).imageUrl, 'https://cdn.ppomppu.co.kr/item.jpg');
+  assert.equal(normalizeDeal({ ...rawDeal, category: '알 수 없는 분류' }).category, '기타');
+  assert.equal(normalizeDeal({ ...rawDeal, title: 'QSSD 브랜드 상품', category: undefined }).category, '기타');
+  assert.equal(normalizeDeal({ ...rawDeal, title: '등산 텐트', category: undefined }).category, '기타');
 });
 
 test('실데이터 API의 모든 페이지를 가져와 전체 필터·정렬 대상으로 사용한다', async () => {
@@ -54,11 +67,17 @@ test('실데이터 API 응답 형식이 잘못되면 명시적으로 실패한�
 test('카테고리 필터와 최신순·가격순이 실제 필드로 동작한다', () => {
   const deals = [
     normalizeDeal(rawDeal),
-    normalizeDeal({ ...rawDeal, id: '2', title: '[네이버] 라면 10봉', price: 12000, publishedAt: '2026-09-08T11:00:00.000Z' }),
+    normalizeDeal({ ...rawDeal, id: '2', title: '[네이버] 라면 10봉', category: '식품', price: 12000, publishedAt: '2026-09-08T11:00:00.000Z' }),
     normalizeDeal({ ...rawDeal, id: '3', title: '[11번가] 이어폰', price: null, publishedAt: '2026-09-08T12:00:00.000Z' }),
   ];
 
   assert.deepEqual(filterAndSortDeals(deals, { category: '식품', sort: 'latest' }).map((deal) => deal.id), ['2']);
   assert.deepEqual(filterAndSortDeals(deals, { category: '전체', sort: 'latest' }).map((deal) => deal.id), ['3', '2', '1']);
   assert.deepEqual(filterAndSortDeals(deals, { category: '전체', sort: 'price-low' }).map((deal) => deal.id), ['2', '1', '3']);
+});
+
+test('브라우저 CSP가 이미지 리다이렉트도 뽐뿌 허용 호스트 밖으로 나가지 못하게 제한한다', () => {
+  const html = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
+  assert.match(html, /img-src 'self' https:\/\/ppomppu\.co\.kr https:\/\/\*\.ppomppu\.co\.kr/);
+  assert.doesNotMatch(html, /img-src[^;]*https:\s/);
 });

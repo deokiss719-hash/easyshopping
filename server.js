@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const { migrate, createDealStore } = require('./src/deal-store');
 const { createLiveDealsRouter } = require('./src/live-deals-api');
 const { runRssCollector } = require('./src/rss-collector');
+const { classifyDeal } = require('./src/deal-category');
 const { startPollingCollector } = require('./src/polling-collector');
 
 const app = express();
@@ -122,6 +123,8 @@ async function start() {
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     await migrate(pool);
     store = createDealStore(pool);
+    const reclassified = await store.reclassify(classifyDeal);
+    console.log(`기존 핫딜 카테고리 재분류 완료: ${reclassified}건 변경`);
     databaseMode = 'postgresql';
 
     const feedUrl = process.env.RSS_FEED_URL
@@ -133,6 +136,7 @@ async function start() {
         source,
         feedUrl,
         allowedHosts: ['www.ppomppu.co.kr'],
+        enrichImages: true,
         store,
       }),
       intervalMs,

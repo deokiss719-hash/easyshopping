@@ -45,8 +45,10 @@ function badgeClass(badge) {
 
 function categoryEmoji(category) {
   return {
-    디지털: '📱', 가전: '📺', 식품: '🍜', 생활: '🧻', 패션: '👟',
-    뷰티: '🧴', 육아: '🍼', 게임: '🎮', 기타: '✨'
+    '디지털/가전': '📱', 식품: '🍜', '생활/주방': '🏠', '패션/의류': '👟',
+    뷰티: '🧴', 건강: '💊', '육아/아동': '🍼', 게임: '🎮',
+    '스포츠/레저': '🏕️', 반려동물: '🐾', 자동차: '🚗', '여행/숙박': '✈️',
+    '상품권/쿠폰': '🎟️', 기타: '✨'
   }[category] || '✨';
 }
 
@@ -58,11 +60,15 @@ function showToast(message) {
 }
 
 function productCard(deal) {
+  const image = deal.imageUrl
+    ? `<img class="product-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
+    : '';
   return `
     <article class="deal-card" tabindex="0" data-deal-url="${escapeHtml(deal.url)}" aria-label="${escapeHtml(deal.title)}, ${formatPrice(deal.price)}">
       <div class="product-media tone-${escapeHtml(deal.imageTone)}">
         <span class="badge ${badgeClass(deal.badge)}">${escapeHtml(deal.badge)}</span>
-        <div class="product-placeholder" aria-hidden="true">${categoryEmoji(deal.category)} ${escapeHtml(deal.imageLabel)}</div>
+        <div class="product-placeholder" aria-hidden="true"><span>${categoryEmoji(deal.category)}</span><strong>${escapeHtml(deal.imageLabel)}</strong></div>
+        ${image}
       </div>
       <div class="card-body">
         <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(deal.source)}</span></div>
@@ -89,6 +95,12 @@ function latestItem(deal) {
       <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}</small></div>
       <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>
     </article>`;
+}
+
+function bindImageFallbacks(container) {
+  container.querySelectorAll('.product-image').forEach((image) => {
+    image.addEventListener('error', () => image.remove(), { once: true });
+  });
 }
 
 function bindDealClicks(container) {
@@ -130,6 +142,7 @@ function renderDeals() {
     elements.resultSummary.textContent = `지금 확인할 수 있는 핫딜 ${matchingDeals.length}개예요.`;
   }
 
+  bindImageFallbacks(elements.dealGrid);
   bindDealClicks(elements.dealGrid);
 }
 

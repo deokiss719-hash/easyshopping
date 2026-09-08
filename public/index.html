@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="description" content="오늘 뭐가 싸지? 지금 가장 반응 좋은 온라인 쇼핑 핫딜을 한눈에 확인하세요." />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://ppomppu.co.kr https://*.ppomppu.co.kr; style-src 'self' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; script-src 'self'; connect-src 'self'; base-uri 'self'; object-src 'none'" />
+  <meta name="description" content="공식 RSS에서 수집한 온라인 쇼핑 핫딜을 한눈에 확인하세요." />
   <meta name="theme-color" content="#FFFFFF" />
   <title>이지쇼핑 — 오늘 뭐가 싸지?</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -53,7 +54,7 @@
       <div class="quick-menu" aria-label="빠른 메뉴">
         <a href="#popular"><span class="quick-icon red">🔥</span><strong>실시간 핫딜</strong><small>지금 올라온 상품</small></a>
         <a href="#latest"><span class="quick-icon yellow">⚡</span><strong>최신 핫딜</strong><small>방금 올라온 딜</small></a>
-        <button type="button" data-quick-category="디지털"><span class="quick-icon blue">📱</span><strong>디지털</strong><small>IT·모바일</small></button>
+        <button type="button" data-quick-category="디지털/가전"><span class="quick-icon blue">📱</span><strong>디지털/가전</strong><small>IT·가전</small></button>
         <button type="button" data-quick-category="식품"><span class="quick-icon mint">🍔</span><strong>식품</strong><small>먹거리 특가</small></button>
       </div>
     </section>
@@ -77,14 +78,19 @@
       </div>
       <div id="categoryList" class="category-list" role="list">
         <button class="category-item active" data-category="전체"><span>✨</span><strong>전체</strong></button>
-        <button class="category-item" data-category="디지털"><span>📱</span><strong>디지털</strong></button>
-        <button class="category-item" data-category="가전"><span>📺</span><strong>가전</strong></button>
+        <button class="category-item" data-category="디지털/가전"><span>📱</span><strong>디지털/가전</strong></button>
         <button class="category-item" data-category="식품"><span>🍜</span><strong>식품</strong></button>
-        <button class="category-item" data-category="생활"><span>🧻</span><strong>생활</strong></button>
-        <button class="category-item" data-category="패션"><span>👟</span><strong>패션</strong></button>
+        <button class="category-item" data-category="생활/주방"><span>🏠</span><strong>생활/주방</strong></button>
+        <button class="category-item" data-category="패션/의류"><span>👟</span><strong>패션/의류</strong></button>
         <button class="category-item" data-category="뷰티"><span>🧴</span><strong>뷰티</strong></button>
-        <button class="category-item" data-category="육아"><span>🍼</span><strong>육아</strong></button>
+        <button class="category-item" data-category="건강"><span>💊</span><strong>건강</strong></button>
+        <button class="category-item" data-category="육아/아동"><span>🍼</span><strong>육아/아동</strong></button>
         <button class="category-item" data-category="게임"><span>🎮</span><strong>게임</strong></button>
+        <button class="category-item" data-category="스포츠/레저"><span>🏕️</span><strong>스포츠/레저</strong></button>
+        <button class="category-item" data-category="반려동물"><span>🐾</span><strong>반려동물</strong></button>
+        <button class="category-item" data-category="자동차"><span>🚗</span><strong>자동차</strong></button>
+        <button class="category-item" data-category="여행/숙박"><span>✈️</span><strong>여행/숙박</strong></button>
+        <button class="category-item" data-category="상품권/쿠폰"><span>🎟️</span><strong>상품권/쿠폰</strong></button>
         <button class="category-item" data-category="기타"><span>＋</span><strong>기타</strong></button>
       </div>
     </section>

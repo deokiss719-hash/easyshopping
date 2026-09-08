@@ -14,8 +14,12 @@ CREATE TABLE IF NOT EXISTS deals (
   ended_at TIMESTAMPTZ,
   is_ended BOOLEAN NOT NULL DEFAULT FALSE,
   raw_hash TEXT,
+  category TEXT NOT NULL DEFAULT '기타',
   UNIQUE (source, source_item_id)
 );
+
+ALTER TABLE deals
+  ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '기타';
 
 CREATE INDEX IF NOT EXISTS deals_published_at_idx ON deals (published_at DESC);
 CREATE INDEX IF NOT EXISTS deals_source_idx ON deals (source);

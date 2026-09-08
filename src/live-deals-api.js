@@ -9,7 +9,7 @@ function toApiDeal(deal) {
     price: deal.priceAmount,
     priceText: deal.priceText,
     store: deal.merchant || deal.source,
-    category: deal.source,
+    category: deal.category || '기타',
     source: deal.source,
     publishedAt: deal.publishedAt,
     postedAt: deal.publishedAt,

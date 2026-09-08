@@ -3,7 +3,12 @@ const assert = require('node:assert/strict');
 const { newDb, DataType } = require('pg-mem');
 
 const { migrate, createDealStore } = require('../src/deal-store');
-const { parseFeed, runRssCollector } = require('../src/rss-collector');
+const {
+  parseFeed,
+  runRssCollector,
+  safeImageUrl,
+  fetchOpenGraphImage,
+} = require('../src/rss-collector');
 
 const RSS = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -34,6 +39,8 @@ test('RSS 항목을 DealStore 입력 형식으로 변환한다', () => {
     priceAmount: 19900,
     currency: 'KRW',
     merchant: null,
+    category: '디지털/가전',
+    imageUrl: null,
     publishedAt: '2026-09-08T08:10:00.000Z',
     rawPayload: {
       feedUrl: 'https://feed.example/rss.xml',
@@ -159,6 +166,45 @@ test('허용 크기를 넘는 RSS 응답을 파싱 전에 거부한다', async (
   );
 });
 
+test('비스트림 text fallback의 크기 초과도 피드와 페이지 본문을 취소한다', async () => {
+  let feedCancelled = false;
+  await assert.rejects(
+    runRssCollector({
+      source: 'approved-feed',
+      feedUrl: 'https://feed.example/rss',
+      allowedHosts: ['feed.example'],
+      maxBytes: 1024,
+      store: { upsert: async () => ({ imageUrl: null }) },
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        body: { cancel: async () => { feedCancelled = true; } },
+        text: async () => 'x'.repeat(1025),
+      }),
+    }),
+    /too large/,
+  );
+  assert.equal(feedCancelled, true);
+
+  let pageCancelled = false;
+  await assert.rejects(
+    fetchOpenGraphImage('https://feed.example/item', {
+      allowedHosts: ['feed.example'],
+      maxBytes: 1024,
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/html' : null },
+        body: { cancel: async () => { pageCancelled = true; } },
+        text: async () => 'x'.repeat(1025),
+      }),
+    }),
+    /too large/,
+  );
+  assert.equal(pageCancelled, true);
+});
+
 test('스트리밍 응답 초과 시 잠긴 스트림 오류 대신 크기 오류를 반환한다', async () => {
   const body = {
     async *[Symbol.asyncIterator]() {
@@ -181,6 +227,219 @@ test('스트리밍 응답 초과 시 잠긴 스트림 오류 대신 크기 오�
     }),
     /Feed response is too large/,
   );
+});
+
+test('RSS 이미지와 설명 안의 이미지를 우선순위에 따라 안전하게 추출한다', () => {
+  const xml = `<rss xmlns:media="http://search.yahoo.com/mrss/"><channel>
+    <item><title>모니터 10,000원</title><link>https://feed.example/1</link><guid>img1</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate><media:content url="https://cdn.example/monitor.jpg" medium="image" /></item>
+    <item><title>라면 5,000원</title><link>https://feed.example/2</link><guid>img2</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate><description><![CDATA[<p>상품</p><img src="https://cdn.example/ramen.jpg">]]></description></item>
+  </channel></rss>`;
+  const deals = parseFeed(xml, {
+    source: 'approved-feed',
+    feedUrl: 'https://feed.example/rss.xml',
+    allowedImageHosts: ['cdn.example'],
+  });
+
+  assert.equal(deals[0].imageUrl, 'https://cdn.example/monitor.jpg');
+  assert.equal(deals[1].imageUrl, 'https://cdn.example/ramen.jpg');
+});
+
+test('외부 이미지 URL은 HTTPS 허용 호스트와 그 하위 호스트만 허용한다', () => {
+  assert.equal(safeImageUrl('https://cdn.ppomppu.co.kr/item.jpg'), 'https://cdn.ppomppu.co.kr/item.jpg');
+  assert.equal(safeImageUrl('https://evil.example/item.jpg'), null);
+  assert.equal(safeImageUrl('https://evilppomppu.co.kr/item.jpg'), null);
+  assert.equal(safeImageUrl('http://cdn.example/item.jpg'), null);
+  assert.equal(safeImageUrl('javascript:alert(1)'), null);
+  assert.equal(safeImageUrl('https://127.0.0.1/item.jpg'), null);
+  assert.equal(safeImageUrl('https://user:pass@cdn.example/item.jpg'), null);
+  assert.equal(safeImageUrl('https://cdn.example:8443/item.jpg'), null);
+});
+
+test('허용된 원문 호스트에서만 og:image를 제한적으로 조회한다', async () => {
+  let calls = 0;
+  const image = await fetchOpenGraphImage('https://feed.example/deals/1', {
+    allowedHosts: ['feed.example'],
+    allowedImageHosts: ['cdn.example'],
+    fetchImpl: async () => {
+      calls += 1;
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null },
+        text: async () => '<html><head><meta property="og:image" content="https://cdn.example/item.jpg"></head></html>',
+      };
+    },
+  });
+  assert.equal(image, 'https://cdn.example/item.jpg');
+  assert.equal(calls, 1);
+
+  await assert.rejects(
+    fetchOpenGraphImage('https://evil.example/deals/1', {
+      allowedHosts: ['feed.example'],
+      fetchImpl: async () => { throw new Error('must not fetch'); },
+    }),
+    /not allowed/,
+  );
+});
+
+test('og:image 페이지 리다이렉트와 응답 본문을 안전하게 처리한다', async () => {
+  let cancelled = false;
+  await assert.rejects(
+    fetchOpenGraphImage('https://feed.example/deals/1', {
+      allowedHosts: ['feed.example'],
+      fetchImpl: async () => ({
+        ok: false,
+        status: 302,
+        headers: { get: (name) => name.toLowerCase() === 'location' ? 'https://evil.example/item' : null },
+        body: { cancel: async () => { cancelled = true; } },
+      }),
+    }),
+    /not allowed/,
+  );
+  assert.equal(cancelled, true);
+});
+
+test('피드 리다이렉트·HTTP 오류의 모든 분기에서 응답 본문을 취소한다', async () => {
+  const scenarios = [
+    { status: 302, location: null, error: /missing Location/, expectedCancels: 1 },
+    { status: 302, location: 'https://feed.example/rss', error: /Too many feed redirects/, expectedCancels: 4 },
+    { status: 503, location: null, error: /HTTP 503/, expectedCancels: 1 },
+  ];
+
+  for (const scenario of scenarios) {
+    let cancels = 0;
+    await assert.rejects(
+      runRssCollector({
+        source: 'approved-feed',
+        feedUrl: 'https://feed.example/rss',
+        allowedHosts: ['feed.example'],
+        store: { upsert: async () => ({ imageUrl: null }) },
+        fetchImpl: async () => ({
+          ok: false,
+          status: scenario.status,
+          headers: { get: (name) => name.toLowerCase() === 'location' ? scenario.location : null },
+          body: { cancel: async () => { cancels += 1; } },
+        }),
+      }),
+      scenario.error,
+    );
+    assert.equal(cancels, scenario.expectedCancels);
+  }
+});
+
+test('og:image 페이지의 누락·과다 리다이렉트와 HTTP 오류도 본문을 취소한다', async () => {
+  const scenarios = [
+    { status: 302, location: null, error: /missing Location/, expectedCancels: 1 },
+    { status: 302, location: 'https://feed.example/item', error: /Too many page redirects/, expectedCancels: 4 },
+    { status: 503, location: null, result: null, expectedCancels: 1 },
+  ];
+
+  for (const scenario of scenarios) {
+    let cancels = 0;
+    const operation = fetchOpenGraphImage('https://feed.example/item', {
+      allowedHosts: ['feed.example'],
+      fetchImpl: async () => ({
+        ok: false,
+        status: scenario.status,
+        headers: { get: (name) => name.toLowerCase() === 'location' ? scenario.location : null },
+        body: { cancel: async () => { cancels += 1; } },
+      }),
+    });
+    if (scenario.error) await assert.rejects(operation, scenario.error);
+    else assert.equal(await operation, scenario.result);
+    assert.equal(cancels, scenario.expectedCancels);
+  }
+});
+
+test('og:image HTML 크기와 전체 요청 시간을 제한한다', async () => {
+  await assert.rejects(
+    fetchOpenGraphImage('https://feed.example/deals/large', {
+      allowedHosts: ['feed.example'],
+      maxBytes: 1024,
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: (name) => name.toLowerCase() === 'content-length' ? '2048' : 'text/html' },
+        text: async () => '',
+      }),
+    }),
+    /Page response is too large/,
+  );
+
+  await assert.rejects(
+    fetchOpenGraphImage('https://feed.example/deals/slow', {
+      allowedHosts: ['feed.example'],
+      timeoutMs: 10,
+      fetchImpl: async (_url, { signal }) => new Promise((resolve, reject) => {
+        signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+      }),
+    }),
+    /timeout/i,
+  );
+});
+
+test('비 HTML 페이지 응답은 본문을 취소하고 이미지로 사용하지 않는다', async () => {
+  let cancelled = false;
+  const image = await fetchOpenGraphImage('https://feed.example/deals/file', {
+    allowedHosts: ['feed.example'],
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'application/octet-stream' : null },
+      body: { cancel: async () => { cancelled = true; } },
+    }),
+  });
+
+  assert.equal(image, null);
+  assert.equal(cancelled, true);
+});
+
+test('이미지 보조 수집은 동시성 상한을 지키고 실패 URL을 재조회하지 않는다', async () => {
+  const items = Array.from({ length: 4 }, (_, index) => `
+    <item><title>상품 ${index}</title><link>https://feed.example/${index}</link><guid>${index}</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>`).join('');
+  const feed = `<rss><channel>${items}</channel></rss>`;
+  const imageAttemptCache = new Map();
+  let active = 0;
+  let maxActive = 0;
+  let pageRequests = 0;
+  const store = {
+    upsert: async () => ({ imageUrl: null }),
+    markEndedBefore: async () => 0,
+  };
+  const pageFetchImpl = async () => {
+    pageRequests += 1;
+    active += 1;
+    maxActive = Math.max(maxActive, active);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    active -= 1;
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/html' : null },
+      text: async () => '<html><head></head></html>',
+    };
+  };
+  const options = {
+    source: 'approved-feed',
+    feedUrl: 'https://feed.example/rss.xml',
+    allowedHosts: ['feed.example'],
+    store,
+    enrichImages: true,
+    imageConcurrency: 2,
+    imageAttemptCache,
+    imageRetryMs: 60_000,
+    fetchImpl: async () => ({
+      ok: true, status: 200, headers: { get: () => null }, text: async () => feed,
+    }),
+    pageFetchImpl,
+  };
+
+  await runRssCollector(options);
+  await runRssCollector(options);
+
+  assert.equal(maxActive, 2);
+  assert.equal(pageRequests, 4);
+  assert.equal(imageAttemptCache.size, 4);
 });
 
 test('성공적인 수집 뒤 출처의 TTL 초과 상품을 종료 처리한다', async () => {

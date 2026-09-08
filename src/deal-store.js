@@ -1,5 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { isCategory } = require('./deal-category');
 
 const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
 const MAX_PAGE = 10000;
@@ -35,6 +36,9 @@ function normalizeDeal(deal) {
   ) {
     throw new TypeError('priceAmount must be a safe non-negative integer');
   }
+  if (normalized.category != null && !isCategory(normalized.category)) {
+    throw new TypeError('category is not supported');
+  }
 
   return normalized;
 }
@@ -69,6 +73,7 @@ function mapDeal(row) {
     merchant: row.merchant,
     originalUrl: row.original_url,
     imageUrl: row.image_url,
+    category: row.category,
     publishedAt: row.published_at,
     firstSeenAt: row.first_seen_at,
     lastSeenAt: row.last_seen_at,
@@ -92,13 +97,14 @@ function createDealStore(pool) {
         deal.imageUrl ?? null,
         deal.publishedAt ?? null,
         deal.rawHash ?? null,
+        deal.category ?? null,
       ];
 
       const result = await pool.query(
         `INSERT INTO deals (
           source, source_item_id, title, price_text, price_amount,
-          merchant, original_url, image_url, published_at, raw_hash
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          merchant, original_url, image_url, published_at, raw_hash, category
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE($11, '기타'))
         ON CONFLICT (source, source_item_id) DO UPDATE SET
           title = EXCLUDED.title,
           price_text = COALESCE(EXCLUDED.price_text, deals.price_text),
@@ -108,6 +114,7 @@ function createDealStore(pool) {
           image_url = COALESCE(EXCLUDED.image_url, deals.image_url),
           published_at = COALESCE(EXCLUDED.published_at, deals.published_at),
           raw_hash = COALESCE(EXCLUDED.raw_hash, deals.raw_hash),
+          category = COALESCE($11, deals.category),
           last_seen_at = CURRENT_TIMESTAMP,
           is_ended = FALSE,
           ended_at = NULL
@@ -115,6 +122,34 @@ function createDealStore(pool) {
         values,
       );
       return mapDeal(result.rows[0]);
+    },
+
+    async reclassify(classifier) {
+      if (typeof classifier !== 'function') throw new TypeError('classifier is required');
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const result = await client.query("SELECT id, title, category FROM deals WHERE category IS NULL OR category = '기타' FOR UPDATE");
+        let updated = 0;
+        for (const row of result.rows) {
+          const category = classifier({ title: row.title });
+          if (!isCategory(category)) throw new TypeError('classifier returned an unsupported category');
+          if (category !== row.category) {
+            const changed = await client.query(
+              'UPDATE deals SET category = $1 WHERE id = $2',
+              [category, row.id],
+            );
+            updated += changed.rowCount;
+          }
+        }
+        await client.query('COMMIT');
+        return updated;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
     },
 
     async markEndedBefore(source, cutoff) {

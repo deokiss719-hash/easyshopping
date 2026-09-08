@@ -42,6 +42,8 @@ test('live deals API returns stored deals with pagination metadata and original 
     priceText: '199,000원',
     priceAmount: 199000,
     merchant: '테스트몰',
+    imageUrl: 'https://cdn.example/item.jpg',
+    category: '디지털/가전',
     originalUrl: 'https://example.com/item-1',
     publishedAt: '2026-09-08T09:00:00.000Z',
   });
@@ -55,6 +57,8 @@ test('live deals API returns stored deals with pagination metadata and original 
     assert.equal(body.deals[0].url, 'https://example.com/item-1');
     assert.equal(body.deals[0].price, 199000);
     assert.equal(body.deals[0].store, '테스트몰');
+    assert.equal(body.deals[0].category, '디지털/가전');
+    assert.equal(body.deals[0].imageUrl, 'https://cdn.example/item.jpg');
   });
   await pool.end();
 });
