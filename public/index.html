@@ -3,48 +3,57 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="여러 쇼핑몰의 인기 할인 정보를 한눈에 확인하는 쉬운쇼핑" />
-  <title>쉬운쇼핑 — 핫딜 찾기, 이제 쉽게</title>
+  <meta name="description" content="이지폰이 만든 쉽고 빠른 실시간 핫딜 서비스, 쉬운쇼핑" />
+  <title>쉬운쇼핑 | 이지폰이 찾은 실시간 핫딜</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <header class="header">
     <a class="brand" href="/" aria-label="쉬운쇼핑 홈">
-      <span class="brand-mark">S</span>
-      <span>쉬운쇼핑</span>
+      <img src="/assets/ezphone-logo.png" alt="이지폰 캐릭터 로고" />
+      <span class="brand-copy">
+        <strong>쉬운쇼핑</strong>
+        <small>by 이지폰</small>
+      </span>
     </a>
     <nav aria-label="주요 메뉴">
       <a class="active" href="#deals">실시간 핫딜</a>
-      <a href="#coming">가격 추적</a>
+      <a href="#coming">가격 알림</a>
     </nav>
+    <a class="channel-button" href="#coming">카카오 채널</a>
   </header>
 
   <main>
     <section class="hero">
+      <div class="hero-pattern pattern-one"></div>
+      <div class="hero-pattern pattern-two"></div>
       <div class="hero-copy">
-        <span class="eyebrow">REAL-TIME DEAL FINDER</span>
-        <h1>핫딜 찾기,<br><strong>이제 쉽게.</strong></h1>
-        <p>여러 곳에 흩어진 인기 할인 정보를<br>쉬운쇼핑이 한눈에 모아드려요.</p>
+        <span class="brand-label">휴대폰성지 이지폰이 만든</span>
+        <h1>핫딜 찾기,<br><em>쉽게 끝내자!</em></h1>
+        <p>여기저기 돌아다니지 마세요.<br><strong>진짜 할인 정보만</strong> 한곳에 모아드려요.</p>
+        <a class="hero-cta" href="#deals">지금 핫딜 보기 <span>↓</span></a>
       </div>
-      <div class="hero-panel" aria-hidden="true">
-        <div class="pulse-ring"><span>98°</span></div>
-        <p>지금 가장 뜨거운 딜</p>
+      <div class="mascot-wrap">
+        <span class="spark spark-one">✦</span>
+        <span class="spark spark-two">✦</span>
+        <img src="/assets/ezphone-logo.png" alt="휴대폰성지 이지폰 캐릭터" />
+        <div class="mascot-sticker">매일<br><strong>업데이트!</strong></div>
       </div>
     </section>
 
     <section class="deals-section" id="deals">
       <div class="section-heading">
-        <div>
-          <span class="live-dot"></span>
-          <h2>실시간 핫딜</h2>
+        <div class="title-block">
+          <span class="mini-label"><i></i> LIVE</span>
+          <h2>지금 뜨는 <mark>실시간 핫딜</mark></h2>
           <p id="updatedAt">할인 정보를 불러오는 중이에요.</p>
         </div>
         <label class="search">
           <span aria-hidden="true">⌕</span>
-          <input id="searchInput" type="search" placeholder="상품 또는 쇼핑몰 검색" autocomplete="off" />
+          <input id="searchInput" type="search" placeholder="어떤 핫딜을 찾으세요?" autocomplete="off" />
         </label>
       </div>
 
@@ -61,14 +70,20 @@
     </section>
 
     <section class="coming" id="coming">
-      <span>COMING NEXT</span>
-      <h2>원하는 상품의 가격이 내려가면<br>알려드릴게요.</h2>
-      <p>가격 추적과 할인 알림 기능을 준비하고 있어요.</p>
+      <div class="coming-copy">
+        <span>COMING SOON</span>
+        <h2>놓치기 싫은 가격,<br><mark>이지폰이 알려드릴게요!</mark></h2>
+        <p>원하는 상품을 등록하면 가격이 내려갔을 때 바로 알려드려요.</p>
+      </div>
+      <img src="/assets/ezphone-logo.png" alt="이지폰 캐릭터" />
     </section>
   </main>
 
   <footer>
-    <strong>쉬운쇼핑</strong>
+    <div class="footer-brand">
+      <img src="/assets/ezphone-logo.png" alt="" />
+      <div><strong>쉬운쇼핑</strong><span>by 이지폰</span></div>
+    </div>
     <p>상품 구매는 각 판매처에서 진행되며, 가격과 재고는 변경될 수 있습니다.</p>
     <small>© 2026 easyshopping.kr</small>
   </footer>
