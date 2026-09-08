@@ -5,6 +5,7 @@ const { isCategory } = require('./deal-category');
 const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
 const MAX_PAGE = 10000;
 const MAX_PAGE_SIZE = 100;
+const IMAGE_STATUSES = new Set(['missing_merchant_url', 'pending', 'ready', 'failed', 'unsupported_provider']);
 
 class InvalidQueryError extends TypeError {}
 
@@ -39,6 +40,9 @@ function normalizeDeal(deal) {
   if (normalized.category != null && !isCategory(normalized.category)) {
     throw new TypeError('category is not supported');
   }
+  if (normalized.imageStatus != null && !IMAGE_STATUSES.has(normalized.imageStatus)) {
+    throw new TypeError('imageStatus is not supported');
+  }
 
   return normalized;
 }
@@ -72,7 +76,13 @@ function mapDeal(row) {
     priceAmount: row.price_amount == null ? null : safeNumber(row.price_amount, 'priceAmount'),
     merchant: row.merchant,
     originalUrl: row.original_url,
+    merchantUrl: row.merchant_url,
+    sourceImageUrl: row.source_image_url,
     imageUrl: row.image_url,
+    imageStatus: row.image_status || (row.image_url ? 'ready' : 'missing_merchant_url'),
+    imageProvider: row.image_provider,
+    imageFailureCode: row.image_failure_code,
+    imageRetryAt: row.image_retry_at,
     category: row.category,
     publishedAt: row.published_at,
     firstSeenAt: row.first_seen_at,
@@ -94,7 +104,13 @@ function createDealStore(pool) {
         deal.priceAmount ?? null,
         deal.merchant ?? null,
         deal.originalUrl,
+        deal.merchantUrl ?? null,
+        deal.sourceImageUrl ?? null,
         deal.imageUrl ?? null,
+        deal.imageStatus ?? (deal.imageUrl ? 'ready' : (deal.merchantUrl ? 'pending' : 'missing_merchant_url')),
+        deal.imageProvider ?? null,
+        deal.imageFailureCode ?? null,
+        deal.imageRetryAt ?? null,
         deal.publishedAt ?? null,
         deal.rawHash ?? null,
         deal.category ?? null,
@@ -102,19 +118,32 @@ function createDealStore(pool) {
 
       const result = await pool.query(
         `INSERT INTO deals (
-          source, source_item_id, title, price_text, price_amount,
-          merchant, original_url, image_url, published_at, raw_hash, category
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,COALESCE($11, '기타'))
+          source, source_item_id, title, price_text, price_amount, merchant, original_url,
+          merchant_url, source_image_url, image_url, image_status, image_provider,
+          image_failure_code, image_retry_at, published_at, raw_hash, category
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,COALESCE($17, '기타'))
         ON CONFLICT (source, source_item_id) DO UPDATE SET
           title = EXCLUDED.title,
           price_text = COALESCE(EXCLUDED.price_text, deals.price_text),
           price_amount = COALESCE(EXCLUDED.price_amount, deals.price_amount),
           merchant = COALESCE(EXCLUDED.merchant, deals.merchant),
           original_url = EXCLUDED.original_url,
+          merchant_url = COALESCE(EXCLUDED.merchant_url, deals.merchant_url),
+          source_image_url = COALESCE(EXCLUDED.source_image_url, deals.source_image_url),
           image_url = COALESCE(EXCLUDED.image_url, deals.image_url),
+          image_status = CASE
+            WHEN COALESCE(EXCLUDED.image_url, deals.image_url) IS NOT NULL THEN 'ready'
+            WHEN COALESCE(EXCLUDED.merchant_url, deals.merchant_url) IS NULL THEN 'missing_merchant_url'
+            WHEN deals.image_status IN ('failed', 'unsupported_provider') THEN deals.image_status
+            WHEN EXCLUDED.merchant_url IS NULL AND deals.merchant_url IS NOT NULL THEN deals.image_status
+            ELSE EXCLUDED.image_status
+          END,
+          image_provider = COALESCE(EXCLUDED.image_provider, deals.image_provider),
+          image_failure_code = deals.image_failure_code,
+          image_retry_at = deals.image_retry_at,
           published_at = COALESCE(EXCLUDED.published_at, deals.published_at),
           raw_hash = COALESCE(EXCLUDED.raw_hash, deals.raw_hash),
-          category = COALESCE($11, deals.category),
+          category = COALESCE($17, deals.category),
           last_seen_at = CURRENT_TIMESTAMP,
           is_ended = FALSE,
           ended_at = NULL
@@ -150,6 +179,46 @@ function createDealStore(pool) {
       } finally {
         client.release();
       }
+    },
+
+    async updateImageState(id, update = {}) {
+      if (!/^\d+$/.test(String(id || ''))) throw new TypeError('deal id is invalid');
+      if (!IMAGE_STATUSES.has(update.imageStatus)) throw new TypeError('imageStatus is not supported');
+      const fields = {
+        imageStatus: 'image_status',
+        imageUrl: 'image_url',
+        sourceImageUrl: 'source_image_url',
+        imageProvider: 'image_provider',
+        imageFailureCode: 'image_failure_code',
+        imageRetryAt: 'image_retry_at',
+      };
+      const entries = Object.entries(fields).filter(([name]) => Object.hasOwn(update, name));
+      const values = entries.map(([name]) => update[name] ?? null);
+      values.push(String(id));
+      const assignments = entries.map(([, column], index) => `${column} = $${index + 1}`);
+      const result = await pool.query(
+        `UPDATE deals SET ${assignments.join(', ')} WHERE id = $${values.length} RETURNING *`,
+        values,
+      );
+      return result.rows[0] ? mapDeal(result.rows[0]) : null;
+    },
+
+    async listImageBackfillCandidates({ limit = 20, now = new Date() } = {}) {
+      const safeLimit = positiveInteger(limit, 'limit', 20, 100);
+      const currentTime = new Date(now);
+      if (Number.isNaN(currentTime.getTime())) throw new TypeError('now must be a valid date');
+      const result = await pool.query(
+        `SELECT * FROM deals
+         WHERE is_ended = FALSE
+           AND image_url IS NULL
+           AND merchant_url IS NOT NULL
+           AND image_status IN ('pending', 'failed', 'unsupported_provider')
+           AND (image_retry_at IS NULL OR image_retry_at <= $1)
+         ORDER BY published_at DESC NULLS LAST, id DESC
+         LIMIT $2`,
+        [currentTime.toISOString(), safeLimit],
+      );
+      return result.rows.map(mapDeal);
     },
 
     async markEndedBefore(source, cutoff) {

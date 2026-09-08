@@ -185,7 +185,8 @@ async function loadPopular() {
     const response = await fetch('/api/live-deals?source=ppomppu&size=5');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    const deals = data.deals.map((deal) => DealUtils.normalizeDeal(deal));
+    const imageBaseUrls = Array.isArray(data.imageBaseUrls) ? data.imageBaseUrls : [];
+    const deals = data.deals.map((deal) => DealUtils.normalizeDeal({ ...deal, imageBaseUrls }));
     elements.popularList.classList.remove('skeleton-list');
     elements.popularList.innerHTML = deals.map(popularItem).join('');
     bindImageFallbacks(elements.popularList);

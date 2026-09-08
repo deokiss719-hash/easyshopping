@@ -14,13 +14,17 @@ function toApiDeal(deal) {
     publishedAt: deal.publishedAt,
     postedAt: deal.publishedAt,
     imageUrl: deal.imageUrl,
+    imageStatus: deal.imageStatus || (deal.imageUrl ? 'ready' : 'missing_merchant_url'),
     url: deal.originalUrl,
     isEnded: deal.isEnded,
   };
 }
 
-function createLiveDealsRouter(store) {
+function createLiveDealsRouter(store, { imageBaseUrls = [] } = {}) {
   const router = express.Router();
+  const trustedImageBaseUrls = Object.freeze(
+    imageBaseUrls.filter((value) => typeof value === 'string' && value.startsWith('https://')),
+  );
 
   router.get('/', async (req, res) => {
     if (!store) {
@@ -43,6 +47,7 @@ function createLiveDealsRouter(store) {
         total: result.total,
         page: result.page,
         size: result.size,
+        imageBaseUrls: trustedImageBaseUrls,
         deals: result.items.map(toApiDeal),
       });
     } catch (error) {

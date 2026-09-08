@@ -121,7 +121,37 @@ function extractRssImage(item, originalUrl, allowedImageHosts) {
   return candidates.map((candidate) => safeImageUrl(candidate, originalUrl, allowedImageHosts)).find(Boolean) || null;
 }
 
-function parseFeed(xml, { source, feedUrl, allowedImageHosts = DEFAULT_IMAGE_HOSTS }) {
+function extractExplicitMerchantUrl(item, feedUrl, originalUrl, allowedMerchantHosts) {
+  if (!asArray(allowedMerchantHosts).length) return null;
+  const description = decodeAttribute(rawMarkup(item.description));
+  const candidates = [
+    ...(description.matchAll(/<a\b[^>]*\bhref\s*=\s*["']([^"']+)["']/gi)),
+    ...(description.matchAll(/(https:\/\/[^\s<>"']+)/gi)),
+  ].map((match) => match[1]);
+  const feedHost = new URL(feedUrl).hostname.toLowerCase();
+  const originalHost = new URL(originalUrl).hostname.toLowerCase();
+  for (const candidate of candidates) {
+    try {
+      const cleaned = candidate.replace(/[)\],.!?]+$/g, '');
+      const url = new URL(cleaned);
+      if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) continue;
+      if (isPrivateLiteral(url.hostname) || url.hostname.toLowerCase() === feedHost || url.hostname.toLowerCase() === originalHost) continue;
+      if (!isAllowedImageHost(url.hostname, allowedMerchantHosts)) continue;
+      if (/\.(?:avif|gif|jpe?g|png|webp)(?:$|[?#])/i.test(url.pathname)) continue;
+      return url.href;
+    } catch {
+      // Only explicit, valid HTTPS URLs are eligible; malformed text is ignored.
+    }
+  }
+  return null;
+}
+
+function parseFeed(xml, {
+  source,
+  feedUrl,
+  allowedImageHosts = DEFAULT_IMAGE_HOSTS,
+  allowedMerchantHosts = [],
+}) {
   const document = parser.parse(xml);
   const items = asArray(document?.rss?.channel?.item);
 
@@ -135,6 +165,8 @@ function parseFeed(xml, { source, feedUrl, allowedImageHosts = DEFAULT_IMAGE_HOS
       if (Number.isNaN(publishedDate.getTime())) throw new TypeError('item pubDate is invalid');
 
       const originalUrl = normalizeItemUrl(item.link, feedUrl);
+      const sourceImageUrl = extractRssImage(item, originalUrl, allowedImageHosts);
+      const merchantUrl = extractExplicitMerchantUrl(item, feedUrl, originalUrl, allowedMerchantHosts);
       return [{
         source,
         sourceItemId: cleanText(item.guid) || originalUrl,
@@ -144,7 +176,10 @@ function parseFeed(xml, { source, feedUrl, allowedImageHosts = DEFAULT_IMAGE_HOS
         currency: 'KRW',
         merchant: parseMerchant(title),
         category: classifyDeal({ title, description }),
-        imageUrl: extractRssImage(item, originalUrl, allowedImageHosts),
+        merchantUrl,
+        sourceImageUrl,
+        imageUrl: null,
+        imageStatus: merchantUrl ? 'pending' : 'missing_merchant_url',
         publishedAt: publishedDate.toISOString(),
         rawPayload: { feedUrl, description },
       }];
@@ -421,6 +456,7 @@ async function runRssCollector({
   enrichImages = false,
   pageFetchImpl = fetchImpl,
   allowedImageHosts = DEFAULT_IMAGE_HOSTS,
+  allowedMerchantHosts = [],
   imageConcurrency = DEFAULT_IMAGE_CONCURRENCY,
   maxImageEnrichments = DEFAULT_MAX_IMAGE_ENRICHMENTS,
   imageAttemptCache = negativeImageCache,
@@ -451,7 +487,12 @@ async function runRssCollector({
 
   const { response, finalUrl } = await requestFeed(feedUrl, { allowedHosts, fetchImpl });
   const xml = await readLimitedBody(response, maxBytes);
-  const deals = parseFeed(xml, { source, feedUrl: finalUrl.href, allowedImageHosts });
+  const deals = parseFeed(xml, {
+    source,
+    feedUrl: finalUrl.href,
+    allowedImageHosts,
+    allowedMerchantHosts,
+  });
   const enrichmentQueue = [];
   const attemptedAt = Date.now();
   for (const deal of deals) {

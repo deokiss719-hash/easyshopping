@@ -1,7 +1,5 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 
 const { normalizeDeal, filterAndSortDeals, fetchAllLiveDeals } = require('../public/deal-utils');
 
@@ -33,6 +31,16 @@ test('실데이터를 가짜 반응 수치 없이 카드 표시 모델로 변환
   assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'http://cdn.example/item.jpg' }).imageUrl, null);
   assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'https://127.0.0.1/item.jpg' }).imageUrl, null);
   assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'https://evil.example/item.jpg' }).imageUrl, null);
+  assert.equal(normalizeDeal({
+    ...rawDeal,
+    imageUrl: 'https://images.example.com/base/deals/feed/item.webp',
+    imageBaseUrls: ['https://images.example.com/base'],
+  }).imageUrl, 'https://images.example.com/base/deals/feed/item.webp');
+  assert.equal(normalizeDeal({
+    ...rawDeal,
+    imageUrl: 'https://images.example.com/other/item.webp',
+    imageBaseUrls: ['https://images.example.com/base'],
+  }).imageUrl, null);
   assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'https://evilppomppu.co.kr/item.jpg' }).imageUrl, null);
   assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'https://cdn.ppomppu.co.kr/item.jpg' }).imageUrl, 'https://cdn.ppomppu.co.kr/item.jpg');
   assert.equal(normalizeDeal({ ...rawDeal, category: '알 수 없는 분류' }).category, '기타');
@@ -47,11 +55,21 @@ test('실데이터 API의 모든 페이지를 가져와 전체 필터·정렬 �
     calls.push(url);
     const page = Number(new URL(url, 'https://example.test').searchParams.get('page'));
     const slice = page === 1 ? deals.slice(0, 100) : deals.slice(100);
-    return { ok: true, json: async () => ({ deals: slice, total: 101, page, size: 100 }) };
+    return {
+      ok: true,
+      json: async () => ({
+        deals: slice,
+        total: 101,
+        page,
+        size: 100,
+        imageBaseUrls: ['https://images.example.com/base'],
+      }),
+    };
   };
 
   const result = await fetchAllLiveDeals({ source: 'ppomppu', query: '아이폰', fetchImpl });
   assert.equal(result.length, 101);
+  assert.deepEqual(result[0].imageBaseUrls, ['https://images.example.com/base']);
   assert.equal(calls.length, 2);
   assert.match(calls[0], /q=%EC%95%84%EC%9D%B4%ED%8F%B0/);
   assert.match(calls[1], /page=2/);
@@ -74,10 +92,4 @@ test('카테고리 필터와 최신순·가격순이 실제 필드로 동작한�
   assert.deepEqual(filterAndSortDeals(deals, { category: '식품', sort: 'latest' }).map((deal) => deal.id), ['2']);
   assert.deepEqual(filterAndSortDeals(deals, { category: '전체', sort: 'latest' }).map((deal) => deal.id), ['3', '2', '1']);
   assert.deepEqual(filterAndSortDeals(deals, { category: '전체', sort: 'price-low' }).map((deal) => deal.id), ['2', '1', '3']);
-});
-
-test('브라우저 CSP가 이미지 리다이렉트도 뽐뿌 허용 호스트 밖으로 나가지 못하게 제한한다', () => {
-  const html = fs.readFileSync(path.join(__dirname, '../public/index.html'), 'utf8');
-  assert.match(html, /img-src 'self' https:\/\/ppomppu\.co\.kr https:\/\/\*\.ppomppu\.co\.kr/);
-  assert.doesNotMatch(html, /img-src[^;]*https:\s/);
 });

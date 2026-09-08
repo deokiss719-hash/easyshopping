@@ -120,6 +120,54 @@ test('partial upsert preserves optional values that are temporarily missing', as
   await pool.end();
 });
 
+test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매처 URL 후보만 backfill한다', async () => {
+  const { pool, store } = await makeStore();
+  const pending = await store.upsert({
+    ...firstDeal,
+    sourceItemId: 'pending-image',
+    imageUrl: null,
+    merchantUrl: 'https://shop.example/products/1',
+    imageStatus: 'pending',
+  });
+  await store.upsert({ ...firstDeal, sourceItemId: 'no-url', imageUrl: null, merchantUrl: null });
+
+  let candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z' });
+  assert.deepEqual(candidates.map((deal) => deal.id), [pending.id]);
+
+  await store.updateImageState(pending.id, {
+    imageStatus: 'failed',
+    imageFailureCode: 'provider_error',
+    imageRetryAt: '2026-09-10T00:00:00.000Z',
+  });
+  candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z' });
+  assert.equal(candidates.length, 0);
+
+  await store.updateImageState(pending.id, {
+    imageStatus: 'unsupported_provider',
+    imageFailureCode: 'unsupported_provider',
+    imageRetryAt: null,
+  });
+  candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z' });
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].id, pending.id);
+
+  await store.updateImageState(pending.id, {
+    imageStatus: 'ready',
+    imageUrl: 'https://images.example.com/deals/feed/item.webp',
+    sourceImageUrl: 'https://cdn.shop.example/item.jpg',
+    imageProvider: 'official-shop',
+    imageFailureCode: null,
+    imageRetryAt: null,
+  });
+  const result = await store.list({ source: firstDeal.source });
+  const ready = result.items.find((deal) => deal.id === pending.id);
+  assert.equal(ready.imageStatus, 'ready');
+  assert.equal(ready.merchantUrl, 'https://shop.example/products/1');
+  assert.equal(ready.sourceImageUrl, 'https://cdn.shop.example/item.jpg');
+  assert.equal(ready.imageProvider, 'official-shop');
+  await pool.end();
+});
+
 test('pagination rejects malformed values and caps excessively large pages', async () => {
   const { pool, store } = await makeStore();
   await assert.rejects(() => store.list({ page: '2junk' }), /page/);

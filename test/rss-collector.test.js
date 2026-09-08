@@ -40,7 +40,10 @@ test('RSS 항목을 DealStore 입력 형식으로 변환한다', () => {
     currency: 'KRW',
     merchant: null,
     category: '디지털/가전',
+    merchantUrl: null,
+    sourceImageUrl: null,
     imageUrl: null,
+    imageStatus: 'missing_merchant_url',
     publishedAt: '2026-09-08T08:10:00.000Z',
     rawPayload: {
       feedUrl: 'https://feed.example/rss.xml',
@@ -229,6 +232,22 @@ test('스트리밍 응답 초과 시 잠긴 스트림 오류 대신 크기 오�
   );
 });
 
+test('RSS가 명시한 실제 판매처 URL만 저장하고 상품명으로 URL을 추측하지 않는다', () => {
+  const xml = `<rss><channel>
+    <item><title>[공식몰] 정확한 상품</title><link>https://feed.example/1</link><guid>url1</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate><description><![CDATA[광고 https://analytics.example/click?id=1 판매처 https://shop.example/products/123]]></description></item>
+    <item><title>[G마켓] 검색하면 나올 법한 상품</title><link>https://feed.example/2</link><guid>url2</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate><description>판매처 링크 없음</description></item>
+  </channel></rss>`;
+  const deals = parseFeed(xml, {
+    source: 'approved-feed',
+    feedUrl: 'https://feed.example/rss.xml',
+    allowedMerchantHosts: ['shop.example'],
+  });
+  assert.equal(deals[0].merchantUrl, 'https://shop.example/products/123');
+  assert.equal(deals[0].imageStatus, 'pending');
+  assert.equal(deals[1].merchantUrl, null);
+  assert.equal(deals[1].imageStatus, 'missing_merchant_url');
+});
+
 test('RSS 이미지와 설명 안의 이미지를 우선순위에 따라 안전하게 추출한다', () => {
   const xml = `<rss xmlns:media="http://search.yahoo.com/mrss/"><channel>
     <item><title>모니터 10,000원</title><link>https://feed.example/1</link><guid>img1</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate><media:content url="https://cdn.example/monitor.jpg" medium="image" /></item>
@@ -240,8 +259,12 @@ test('RSS 이미지와 설명 안의 이미지를 우선순위에 따라 안전�
     allowedImageHosts: ['cdn.example'],
   });
 
-  assert.equal(deals[0].imageUrl, 'https://cdn.example/monitor.jpg');
-  assert.equal(deals[1].imageUrl, 'https://cdn.example/ramen.jpg');
+  assert.equal(deals[0].imageUrl, null);
+  assert.equal(deals[0].sourceImageUrl, 'https://cdn.example/monitor.jpg');
+  assert.equal(deals[0].imageStatus, 'missing_merchant_url');
+  assert.equal(deals[1].imageUrl, null);
+  assert.equal(deals[1].sourceImageUrl, 'https://cdn.example/ramen.jpg');
+  assert.equal(deals[1].imageStatus, 'missing_merchant_url');
 });
 
 test('외부 이미지 URL은 HTTPS 허용 호스트와 그 하위 호스트만 허용한다', () => {

@@ -6,6 +6,10 @@ const { createLiveDealsRouter } = require('./src/live-deals-api');
 const { runRssCollector } = require('./src/rss-collector');
 const { classifyDeal } = require('./src/deal-category');
 const { startPollingCollector } = require('./src/polling-collector');
+const { createProviderRegistry } = require('./src/images/provider-registry');
+const { readR2Config, createR2Storage } = require('./src/images/r2-storage');
+const { createImagePipeline, runImageBackfill } = require('./src/images/image-pipeline');
+const { buildContentSecurityPolicy } = require('./src/content-security-policy');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -76,8 +80,6 @@ function withComputedFields(deal) {
   };
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
-
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'easyshopping', version: '0.4.0', database: databaseMode });
 });
@@ -118,6 +120,13 @@ app.get('/api/popular', (_req, res) => {
 
 async function start() {
   let store = null;
+  const r2Config = readR2Config(process.env);
+  const contentSecurityPolicy = buildContentSecurityPolicy(r2Config);
+  app.use((_req, res, next) => {
+    res.setHeader('Content-Security-Policy', contentSecurityPolicy);
+    next();
+  });
+  app.use(express.static(path.join(__dirname, 'public')));
 
   if (process.env.DATABASE_URL) {
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -131,19 +140,45 @@ async function start() {
       || 'https://www.ppomppu.co.kr/rss.php?id=ppomppu';
     const source = process.env.RSS_FEED_SOURCE || 'ppomppu';
     const intervalMs = Number(process.env.RSS_POLL_INTERVAL_MS || 600000);
+    const imageStorage = createR2Storage({ config: r2Config });
+    const providerRegistry = createProviderRegistry([]);
+    const imagePipeline = createImagePipeline({
+      store,
+      storage: imageStorage,
+      providerRegistry,
+    });
+    if (!imageStorage.enabled) {
+      console.log(`상품 이미지 업로드 비활성화: ${r2Config.missing.join(', ')} 환경변수 필요`);
+    } else {
+      console.log('상품 이미지 R2 업로드 준비 완료; 등록된 판매처 provider만 사용');
+    }
     startPollingCollector({
-      collect: () => runRssCollector({
-        source,
-        feedUrl,
-        allowedHosts: ['www.ppomppu.co.kr'],
-        enrichImages: false,
-        store,
-      }),
+      collect: async () => {
+        const result = await runRssCollector({
+          source,
+          feedUrl,
+          allowedHosts: ['www.ppomppu.co.kr'],
+          allowedMerchantHosts: providerRegistry.merchantHosts,
+          enrichImages: false,
+          store,
+        });
+        if (imagePipeline.enabled) {
+          try {
+            const imageResult = await runImageBackfill({ store, pipeline: imagePipeline, limit: 20 });
+            console.log('상품 이미지 backfill 완료', imageResult);
+          } catch (error) {
+            console.warn('상품 이미지 backfill 실패', { reason: error?.code || 'backfill_error' });
+          }
+        }
+        return result;
+      },
       intervalMs,
     });
   }
 
-  app.use('/api/live-deals', createLiveDealsRouter(store));
+  app.use('/api/live-deals', createLiveDealsRouter(store, {
+    imageBaseUrls: r2Config.enabled ? [r2Config.publicBaseUrl] : [],
+  }));
   app.listen(PORT, () => {
     console.log(`이지쇼핑 실행 중: http://localhost:${PORT} (${databaseMode})`);
   });

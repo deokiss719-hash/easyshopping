@@ -20,9 +20,9 @@ async function makeStore() {
   return { pool, store: createDealStore(pool) };
 }
 
-async function withServer(store, callback) {
+async function withServer(store, callback, options = {}) {
   const app = express();
-  app.use('/api/live-deals', createLiveDealsRouter(store));
+  app.use('/api/live-deals', createLiveDealsRouter(store, options));
   const server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   try {
@@ -43,6 +43,7 @@ test('live deals API returns stored deals with pagination metadata and original 
     priceAmount: 199000,
     merchant: '테스트몰',
     imageUrl: 'https://cdn.example/item.jpg',
+    imageStatus: 'ready',
     category: '디지털/가전',
     originalUrl: 'https://example.com/item-1',
     publishedAt: '2026-09-08T09:00:00.000Z',
@@ -59,7 +60,9 @@ test('live deals API returns stored deals with pagination metadata and original 
     assert.equal(body.deals[0].store, '테스트몰');
     assert.equal(body.deals[0].category, '디지털/가전');
     assert.equal(body.deals[0].imageUrl, 'https://cdn.example/item.jpg');
-  });
+    assert.equal(body.deals[0].imageStatus, 'ready');
+    assert.deepEqual(body.imageBaseUrls, ['https://images.example.com/base']);
+  }, { imageBaseUrls: ['https://images.example.com/base'] });
   await pool.end();
 });
 

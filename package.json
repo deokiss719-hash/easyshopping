@@ -13,9 +13,11 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1127.0",
     "express": "^5.1.0",
     "fast-xml-parser": "^5.11.1",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "pg-mem": "^3.0.14"

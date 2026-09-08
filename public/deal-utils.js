@@ -29,13 +29,23 @@
     }
   }
 
-  function safeImageUrl(value) {
+  function safeImageUrl(value, allowedBaseUrls = []) {
     try {
       const url = new URL(String(value || ''));
       if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return '';
       const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
-      const allowed = host === 'ppomppu.co.kr' || host.endsWith('.ppomppu.co.kr');
-      if (!allowed) return '';
+      const legacyAllowed = host === 'ppomppu.co.kr' || host.endsWith('.ppomppu.co.kr');
+      const configuredAllowed = Array.isArray(allowedBaseUrls) && allowedBaseUrls.some((value) => {
+        try {
+          const base = new URL(String(value || ''));
+          if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash) return false;
+          const basePath = base.pathname.endsWith('/') ? base.pathname : `${base.pathname}/`;
+          return url.origin === base.origin && (url.pathname === base.pathname || url.pathname.startsWith(basePath));
+        } catch {
+          return false;
+        }
+      });
+      if (!legacyAllowed && !configuredAllowed) return '';
       if (host === 'localhost' || host.endsWith('.localhost') || host.includes(':')) return '';
       const octets = host.split('.').map(Number);
       if (octets.length === 4 && octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {
@@ -62,7 +72,7 @@
       source: String(raw.source || ''),
       publishedAt: raw.publishedAt || null,
       postedAt: relativeTime(raw.publishedAt, now),
-      imageUrl: safeImageUrl(raw.imageUrl) || null,
+      imageUrl: safeImageUrl(raw.imageUrl, raw.imageBaseUrls) || null,
       imageTone: 'blue',
       imageLabel: category,
       url: safeExternalUrl(raw.url),
@@ -92,11 +102,14 @@
       const response = await fetchImpl(`/api/live-deals?${params}`, { signal });
       if (!response?.ok) throw new Error(`Live deals request failed: HTTP ${response?.status || 'unknown'}`);
       const data = await response.json();
-      if (!Array.isArray(data?.deals) || !Number.isSafeInteger(data.total) || data.total < 0) {
+      if (!Array.isArray(data?.deals) || !Number.isSafeInteger(data.total) || data.total < 0
+        || (data.imageBaseUrls != null && (!Array.isArray(data.imageBaseUrls)
+          || data.imageBaseUrls.some((value) => typeof value !== 'string')))) {
         throw new TypeError('Invalid live deals response');
       }
       total = data.total;
-      all.push(...data.deals);
+      const imageBaseUrls = data.imageBaseUrls || [];
+      all.push(...data.deals.map((deal) => ({ ...deal, imageBaseUrls })));
       if (data.deals.length === 0) break;
       page += 1;
       if (page > Math.ceil(total / 100) + 1) throw new Error('Live deals pagination did not terminate');
