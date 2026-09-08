@@ -19,7 +19,7 @@
       </a>
       <nav class="desktop-nav" aria-label="주요 메뉴">
         <a class="active" href="#all-deals">핫딜</a>
-        <a href="#popular">인기</a>
+        <a href="#popular">실시간</a>
         <a href="#latest">최신</a>
         <a href="#categories">카테고리</a>
       </nav>
@@ -51,7 +51,7 @@
         </div>
       </div>
       <div class="quick-menu" aria-label="빠른 메뉴">
-        <a href="#popular"><span class="quick-icon red">🔥</span><strong>실시간 인기</strong><small>지금 뜨는 상품</small></a>
+        <a href="#popular"><span class="quick-icon red">🔥</span><strong>실시간 핫딜</strong><small>지금 올라온 상품</small></a>
         <a href="#latest"><span class="quick-icon yellow">⚡</span><strong>최신 핫딜</strong><small>방금 올라온 딜</small></a>
         <button type="button" data-quick-category="디지털"><span class="quick-icon blue">📱</span><strong>디지털</strong><small>IT·모바일</small></button>
         <button type="button" data-quick-category="식품"><span class="quick-icon mint">🍔</span><strong>식품</strong><small>먹거리 특가</small></button>
@@ -61,8 +61,8 @@
     <section class="popular-section section" id="popular" aria-labelledby="popular-title">
       <div class="section-head">
         <div>
-          <span class="section-kicker"><i></i> 실시간 반응</span>
-          <h2 id="popular-title">지금 사람들이 많이 보는 핫딜</h2>
+          <span class="section-kicker"><i></i> 실시간 수집</span>
+          <h2 id="popular-title">지금 올라온 핫딜</h2>
         </div>
         <a href="#all-deals" class="text-link">전체 보기 <span>→</span></a>
       </div>
@@ -96,9 +96,7 @@
           <p id="resultSummary">놓치기 아까운 딜을 가격순으로 정리했어요.</p>
         </div>
         <div class="sort-control" role="group" aria-label="상품 정렬">
-          <button class="active" data-sort="popular">인기순</button>
-          <button data-sort="latest">최신순</button>
-          <button data-sort="discount">할인율순</button>
+          <button class="active" data-sort="latest">최신순</button>
           <button data-sort="price-low">가격순</button>
         </div>
       </div>
@@ -140,11 +138,12 @@
     <a class="active" href="/"><span>⌂</span>홈</a>
     <a href="#all-deals"><span>⚡</span>핫딜</a>
     <button class="mobile-search-trigger" type="button"><span>⌕</span>검색</button>
-    <a href="#popular"><span>♨</span>인기</a>
+    <a href="#popular"><span>♨</span>실시간</a>
     <button type="button"><span>○</span>MY</button>
   </nav>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/deal-utils.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 const state = {
   category: '전체',
-  sort: 'popular',
+  sort: 'latest',
   query: '',
   deals: [],
   visibleCount: 8,
@@ -21,9 +21,10 @@ const elements = {
 const won = new Intl.NumberFormat('ko-KR');
 let searchTimer;
 let toastTimer;
+let dealsController;
 
 function formatPrice(price) {
-  return `${won.format(price)}원`;
+  return Number.isSafeInteger(price) ? `${won.format(price)}원` : '가격 확인';
 }
 
 function escapeHtml(value) {
@@ -58,47 +59,44 @@ function showToast(message) {
 
 function productCard(deal) {
   return `
-    <article class="deal-card" tabindex="0" data-deal-id="${deal.id}" aria-label="${escapeHtml(deal.title)}, ${formatPrice(deal.price)}">
+    <article class="deal-card" tabindex="0" data-deal-url="${escapeHtml(deal.url)}" aria-label="${escapeHtml(deal.title)}, ${formatPrice(deal.price)}">
       <div class="product-media tone-${escapeHtml(deal.imageTone)}">
         <span class="badge ${badgeClass(deal.badge)}">${escapeHtml(deal.badge)}</span>
-        <div class="product-placeholder" aria-hidden="true">${escapeHtml(deal.imageLabel)}</div>
+        <div class="product-placeholder" aria-hidden="true">${categoryEmoji(deal.category)} ${escapeHtml(deal.imageLabel)}</div>
       </div>
       <div class="card-body">
-        <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(deal.shipping)}</span></div>
+        <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(deal.source)}</span></div>
         <h3 class="card-title">${escapeHtml(deal.title)}</h3>
-        <div class="price-row"><span class="discount">${deal.discountRate}%</span><strong class="current-price">${formatPrice(deal.price)}</strong></div>
-        <p class="original-price">${formatPrice(deal.originalPrice)}</p>
-        <div class="card-meta">
-          <span>${escapeHtml(deal.postedAt)}</span>
-          <div class="reactions" aria-label="조회 ${deal.views}, 댓글 ${deal.comments}, 추천 ${deal.votes}">
-            <span>👁 ${won.format(deal.views)}</span><span>💬 ${deal.comments}</span><span class="hot">♥ ${deal.votes}</span>
-          </div>
-        </div>
+        <div class="price-row"><strong class="current-price">${formatPrice(deal.price)}</strong></div>
+        <div class="card-meta"><span>${escapeHtml(deal.postedAt)}</span><span>${escapeHtml(deal.category)}</span></div>
       </div>
     </article>`;
 }
 
 function popularItem(deal, index) {
   return `
-    <article class="popular-item" tabindex="0" data-deal-id="${deal.id}">
-      <div class="rank-line"><span class="rank-number">${index + 1}</span><span class="rank-heat">🔥 ${deal.votes}</span></div>
+    <article class="popular-item" tabindex="0" data-deal-url="${escapeHtml(deal.url)}">
+      <div class="rank-line"><span class="rank-number">${index + 1}</span><span class="rank-heat">실시간</span></div>
       <h3>${escapeHtml(deal.title)}</h3>
-      <div class="rank-price"><strong>${formatPrice(deal.price)}</strong><em>${deal.discountRate}% ↓</em></div>
+      <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>
     </article>`;
 }
 
 function latestItem(deal) {
   return `
-    <article class="latest-item" tabindex="0" data-deal-id="${deal.id}">
+    <article class="latest-item" tabindex="0" data-deal-url="${escapeHtml(deal.url)}">
       <span class="latest-icon" aria-hidden="true">${categoryEmoji(deal.category)}</span>
       <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}</small></div>
-      <div class="latest-price"><em>${deal.discountRate}%</em><strong>${formatPrice(deal.price)}</strong></div>
+      <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>
     </article>`;
 }
 
 function bindDealClicks(container) {
-  container.querySelectorAll('[data-deal-id]').forEach((card) => {
-    const open = () => showToast('상품 상세페이지는 다음 제작 단계에서 연결됩니다.');
+  container.querySelectorAll('[data-deal-url]').forEach((card) => {
+    const open = () => {
+      const url = card.dataset.dealUrl;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    };
     card.addEventListener('click', open);
     card.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -110,61 +108,67 @@ function bindDealClicks(container) {
 }
 
 function renderDeals() {
-  const visibleDeals = state.deals.slice(0, state.visibleCount);
+  const matchingDeals = DealUtils.filterAndSortDeals(state.deals, state);
+  const visibleDeals = matchingDeals.slice(0, state.visibleCount);
   elements.dealGrid.classList.remove('skeleton-grid');
   elements.dealGrid.innerHTML = visibleDeals.map(productCard).join('');
 
-  const hasResults = state.deals.length > 0;
+  const hasResults = matchingDeals.length > 0;
   elements.dealGrid.hidden = !hasResults;
   elements.emptyState.hidden = hasResults;
-  elements.loadMore.hidden = !hasResults || state.visibleCount >= state.deals.length;
+  elements.loadMore.hidden = !hasResults || state.visibleCount >= matchingDeals.length;
 
   if (!hasResults) {
     elements.resultSummary.textContent = state.query
       ? `“${state.query}” 검색 결과가 없어요.`
       : `${state.category} 카테고리에 아직 등록된 핫딜이 없어요.`;
   } else if (state.query) {
-    elements.resultSummary.textContent = `“${state.query}” 핫딜 ${state.deals.length}개를 찾았어요.`;
+    elements.resultSummary.textContent = `“${state.query}” 핫딜 ${matchingDeals.length}개를 찾았어요.`;
   } else if (state.category !== '전체') {
-    elements.resultSummary.textContent = `${state.category} 핫딜 ${state.deals.length}개를 모았어요.`;
+    elements.resultSummary.textContent = `${state.category} 핫딜 ${matchingDeals.length}개를 모았어요.`;
   } else {
-    elements.resultSummary.textContent = `지금 확인할 수 있는 핫딜 ${state.deals.length}개예요.`;
+    elements.resultSummary.textContent = `지금 확인할 수 있는 핫딜 ${matchingDeals.length}개예요.`;
   }
 
   bindDealClicks(elements.dealGrid);
 }
 
 async function loadDeals({ scroll = false } = {}) {
-  const params = new URLSearchParams({
-    category: state.category,
-    sort: state.sort,
-    q: state.query,
-  });
+  dealsController?.abort();
+  const controller = new AbortController();
+  dealsController = controller;
 
   try {
-    const response = await fetch(`/api/deals?${params}`);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    state.deals = data.deals;
+    const rawDeals = await DealUtils.fetchAllLiveDeals({
+      source: 'ppomppu',
+      query: state.query,
+      signal: controller.signal,
+    });
+    if (controller !== dealsController) return;
+    state.deals = rawDeals.map((deal) => DealUtils.normalizeDeal(deal));
     renderDeals();
     renderLatest(state.deals);
     if (scroll) document.querySelector('#all-deals').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
+    if (error.name === 'AbortError') return;
     console.error('핫딜 데이터를 불러오지 못했습니다.', error);
     elements.dealGrid.hidden = true;
     elements.emptyState.hidden = false;
     elements.loadMore.hidden = true;
     elements.resultSummary.textContent = '핫딜을 불러오지 못했어요. 잠시 후 다시 시도해주세요.';
+  } finally {
+    if (controller === dealsController) dealsController = null;
   }
 }
 
 async function loadPopular() {
   try {
-    const response = await fetch('/api/popular');
+    const response = await fetch('/api/live-deals?source=ppomppu&size=5');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
+    const deals = data.deals.map((deal) => DealUtils.normalizeDeal(deal));
     elements.popularList.classList.remove('skeleton-list');
-    elements.popularList.innerHTML = data.deals.map(popularItem).join('');
+    elements.popularList.innerHTML = deals.map(popularItem).join('');
     bindDealClicks(elements.popularList);
   } catch (error) {
     console.error('인기 핫딜을 불러오지 못했습니다.', error);
@@ -173,7 +177,7 @@ async function loadPopular() {
 }
 
 function renderLatest(deals) {
-  const latest = [...deals].sort((a, b) => a.postedMinutes - b.postedMinutes).slice(0, 6);
+  const latest = DealUtils.filterAndSortDeals(deals, { category: '전체', sort: 'latest' }).slice(0, 6);
   elements.latestList.innerHTML = latest.map(latestItem).join('');
   if (!latest.length) {
     elements.latestList.innerHTML = '<p style="color:#91a6c8">조건에 맞는 최신 핫딜이 없어요.</p>';
