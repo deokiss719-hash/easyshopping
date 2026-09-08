@@ -70,11 +70,9 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .desktop-nav a:hover, .desktop-nav a.active { color: var(--text); }
 .desktop-nav a.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--primary); border-radius: 2px; }
 .header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-.icon-button, .my-button { min-width: 44px; min-height: 44px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; }
+.icon-button { min-width: 44px; min-height: 44px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; }
 .icon-button { display: grid; place-items: center; }
 .icon-button:hover { background: var(--background); color: var(--primary); }
-.my-button { padding: 0 13px; color: var(--text-secondary); font-size: 13px; font-weight: 650; }
-.my-button:hover { color: var(--primary); background: var(--light-blue); }
 
 .hero {
   width: min(var(--container), calc(100% - 48px));
@@ -257,8 +255,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   .header-inner { height: 62px; }
   .wordmark-symbol { width: 31px; height: 31px; border-radius: 10px 10px 10px 4px; font-size: 19px; }
   .wordmark-name { font-size: 19px; }
-  .desktop-nav, .my-button span { display: none; }
-  .my-button { display: none; }
+  .desktop-nav { display: none; }
   .hero { padding: 46px 0 34px; }
   .eyebrow { margin-bottom: 9px; }
   .hero h1 { font-size: 42px; }
@@ -293,7 +290,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   .footer-inner { grid-template-columns: 1fr; }
   .footer-links { grid-row: 2; flex-wrap: wrap; gap: 14px 18px; }
   .footer-note { grid-column: 1; }
-  .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; height: calc(64px + env(safe-area-inset-bottom)); padding: 6px 10px env(safe-area-inset-bottom); display: grid; grid-template-columns: repeat(5,1fr); background: rgba(255,255,255,.96); border-top: 1px solid var(--divider); backdrop-filter: blur(18px); }
+  .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; height: calc(64px + env(safe-area-inset-bottom)); padding: 6px 10px env(safe-area-inset-bottom); display: grid; grid-template-columns: repeat(4,1fr); background: rgba(255,255,255,.96); border-top: 1px solid var(--divider); backdrop-filter: blur(18px); }
   .bottom-nav a, .bottom-nav button { min-width: 0; min-height: 52px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 3px; color: var(--text-tertiary); background: transparent; border: 0; font-size: 10px; font-weight: 650; }
   .bottom-nav span { height: 22px; color: inherit; font-size: 19px; line-height: 22px; }
   .bottom-nav .active { color: var(--primary); }

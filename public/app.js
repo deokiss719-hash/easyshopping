@@ -279,8 +279,4 @@ document.querySelector('#latestRefresh').addEventListener('click', () => {
   showToast('최신 핫딜을 새로 확인했어요.');
 });
 
-document.querySelectorAll('.my-button, .bottom-nav button:not(.mobile-search-trigger)').forEach((button) => {
-  button.addEventListener('click', () => showToast('로그인과 MY는 다음 제작 단계에서 연결됩니다.'));
-});
-
 Promise.all([loadPopular(), loadDeals()]);
