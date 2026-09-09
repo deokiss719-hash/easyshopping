@@ -46,6 +46,7 @@ function safeSourceImageUrl(value) {
 function failureCode(error) {
   if (error?.code === 'unsafe_source_image_url') return 'unsafe_source_image_url';
   if (error?.code === 'image_too_small') return 'image_too_small';
+  if (/^(?:page|image)_(?:http_\d{3}|[a-z0-9_]{1,48})$/.test(String(error?.code || ''))) return error.code;
   if (error instanceof RangeError) return 'image_too_large';
   if (/unsupported|content.?type/i.test(String(error?.message || ''))) return 'unsupported_image';
   return 'provider_error';

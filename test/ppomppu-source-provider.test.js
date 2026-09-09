@@ -49,9 +49,25 @@ test('뽐뿌 원문 provider는 본문 밖 이미지와 허용 호스트 밖 이
 
   await assert.rejects(
     () => provider.fetchImageCandidate({ deal: { originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123' } }),
-    /본문 상품 이미지가 없습니다/,
+    (error) => error?.code === 'body_image_missing',
   );
   assert.equal(calls, 1);
+});
+
+test('원문 HTTP 실패는 민감한 응답 없이 안전한 상태 코드로 분류한다', async () => {
+  const provider = createPpomppuImageProvider({
+    fetchImpl: async () => new Response('blocked', {
+      status: 403,
+      headers: { 'content-type': 'text/html' },
+    }),
+  });
+
+  await assert.rejects(
+    () => provider.fetchImageCandidate({
+      deal: { originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123' },
+    }),
+    (error) => error?.code === 'page_http_403',
+  );
 });
 
 test('저장된 sourceImageUrl을 재사용하지 않고 원문 본문에서 매번 이미지를 다시 확정한다', async () => {

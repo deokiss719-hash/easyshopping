@@ -102,7 +102,9 @@ async function fetchImage(urlValue, {
     }
     if (!response.ok) {
       await cancelBody(response);
-      throw new Error(`뽐뿌 이미지 HTTP ${response.status}`);
+      throw Object.assign(new Error(`뽐뿌 이미지 HTTP ${response.status}`), {
+        code: `image_http_${response.status}`,
+      });
     }
     const contentType = response.headers?.get?.('content-type') || '';
     if (!/^image\/(?:jpeg|png|webp|gif|avif)(?:;|$)/i.test(contentType)) {
@@ -143,14 +145,24 @@ function createPpomppuImageProvider({
         throw Object.assign(new Error('허용되지 않은 뽐뿌 원문 URL입니다'), { code: 'unsafe_source_image_url' });
       }
 
+      let pageDiagnostic = null;
       const discoveredImage = await fetchPpomppuBodyImage(postUrl.href, {
         allowedHosts: ALLOWED_PAGE_HOSTS,
         allowedImageHosts: ALLOWED_HOSTS,
         fetchImpl,
         timeoutMs,
+        onDiagnostic(diagnostic) {
+          pageDiagnostic = diagnostic;
+        },
       });
       if (!discoveredImage || !isAllowedImageUrl(new URL(discoveredImage))) {
-        throw new Error('뽐뿌 본문 상품 이미지가 없습니다');
+        let code = 'body_image_missing';
+        if (pageDiagnostic?.reason === 'http_status' && Number.isInteger(pageDiagnostic.httpStatus)) {
+          code = `page_http_${pageDiagnostic.httpStatus}`;
+        } else if (pageDiagnostic?.reason && pageDiagnostic.reason !== 'body_image_missing') {
+          code = `page_${String(pageDiagnostic.reason).replace(/[^a-z0-9_]/gi, '_').toLowerCase()}`;
+        }
+        throw Object.assign(new Error('뽐뿌 본문 상품 이미지가 없습니다'), { code });
       }
       return fetchImage(discoveredImage, {
         fetchImpl,
