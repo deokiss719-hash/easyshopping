@@ -288,19 +288,24 @@ function createDealStore(pool) {
       return result.rows[0] ? mapDeal(result.rows[0]) : null;
     },
 
-    async listImageBackfillCandidates({ limit = 20, now = new Date() } = {}) {
+    async listImageBackfillCandidates({ limit = 20, now = new Date(), source = null } = {}) {
       const safeLimit = positiveInteger(limit, 'limit', 20, 100);
       const currentTime = new Date(now);
       if (Number.isNaN(currentTime.getTime())) throw new TypeError('now must be a valid date');
+      const normalizedSource = source == null ? null : String(source).trim();
+      if (normalizedSource != null && !/^[a-z0-9_-]{1,64}$/i.test(normalizedSource)) {
+        throw new TypeError('source is invalid');
+      }
       const result = await pool.query(
         `SELECT * FROM deals
          WHERE is_ended = FALSE
            AND image_url IS NULL
            AND image_status IN ('missing_merchant_url', 'pending', 'failed', 'unsupported_provider')
            AND (image_retry_at IS NULL OR image_retry_at <= $1)
+           AND ($2::text IS NULL OR source = $2)
          ORDER BY published_at DESC NULLS LAST, id DESC
-         LIMIT $2`,
-        [currentTime.toISOString(), safeLimit],
+         LIMIT $3`,
+        [currentTime.toISOString(), normalizedSource, safeLimit],
       );
       return result.rows.map(mapDeal);
     },

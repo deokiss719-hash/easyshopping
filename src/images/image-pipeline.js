@@ -3,6 +3,12 @@ const { convertToWebp } = require('./webp');
 const { safeMerchantUrl } = require('./provider-registry');
 
 const DEFAULT_RETRY_MS = 6 * 60 * 60 * 1000;
+const DEFAULT_BLOCKING_FAILURE_CODES = Object.freeze([
+  'page_http_403',
+  'page_http_429',
+  'image_http_403',
+  'image_http_429',
+]);
 
 function dealCacheKey(deal) {
   return `${String(deal?.source || '')}:${String(deal?.sourceItemId || deal?.id || '')}`;
@@ -39,7 +45,7 @@ class ImageFailureCache {
 }
 
 class ImageBackfillCircuitBreaker {
-  constructor({ cooldownMs = DEFAULT_RETRY_MS, now = Date.now, failureCodes = ['page_http_403'] } = {}) {
+  constructor({ cooldownMs = DEFAULT_RETRY_MS, now = Date.now, failureCodes = DEFAULT_BLOCKING_FAILURE_CODES } = {}) {
     if (!Number.isSafeInteger(cooldownMs) || cooldownMs < 60_000) throw new TypeError('cooldownMs must be at least one minute');
     if (typeof now !== 'function') throw new TypeError('now must be a function');
     if (!Array.isArray(failureCodes) || failureCodes.length === 0) throw new TypeError('failureCodes must be a non-empty array');
@@ -195,6 +201,7 @@ async function runImageBackfill({
   store,
   pipeline,
   limit = 20,
+  source = null,
   concurrency = 2,
   delayMs = 0,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -212,7 +219,7 @@ async function runImageBackfill({
   }
   if (!pipeline.enabled) return { status: 'disabled', selected: 0, ready: 0, failed: 0, skipped: 0 };
 
-  const deals = await store.listImageBackfillCandidates({ limit });
+  const deals = await store.listImageBackfillCandidates({ limit, source });
   const stats = { status: 'completed', selected: deals.length, ready: 0, failed: 0, skipped: 0 };
   const stopCodes = new Set(stopOnFailureCodes);
 
@@ -263,25 +270,24 @@ async function runGuardedImageBackfill({ store, pipeline, breaker, ...options } 
       return emptyBackfillStats('cooldown', { retryAt: new Date(breaker.blockedUntil).toISOString() });
     }
 
+    const stopOnFailureCodes = options.stopOnFailureCodes || [...breaker.failureCodes];
     let result;
     try {
       result = await runImageBackfill({
-        store, pipeline, concurrency: 1, stopOnFailureCodes: ['page_http_403'], ...options,
+        store, pipeline, concurrency: 1, ...options, stopOnFailureCodes,
       });
     } catch (error) {
-      if (error?.detectedFailureCode === 'page_http_403') {
-        const retryAt = breaker.record(error.detectedFailureCode);
-        if (retryAt && typeof store.recordImageBackfillCooldown === 'function') {
-          try {
-            await store.recordImageBackfillCooldown(error.detectedFailureCode, retryAt);
-          } catch (cooldownPersistenceError) {
-            error.cooldownPersistenceError = cooldownPersistenceError;
-          }
+      const retryAt = breaker.record(error?.detectedFailureCode);
+      if (retryAt && typeof store.recordImageBackfillCooldown === 'function') {
+        try {
+          await store.recordImageBackfillCooldown(error.detectedFailureCode, retryAt);
+        } catch (cooldownPersistenceError) {
+          error.cooldownPersistenceError = cooldownPersistenceError;
         }
       }
       throw error;
     }
-    if (result?.haltedCode === 'page_http_403') {
+    if (result?.haltedCode) {
       const retryAt = breaker.record(result.haltedCode);
       if (retryAt && typeof store.recordImageBackfillCooldown === 'function') {
         try {
@@ -290,7 +296,7 @@ async function runGuardedImageBackfill({ store, pipeline, breaker, ...options } 
           error.detectedFailureCode = result.haltedCode;
           throw error;
         }
-      } else {
+      } else if (retryAt) {
         result.retryAt = retryAt;
       }
     }

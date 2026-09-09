@@ -8,6 +8,13 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node --test",
+    "image:backfill": "ops/macos/run-image-backfill.sh",
+    "image:backfill:check": "ops/macos/run-image-backfill.sh --check",
+    "image:backfill:keychain:configure": "ops/macos/configure-image-backfill-keychain.sh configure",
+    "image:backfill:keychain:status": "ops/macos/configure-image-backfill-keychain.sh status",
+    "image:backfill:agent:install": "node scripts/manage-image-backfill-launchagent.js install",
+    "image:backfill:agent:status": "node scripts/manage-image-backfill-launchagent.js status",
+    "image:backfill:agent:uninstall": "node scripts/manage-image-backfill-launchagent.js uninstall",
     "canary:ppomppu": "node scripts/ppomppu-playwright-canary.js"
   },
   "engines": {

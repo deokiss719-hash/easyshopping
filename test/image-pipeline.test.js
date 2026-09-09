@@ -328,19 +328,21 @@ test('실패 캐시는 재시도 시각 전 provider 재호출을 막고 backfil
   assert.deepEqual(result, { status: 'completed', selected: 2, ready: 2, failed: 0, skipped: 0 });
 });
 
-test('403 회로 차단기는 쿨다운 동안 새 후보 처리도 막는다', () => {
+test('403·429 회로 차단기는 쿨다운 동안 새 후보 처리도 막는다', () => {
   let now = 1_000;
   const breaker = new ImageBackfillCircuitBreaker({
     cooldownMs: 60_000,
     now: () => now,
-    failureCodes: ['page_http_403'],
   });
 
   assert.equal(breaker.canAttempt(), true);
   assert.equal(breaker.record('provider_error'), null);
   assert.equal(breaker.canAttempt(), true);
-  assert.equal(breaker.record('page_http_403'), '1970-01-01T00:01:01.000Z');
-  assert.equal(breaker.canAttempt(), false);
+  for (const code of ['page_http_403', 'page_http_429', 'image_http_403', 'image_http_429']) {
+    breaker.blockedUntil = 0;
+    assert.equal(breaker.record(code), '1970-01-01T00:01:01.000Z');
+    assert.equal(breaker.canAttempt(), false);
+  }
   now = 61_001;
   assert.equal(breaker.canAttempt(), true);
 });
@@ -500,4 +502,37 @@ test('guarded backfill은 advisory lease를 얻지 못한 인스턴스에서 실
   });
   assert.deepEqual(result, { status: 'locked', selected: 0, ready: 0, failed: 0, skipped: 0 });
   assert.equal(listed, false);
+});
+
+test('guarded backfill은 이미지 HTTP 429에서도 즉시 중단하고 공유 cooldown을 기록한다', async () => {
+  const recorded = [];
+  const store = {
+    withImageBackfillLease: async (worker) => worker(),
+    getImageBackfillCooldown: async () => null,
+    recordImageBackfillCooldown: async (code, retryAt) => {
+      recorded.push([code, retryAt]);
+      return retryAt;
+    },
+    listImageBackfillCandidates: async ({ source }) => {
+      assert.equal(source, 'ppomppu');
+      return [{ id: '1' }, { id: '2' }];
+    },
+  };
+  const breaker = new ImageBackfillCircuitBreaker({
+    cooldownMs: 60_000,
+    now: () => 1_000,
+  });
+
+  const result = await runGuardedImageBackfill({
+    store,
+    breaker,
+    pipeline: { enabled: true, process: async () => ({ status: 'failed', code: 'image_http_429' }) },
+    source: 'ppomppu',
+    limit: 2,
+  });
+
+  assert.equal(result.status, 'halted');
+  assert.equal(result.haltedCode, 'image_http_429');
+  assert.equal(result.skipped, 1);
+  assert.deepEqual(recorded, [['image_http_429', '1970-01-01T00:01:01.000Z']]);
 });
