@@ -2,7 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { createProviderRegistry } = require('../src/images/provider-registry');
-const { createImagePipeline, runImageBackfill, ImageFailureCache } = require('../src/images/image-pipeline');
+const {
+  createImagePipeline,
+  runImageBackfill,
+  ImageFailureCache,
+  ImageBackfillCircuitBreaker,
+  runGuardedImageBackfill,
+} = require('../src/images/image-pipeline');
 const { convertToWebp } = require('../src/images/webp');
 
 test('provider registry는 실제 HTTPS 판매처 URL이 있을 때만 provider를 선택한다', () => {
@@ -322,6 +328,50 @@ test('실패 캐시는 재시도 시각 전 provider 재호출을 막고 backfil
   assert.deepEqual(result, { status: 'completed', selected: 2, ready: 2, failed: 0, skipped: 0 });
 });
 
+test('403 회로 차단기는 쿨다운 동안 새 후보 처리도 막는다', () => {
+  let now = 1_000;
+  const breaker = new ImageBackfillCircuitBreaker({
+    cooldownMs: 60_000,
+    now: () => now,
+    failureCodes: ['page_http_403'],
+  });
+
+  assert.equal(breaker.canAttempt(), true);
+  assert.equal(breaker.record('provider_error'), null);
+  assert.equal(breaker.canAttempt(), true);
+  assert.equal(breaker.record('page_http_403'), '1970-01-01T00:01:01.000Z');
+  assert.equal(breaker.canAttempt(), false);
+  now = 61_001;
+  assert.equal(breaker.canAttempt(), true);
+});
+
+test('원문 403이 발생하면 저속 backfill은 즉시 중단하고 남은 후보를 건너뛴다', async () => {
+  const processed = [];
+  const delays = [];
+  const result = await runImageBackfill({
+    store: { listImageBackfillCandidates: async () => [{ id: '1' }, { id: '2' }, { id: '3' }] },
+    pipeline: {
+      enabled: true,
+      process: async (deal) => {
+        processed.push(deal.id);
+        if (deal.id === '2') return { status: 'failed', code: 'page_http_403' };
+        return { status: 'ready' };
+      },
+    },
+    limit: 3,
+    concurrency: 1,
+    delayMs: 2_000,
+    sleep: async (ms) => delays.push(ms),
+    stopOnFailureCodes: ['page_http_403'],
+  });
+
+  assert.deepEqual(processed, ['1', '2']);
+  assert.deepEqual(delays, [2_000]);
+  assert.deepEqual(result, {
+    status: 'halted', selected: 3, ready: 1, failed: 1, skipped: 1, haltedCode: 'page_http_403',
+  });
+});
+
 test('동시 작업이 먼저 이미지를 준비하면 늦은 실패는 stale로 건너뛴다', async () => {
   const updates = [];
   const provider = {
@@ -349,4 +399,105 @@ test('동시 작업이 먼저 이미지를 준비하면 늦은 실패는 stale�
 
   assert.deepEqual(result, { status: 'stale', provider: 'official-shop' });
   assert.equal(updates[0][2].onlyIfImageMissing, true);
+});
+
+test('403 감지 후 DB 상태 저장이 실패해도 차단 코드를 보존하고 DB 오류를 숨기지 않는다', async () => {
+  const databaseError = new Error('database unavailable');
+  const provider = {
+    name: 'ppomppu-source-post', merchantHosts: ['ppomppu.co.kr'], canHandle: () => true,
+    isAllowedImageUrl: () => true,
+    fetchImageCandidate: async () => { throw Object.assign(new Error('forbidden'), { code: 'page_http_403' }); },
+  };
+  const pipeline = createImagePipeline({
+    providerRegistry: createProviderRegistry([provider]), storage: { enabled: true },
+    store: { updateImageState: async () => { throw databaseError; } }, logger: { warn() {} },
+  });
+  await assert.rejects(
+    () => pipeline.process({
+      id: '403', source: 'ppomppu', sourceItemId: '403',
+      originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=403',
+    }),
+    (error) => error === databaseError && error.detectedFailureCode === 'page_http_403',
+  );
+});
+
+test('공유 cooldown은 다른 인스턴스와 새 후보도 막는다', async () => {
+  let sharedRetryAt = null;
+  let candidateLists = 0;
+  const store = {
+    withImageBackfillLease: async (worker) => worker(),
+    getImageBackfillCooldown: async () => sharedRetryAt,
+    recordImageBackfillCooldown: async (_code, retryAt) => { sharedRetryAt = retryAt; return retryAt; },
+    listImageBackfillCandidates: async () => {
+      candidateLists += 1;
+      return candidateLists === 1 ? [{ id: 'old' }] : [{ id: 'new' }];
+    },
+  };
+  const first = await runGuardedImageBackfill({
+    store,
+    breaker: new ImageBackfillCircuitBreaker({ now: () => Date.parse('2026-09-10T00:00:00Z') }),
+    pipeline: { enabled: true, process: async () => ({ status: 'failed', code: 'page_http_403' }) }, limit: 1,
+  });
+  assert.equal(first.status, 'halted');
+  assert.equal(sharedRetryAt, '2026-09-10T06:00:00.000Z');
+  const second = await runGuardedImageBackfill({
+    store,
+    breaker: new ImageBackfillCircuitBreaker({ now: () => Date.parse('2026-09-10T01:00:00Z') }),
+    pipeline: { enabled: true, process: async () => ({ status: 'ready' }) }, limit: 1,
+  });
+  assert.deepEqual(second, { status: 'cooldown', retryAt: sharedRetryAt, selected: 0, ready: 0, failed: 0, skipped: 0 });
+  assert.equal(candidateLists, 1);
+});
+
+test('guarded backfill은 cooldown 저장 실패가 원래 403 연계 오류를 가리지 않는다', async () => {
+  const originalError = Object.assign(new Error('image state write failed'), { detectedFailureCode: 'page_http_403' });
+  const cooldownError = new Error('cooldown write failed');
+  const store = {
+    withImageBackfillLease: async (worker) => worker(),
+    getImageBackfillCooldown: async () => null,
+    recordImageBackfillCooldown: async () => { throw cooldownError; },
+    listImageBackfillCandidates: async () => [{ id: '1' }],
+  };
+  await assert.rejects(
+    () => runGuardedImageBackfill({
+      store,
+      breaker: new ImageBackfillCircuitBreaker(),
+      pipeline: { enabled: true, process: async () => { throw originalError; } },
+      limit: 1,
+    }),
+    (error) => error === originalError && error.cooldownPersistenceError === cooldownError,
+  );
+});
+
+test('정상 403 중단 뒤 cooldown 저장 실패에도 403 진단 코드를 보존한다', async () => {
+  const cooldownError = new Error('cooldown write failed');
+  const store = {
+    withImageBackfillLease: async (worker) => worker(),
+    getImageBackfillCooldown: async () => null,
+    recordImageBackfillCooldown: async () => { throw cooldownError; },
+    listImageBackfillCandidates: async () => [{ id: '1' }],
+  };
+  await assert.rejects(
+    () => runGuardedImageBackfill({
+      store,
+      breaker: new ImageBackfillCircuitBreaker(),
+      pipeline: { enabled: true, process: async () => ({ status: 'failed', code: 'page_http_403' }) },
+      limit: 1,
+    }),
+    (error) => error === cooldownError && error.detectedFailureCode === 'page_http_403',
+  );
+});
+
+test('guarded backfill은 advisory lease를 얻지 못한 인스턴스에서 실행되지 않는다', async () => {
+  let listed = false;
+  const result = await runGuardedImageBackfill({
+    store: {
+      withImageBackfillLease: async () => null,
+      listImageBackfillCandidates: async () => { listed = true; return []; },
+    },
+    breaker: new ImageBackfillCircuitBreaker(),
+    pipeline: { enabled: true, process: async () => ({ status: 'ready' }) },
+  });
+  assert.deepEqual(result, { status: 'locked', selected: 0, ready: 0, failed: 0, skipped: 0 });
+  assert.equal(listed, false);
 });

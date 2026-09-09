@@ -59,3 +59,10 @@ CREATE TABLE IF NOT EXISTS collection_runs (
   upserted_count INTEGER NOT NULL DEFAULT 0,
   error_message TEXT
 );
+
+CREATE TABLE IF NOT EXISTS image_backfill_control (
+  singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (singleton),
+  cooldown_until TIMESTAMPTZ,
+  failure_code TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

@@ -120,14 +120,42 @@ async function fetchImage(urlValue, {
   throw new Error('뽐뿌 이미지 리다이렉트가 너무 많습니다');
 }
 
+function createPacedFetch({ fetchImpl, requestIntervalMs, timeoutMs, now, sleep }) {
+  let queue = Promise.resolve();
+  let nextRequestAt = 0;
+  return (input, options = {}) => {
+    const request = async () => {
+      const waitMs = Math.max(0, nextRequestAt - now());
+      if (waitMs > 0) await sleep(waitMs);
+      try {
+        return await fetchImpl(input, { ...options, signal: AbortSignal.timeout(timeoutMs) });
+      } finally {
+        nextRequestAt = now() + requestIntervalMs;
+      }
+    };
+    const result = queue.then(request, request);
+    queue = result.then(() => undefined, () => undefined);
+    return result;
+  };
+}
+
 function createPpomppuImageProvider({
   fetchImpl = fetch,
   maxImageBytes = DEFAULT_MAX_IMAGE_BYTES,
   timeoutMs = 8000,
+  requestIntervalMs = 0,
+  now = Date.now,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 } = {}) {
   if (typeof fetchImpl !== 'function') throw new TypeError('fetchImpl is required');
   if (!Number.isSafeInteger(maxImageBytes) || maxImageBytes < 1024) throw new TypeError('maxImageBytes is invalid');
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100) throw new TypeError('timeoutMs is invalid');
+  if (!Number.isSafeInteger(requestIntervalMs) || requestIntervalMs < 0 || requestIntervalMs > 60_000) {
+    throw new TypeError('requestIntervalMs must be between 0 and 60000');
+  }
+  if (typeof now !== 'function') throw new TypeError('now must be a function');
+  if (typeof sleep !== 'function') throw new TypeError('sleep must be a function');
+  const pacedFetch = createPacedFetch({ fetchImpl, requestIntervalMs, timeoutMs, now, sleep });
 
   return Object.freeze({
     name: 'ppomppu-source-post',
@@ -149,7 +177,7 @@ function createPpomppuImageProvider({
       const discoveredImage = await fetchPpomppuBodyImage(postUrl.href, {
         allowedHosts: ALLOWED_PAGE_HOSTS,
         allowedImageHosts: ALLOWED_HOSTS,
-        fetchImpl,
+        fetchImpl: pacedFetch,
         timeoutMs,
         onDiagnostic(diagnostic) {
           pageDiagnostic = diagnostic;
@@ -165,7 +193,7 @@ function createPpomppuImageProvider({
         throw Object.assign(new Error('뽐뿌 본문 상품 이미지가 없습니다'), { code });
       }
       return fetchImage(discoveredImage, {
-        fetchImpl,
+        fetchImpl: pacedFetch,
         referer: postUrl.href,
         maxImageBytes,
         timeoutMs,

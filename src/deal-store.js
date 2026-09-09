@@ -6,6 +6,8 @@ const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
 const MAX_PAGE = 10000;
 const MAX_PAGE_SIZE = 100;
 const IMAGE_STATUSES = new Set(['missing_merchant_url', 'pending', 'ready', 'failed', 'unsupported_provider']);
+const IMAGE_BACKFILL_ADVISORY_LOCK_NAMESPACE = 1163086169;
+const IMAGE_BACKFILL_ADVISORY_LOCK_ID = 1835627636;
 
 class InvalidQueryError extends TypeError {}
 
@@ -94,6 +96,76 @@ function mapDeal(row) {
 
 function createDealStore(pool) {
   return {
+    async getImageBackfillCooldown() {
+      const result = await pool.query('SELECT cooldown_until FROM image_backfill_control WHERE singleton = TRUE');
+      const value = result.rows[0]?.cooldown_until;
+      return value == null ? null : new Date(value).toISOString();
+    },
+
+    async recordImageBackfillCooldown(code, retryAt) {
+      const normalizedCode = String(code || '');
+      const date = new Date(retryAt);
+      if (!/^[a-z0-9_]{1,64}$/.test(normalizedCode)) throw new TypeError('failure code is invalid');
+      if (Number.isNaN(date.getTime())) throw new TypeError('retryAt must be a valid date');
+      const result = await pool.query(
+        `INSERT INTO image_backfill_control (singleton, cooldown_until, failure_code)
+         VALUES (TRUE, $1, $2)
+         ON CONFLICT (singleton) DO UPDATE SET
+           cooldown_until = CASE
+             WHEN image_backfill_control.cooldown_until IS NULL
+               OR image_backfill_control.cooldown_until < EXCLUDED.cooldown_until
+             THEN EXCLUDED.cooldown_until ELSE image_backfill_control.cooldown_until END,
+           failure_code = CASE
+             WHEN image_backfill_control.cooldown_until IS NULL
+               OR image_backfill_control.cooldown_until < EXCLUDED.cooldown_until
+             THEN EXCLUDED.failure_code ELSE image_backfill_control.failure_code END,
+           updated_at = CURRENT_TIMESTAMP
+         RETURNING cooldown_until`,
+        [date.toISOString(), normalizedCode],
+      );
+      return new Date(result.rows[0].cooldown_until).toISOString();
+    },
+
+    async withImageBackfillLease(worker) {
+      if (typeof worker !== 'function') throw new TypeError('worker is required');
+      const client = await pool.connect();
+      let acquired = false;
+      let workerError = null;
+      try {
+        const result = await client.query(
+          `SELECT pg_try_advisory_lock(${IMAGE_BACKFILL_ADVISORY_LOCK_NAMESPACE}, ${IMAGE_BACKFILL_ADVISORY_LOCK_ID}) AS acquired`,
+        );
+        acquired = result.rows[0]?.acquired === true;
+        if (!acquired) return null;
+        try {
+          return await worker();
+        } catch (error) {
+          workerError = error;
+          throw error;
+        }
+      } finally {
+        let unlockError = null;
+        try {
+          if (acquired) {
+            const unlockResult = await client.query(
+              `SELECT pg_advisory_unlock(${IMAGE_BACKFILL_ADVISORY_LOCK_NAMESPACE}, ${IMAGE_BACKFILL_ADVISORY_LOCK_ID}) AS unlocked`,
+            );
+            if (unlockResult.rows[0]?.unlocked !== true) {
+              throw new Error('image backfill advisory unlock failed');
+            }
+          }
+        } catch (error) {
+          unlockError = error;
+        } finally {
+          client.release(unlockError ? true : undefined);
+        }
+        if (unlockError) {
+          if (workerError) workerError.advisoryUnlockError = unlockError;
+          else throw unlockError;
+        }
+      }
+    },
+
     async upsert(input) {
       const deal = normalizeDeal(input);
       const values = [

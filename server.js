@@ -8,7 +8,11 @@ const { classifyDeal } = require('./src/deal-category');
 const { startPollingCollector } = require('./src/polling-collector');
 const { createProviderRegistry } = require('./src/images/provider-registry');
 const { readR2Config, createR2Storage } = require('./src/images/r2-storage');
-const { createImagePipeline, runImageBackfill } = require('./src/images/image-pipeline');
+const {
+  createImagePipeline,
+  runGuardedImageBackfill,
+  ImageBackfillCircuitBreaker,
+} = require('./src/images/image-pipeline');
 const { createPpomppuImageProvider } = require('./src/images/ppomppu-source-provider');
 const { buildContentSecurityPolicy } = require('./src/content-security-policy');
 const { NAVER_IMAGE_BASE_URLS } = require('./src/product-matching/naver-shopping');
@@ -150,12 +154,15 @@ async function start() {
     const source = process.env.RSS_FEED_SOURCE || 'ppomppu';
     const intervalMs = Number(process.env.RSS_POLL_INTERVAL_MS || 600000);
     const imageStorage = createR2Storage({ config: r2Config });
-    const providerRegistry = createProviderRegistry([createPpomppuImageProvider()]);
+    const providerRegistry = createProviderRegistry([
+      createPpomppuImageProvider({ requestIntervalMs: 5_000 }),
+    ]);
     const imagePipeline = createImagePipeline({
       store,
       storage: imageStorage,
       providerRegistry,
     });
+    const imageBackfillCircuitBreaker = new ImageBackfillCircuitBreaker();
     if (!imageStorage.enabled) {
       console.log(`상품 이미지 업로드 비활성화: ${r2Config.missing.join(', ')} 환경변수 필요`);
     } else {
@@ -180,10 +187,17 @@ async function start() {
         }
         if (imagePipeline.enabled) {
           try {
-            const imageResult = await runImageBackfill({ store, pipeline: imagePipeline, limit: 100, concurrency: 3 });
+            const imageResult = await runGuardedImageBackfill({
+              store,
+              pipeline: imagePipeline,
+              breaker: imageBackfillCircuitBreaker,
+              limit: 5,
+            });
             console.log('상품 이미지 backfill 완료', imageResult);
           } catch (error) {
-            console.warn('상품 이미지 backfill 실패', { reason: error?.code || 'backfill_error' });
+            console.warn('상품 이미지 backfill 실패', {
+              reason: error?.detectedFailureCode || error?.code || 'backfill_error',
+            });
           }
         }
         if (collectionError) throw collectionError;

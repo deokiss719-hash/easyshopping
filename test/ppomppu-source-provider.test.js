@@ -17,7 +17,7 @@ test('뽐뿌 원문 provider는 본문 첫 사용자 이미지를 내려받아 �
     }
     return new Response(Buffer.from('jpeg-image'), { status: 200, headers: { 'content-type': 'image/jpeg' } });
   };
-  const provider = createPpomppuImageProvider({ fetchImpl });
+  const provider = createPpomppuImageProvider({ fetchImpl, requestIntervalMs: 0 });
 
   assert.equal(provider.canHandle(new URL('https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123')), true);
   assert.equal(provider.canHandle(new URL('https://example.com/deal/123')), false);
@@ -38,6 +38,7 @@ test('뽐뿌 원문 provider는 본문 첫 사용자 이미지를 내려받아 �
 test('뽐뿌 원문 provider는 본문 밖 이미지와 허용 호스트 밖 이미지에 접근하지 않는다', async () => {
   let calls = 0;
   const provider = createPpomppuImageProvider({
+    requestIntervalMs: 0,
     fetchImpl: async () => {
       calls += 1;
       return new Response(
@@ -56,6 +57,7 @@ test('뽐뿌 원문 provider는 본문 밖 이미지와 허용 호스트 밖 이
 
 test('원문 HTTP 실패는 민감한 응답 없이 안전한 상태 코드로 분류한다', async () => {
   const provider = createPpomppuImageProvider({
+    requestIntervalMs: 0,
     fetchImpl: async () => new Response('blocked', {
       status: 403,
       headers: { 'content-type': 'text/html' },
@@ -74,6 +76,7 @@ test('저장된 sourceImageUrl을 재사용하지 않고 원문 본문에서 매
   const calls = [];
   const currentImage = 'https://cdn4.ppomppu.co.kr/zboard/data3/current.jpg';
   const provider = createPpomppuImageProvider({
+    requestIntervalMs: 0,
     fetchImpl: async (url) => {
       calls.push(String(url));
       if (calls.length === 1) {
@@ -111,6 +114,7 @@ test('원문 페이지 리다이렉트는 매 hop마다 정확한 뽐뿌 게시�
   ]) {
     let calls = 0;
     const provider = createPpomppuImageProvider({
+    requestIntervalMs: 0,
       fetchImpl: async () => {
         calls += 1;
         const nextLocation = calls === 1
@@ -133,6 +137,7 @@ test('원문 페이지 리다이렉트는 매 hop마다 정확한 뽐뿌 게시�
 test('원문 페이지 리다이렉트가 다른 게시글 번호로 바뀌면 이미지를 연결하지 않는다', async () => {
   let calls = 0;
   const provider = createPpomppuImageProvider({
+    requestIntervalMs: 0,
     fetchImpl: async () => {
       calls += 1;
       return new Response(null, {
@@ -154,6 +159,7 @@ test('원문 페이지 리다이렉트가 다른 게시글 번호로 바뀌면 �
 test('뽐뿌 원문 페이지 응답에 Content-Type이 없으면 본문을 사용하지 않는다', async () => {
   let calls = 0;
   const provider = createPpomppuImageProvider({
+    requestIntervalMs: 0,
     fetchImpl: async () => {
       calls += 1;
       return new Response(Buffer.from('<td class="board-contents"><img src="https://cdn4.ppomppu.co.kr/zboard/data3/product.jpg"></td>'));
@@ -167,4 +173,33 @@ test('뽐뿌 원문 페이지 응답에 Content-Type이 없으면 본문을 사�
     /본문 상품 이미지가 없습니다/,
   );
   assert.equal(calls, 1);
+});
+
+test('5초 pacing을 게시글·이미지·각 redirect의 실제 outbound HTTP 경계에 적용한다', async () => {
+  let now = 0;
+  const requestTimes = [];
+  const requestSignals = [];
+  const responses = [
+    () => new Response(null, { status: 302, headers: { location: '/zboard/view.php?id=ppomppu&no=123' } }),
+    () => new Response('<td class="board-contents"><img src="https://cdn4.ppomppu.co.kr/zboard/data3/product.jpg"></td>', {
+      status: 200, headers: { 'content-type': 'text/html' },
+    }),
+    () => new Response(null, { status: 302, headers: { location: 'https://cdn5.ppomppu.co.kr/zboard/data3/product.jpg' } }),
+    () => new Response(Buffer.from('image'), { status: 200, headers: { 'content-type': 'image/jpeg' } }),
+  ];
+  const provider = createPpomppuImageProvider({
+    fetchImpl: async (_url, options) => {
+      requestTimes.push(now);
+      requestSignals.push(options.signal);
+      return responses.shift()();
+    },
+    requestIntervalMs: 5_000,
+    now: () => now,
+    sleep: async (ms) => { now += ms; },
+  });
+  await provider.fetchImageCandidate({
+    deal: { originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123' },
+  });
+  assert.deepEqual(requestTimes, [0, 5_000, 10_000, 15_000]);
+  assert.equal(new Set(requestSignals).size, 4);
 });

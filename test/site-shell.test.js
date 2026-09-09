@@ -31,12 +31,15 @@ test('운영 RSS 수집은 원문 og:image 보조 요청을 비활성화한다',
   assert.doesNotMatch(server, /enrichImages:\s*true/);
 });
 
-test('운영 RSS 수집은 뽐뿌 작성자 본문 provider와 R2 배치 파이프라인만 사용한다', () => {
+test('운영 RSS 수집은 뽐뿌 작성자 본문 이미지를 R2에 저속·차단 감지 방식으로 저장한다', () => {
   assert.match(server, /createPpomppuImageProvider/);
   assert.match(server, /productMatcher:\s*null/);
   assert.doesNotMatch(server, /createNaverShoppingProvider/);
   assert.match(server, /createR2Storage/);
-  assert.match(server, /runImageBackfill\(\{ store, pipeline: imagePipeline, limit: 100, concurrency: 3 \}\)/);
+  assert.match(server, /ImageBackfillCircuitBreaker/);
+  assert.match(server, /runGuardedImageBackfill/);
+  assert.match(server, /requestIntervalMs:\s*5_000/);
+  assert.match(server, /limit:\s*5/);
 });
 
 test('신규 네이버 매칭은 중단해도 이미 저장된 네이버 이미지 CDN은 계속 표시한다', () => {

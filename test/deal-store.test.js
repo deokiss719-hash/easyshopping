@@ -333,3 +333,81 @@ test('keyword search treats percent and underscore as literal characters', async
   assert.equal(typeof percentResult.items[0].id, 'string');
   await pool.end();
 });
+
+test('이미지 backfill cooldown을 PostgreSQL 공유 상태에 저장하고 읽는다', async () => {
+  const { pool, store } = await makeStore();
+  assert.equal(await store.getImageBackfillCooldown(), null);
+  const retryAt = await store.recordImageBackfillCooldown('page_http_403', '2026-09-10T06:00:00.000Z');
+  assert.equal(retryAt, '2026-09-10T06:00:00.000Z');
+  assert.equal(await store.getImageBackfillCooldown(), retryAt);
+  await pool.end();
+});
+
+test('이미지 backfill advisory lease는 전용 연결에서 원자적으로 획득하고 반드시 해제한다', async () => {
+  const queries = [];
+  let released = false;
+  const client = {
+    async query(sql) {
+      queries.push(sql);
+      if (/pg_try_advisory_lock/.test(sql)) return { rows: [{ acquired: true }] };
+      if (/pg_advisory_unlock/.test(sql)) return { rows: [{ unlocked: true }] };
+      throw new Error(`unexpected query: ${sql}`);
+    },
+    release() { released = true; },
+  };
+  const store = createDealStore({ connect: async () => client });
+  const value = await store.withImageBackfillLease(async () => 'worked');
+  assert.equal(value, 'worked');
+  assert.match(queries[0], /pg_try_advisory_lock/);
+  assert.match(queries[1], /pg_advisory_unlock/);
+  assert.equal(released, true);
+});
+
+test('advisory unlock 실패에도 연결을 반환하고 기존 worker 오류를 보존한다', async () => {
+  let released = false;
+  const workerError = new Error('worker failed');
+  const unlockError = new Error('unlock failed');
+  const client = {
+    async query(sql) {
+      if (/pg_try_advisory_lock/.test(sql)) return { rows: [{ acquired: true }] };
+      if (/pg_advisory_unlock/.test(sql)) throw unlockError;
+      throw new Error(`unexpected query: ${sql}`);
+    },
+    release(destroy) { released = destroy === true; },
+  };
+  const store = createDealStore({ connect: async () => client });
+  await assert.rejects(
+    () => store.withImageBackfillLease(async () => { throw workerError; }),
+    (error) => error === workerError && error.advisoryUnlockError === unlockError,
+  );
+  assert.equal(released, true);
+});
+
+test('advisory unlock이 false면 잠금 보유 가능성이 있는 연결을 폐기한다', async () => {
+  let releaseArgument = null;
+  const client = {
+    async query(sql) {
+      if (/pg_try_advisory_lock/.test(sql)) return { rows: [{ acquired: true }] };
+      if (/pg_advisory_unlock/.test(sql)) return { rows: [{ unlocked: false }] };
+      throw new Error(`unexpected query: ${sql}`);
+    },
+    release(destroy) { releaseArgument = destroy; },
+  };
+  const store = createDealStore({ connect: async () => client });
+  await assert.rejects(() => store.withImageBackfillLease(async () => 'worked'), /unlock/i);
+  assert.equal(releaseArgument, true);
+});
+
+test('이미지 backfill advisory lease 경합 패자는 작업을 실행하지 않는다', async () => {
+  let worked = false;
+  let released = false;
+  const client = {
+    query: async () => ({ rows: [{ acquired: false }] }),
+    release() { released = true; },
+  };
+  const store = createDealStore({ connect: async () => client });
+  const value = await store.withImageBackfillLease(async () => { worked = true; });
+  assert.equal(value, null);
+  assert.equal(worked, false);
+  assert.equal(released, true);
+});
