@@ -93,7 +93,7 @@ function popularItem(deal, index) {
 
 function latestItem(deal) {
   const image = deal.imageUrl
-    ? `<img class="latest-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
+    ? `<img class="latest-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" />`
     : '';
   return `
     <article class="latest-item" tabindex="0" data-deal-url="${escapeHtml(deal.url)}">

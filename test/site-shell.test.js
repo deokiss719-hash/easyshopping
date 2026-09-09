@@ -57,7 +57,7 @@ test('RSS 수집 실패와 무관하게 R2 backfill을 별도 보호 구간에�
 test('메인·실시간·최신 상품 영역은 실제 이미지와 기존 fallback을 함께 지원한다', () => {
   assert.match(script, /class="product-image[^"']*deal-image/);
   assert.match(script, /class="popular-image[^"']*deal-image/);
-  assert.match(script, /class="latest-image[^"']*deal-image/);
+  assert.match(script, /class="latest-image[^"']*deal-image[^>]*loading="eager"/);
   assert.match(script, /class="latest-icon"/);
   assert.match(script, /querySelectorAll\('\.deal-image'\)/);
   assert.match(styles, /\.product-image[^}]*object-fit:\s*cover/);
