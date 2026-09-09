@@ -61,7 +61,7 @@ function showToast(message) {
 
 function productCard(deal) {
   const image = deal.imageUrl
-    ? `<img class="product-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
+    ? `<img class="product-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" />`
     : '';
   return `
     <article class="deal-card" tabindex="0" data-deal-url="${escapeHtml(deal.url)}" aria-label="${escapeHtml(deal.title)}, ${formatPrice(deal.price)}">
@@ -81,7 +81,7 @@ function productCard(deal) {
 
 function popularItem(deal, index) {
   const visual = deal.imageUrl
-    ? `<span class="popular-visual"><span class="rank-heat">실시간</span><img class="popular-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" /></span>`
+    ? `<span class="popular-visual"><span class="rank-heat">실시간</span><img class="popular-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" /></span>`
     : '<span class="rank-heat">실시간</span>';
   return `
     <article class="popular-item" tabindex="0" data-deal-url="${escapeHtml(deal.url)}">
