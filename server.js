@@ -163,6 +163,7 @@ async function start() {
       providerRegistry,
     });
     const imageBackfillCircuitBreaker = new ImageBackfillCircuitBreaker();
+    const imageBackfillEnabled = process.env.IMAGE_BACKFILL_ENABLED !== 'false';
     if (!imageStorage.enabled) {
       console.log(`상품 이미지 업로드 비활성화: ${r2Config.missing.join(', ')} 환경변수 필요`);
     } else {
@@ -185,7 +186,7 @@ async function start() {
         } catch (error) {
           collectionError = error;
         }
-        if (imagePipeline.enabled) {
+        if (imagePipeline.enabled && imageBackfillEnabled) {
           try {
             const imageResult = await runGuardedImageBackfill({
               store,

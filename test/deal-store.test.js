@@ -162,8 +162,15 @@ test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매�
     imageStatus: 'pending',
   });
   const sourceOnly = await store.upsert({ ...firstDeal, sourceItemId: 'source-only', imageUrl: null, merchantUrl: null });
+  await store.upsert({
+    ...firstDeal,
+    source: 'other-feed',
+    sourceItemId: 'other-source',
+    originalUrl: 'https://example.com/deals/other-source',
+    imageUrl: null,
+  });
 
-  let candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z' });
+  let candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z', source: 'approved-feed' });
   assert.deepEqual(new Set(candidates.map((deal) => deal.id)), new Set([pending.id, sourceOnly.id]));
   await store.updateImageState(sourceOnly.id, {
     imageStatus: 'ready',
@@ -175,7 +182,7 @@ test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매�
     imageFailureCode: 'provider_error',
     imageRetryAt: '2026-09-10T00:00:00.000Z',
   });
-  candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z' });
+  candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z', source: 'approved-feed' });
   assert.equal(candidates.length, 0);
 
   await store.updateImageState(pending.id, {
@@ -183,7 +190,7 @@ test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매�
     imageFailureCode: 'unsupported_provider',
     imageRetryAt: null,
   });
-  candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z' });
+  candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z', source: 'approved-feed' });
   assert.equal(candidates.length, 1);
   assert.equal(candidates[0].id, pending.id);
 

@@ -54,6 +54,12 @@ test('RSS 수집 실패와 무관하게 R2 backfill을 별도 보호 구간에�
   assert.match(server, /if \(collectionError\) throw collectionError/);
 });
 
+test('Render 등 차단된 실행 환경에서는 RSS 수집을 유지한 채 이미지 backfill만 끌 수 있다', () => {
+  assert.match(server, /IMAGE_BACKFILL_ENABLED/);
+  assert.match(server, /imageBackfillEnabled/);
+  assert.match(server, /if \(imagePipeline\.enabled && imageBackfillEnabled\)/);
+});
+
 test('메인·실시간·최신 상품 영역은 실제 이미지와 기존 fallback을 함께 지원한다', () => {
   assert.match(script, /class="product-image[^"']*deal-image[^>]*loading="eager"/);
   assert.match(script, /class="popular-image[^"']*deal-image[^>]*loading="eager"/);
