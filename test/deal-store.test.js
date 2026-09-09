@@ -120,6 +120,38 @@ test('partial upsert preserves optional values that are temporarily missing', as
   await pool.end();
 });
 
+test('재수집 네이버 매칭은 기존 R2 이미지와 관련 메타데이터를 덮어쓰지 않는다', async () => {
+  const { pool, store } = await makeStore();
+  const r2ImageUrl = 'https://images.example.com/deals/approved-feed/deal-101.webp';
+  await store.upsert({
+    ...firstDeal,
+    merchantUrl: 'https://shop.example/products/101',
+    sourceImageUrl: 'https://cdn.shop.example/products/101.jpg',
+    imageUrl: r2ImageUrl,
+    imageStatus: 'ready',
+    imageProvider: 'r2-official-shop',
+  });
+  await store.upsert({
+    ...firstDeal,
+    priceAmount: 179000,
+    merchantUrl: 'https://search.shopping.naver.com/catalog/123',
+    sourceImageUrl: 'https://shopping-phinf.pstatic.net/main_123/123.jpg',
+    imageUrl: 'https://shopping-phinf.pstatic.net/main_123/123.jpg',
+    imageStatus: 'ready',
+    imageProvider: 'naver-shopping',
+  });
+
+  const result = await store.list();
+  const stored = result.items[0];
+  assert.equal(stored.priceAmount, 179000);
+  assert.equal(stored.merchantUrl, 'https://shop.example/products/101');
+  assert.equal(stored.sourceImageUrl, 'https://cdn.shop.example/products/101.jpg');
+  assert.equal(stored.imageUrl, r2ImageUrl);
+  assert.equal(stored.imageProvider, 'r2-official-shop');
+  assert.equal(stored.imageStatus, 'ready');
+  await pool.end();
+});
+
 test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매처 URL 후보만 backfill한다', async () => {
   const { pool, store } = await makeStore();
   const pending = await store.upsert({

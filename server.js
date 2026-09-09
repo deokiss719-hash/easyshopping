@@ -10,6 +10,7 @@ const { createProviderRegistry } = require('./src/images/provider-registry');
 const { readR2Config, createR2Storage } = require('./src/images/r2-storage');
 const { createImagePipeline, runImageBackfill } = require('./src/images/image-pipeline');
 const { buildContentSecurityPolicy } = require('./src/content-security-policy');
+const { readNaverShoppingConfig, createNaverShoppingProvider, NAVER_IMAGE_BASE_URLS } = require('./src/product-matching/naver-shopping');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -121,7 +122,15 @@ app.get('/api/popular', (_req, res) => {
 async function start() {
   let store = null;
   const r2Config = readR2Config(process.env);
-  const contentSecurityPolicy = buildContentSecurityPolicy(r2Config);
+  const naverShoppingConfig = readNaverShoppingConfig(process.env);
+  const naverShoppingProvider = naverShoppingConfig.enabled
+    ? createNaverShoppingProvider({ config: naverShoppingConfig })
+    : Object.freeze({ name: 'naver-shopping', enabled: false, imageBaseUrls: [] });
+  const imageBaseUrls = [
+    ...(r2Config.enabled ? [r2Config.publicBaseUrl] : []),
+    ...NAVER_IMAGE_BASE_URLS,
+  ];
+  const contentSecurityPolicy = buildContentSecurityPolicy(r2Config, { imageBaseUrls: NAVER_IMAGE_BASE_URLS });
   app.use((_req, res, next) => {
     res.setHeader('Content-Security-Policy', contentSecurityPolicy);
     next();
@@ -152,6 +161,11 @@ async function start() {
     } else {
       console.log('상품 이미지 R2 업로드 준비 완료; 등록된 판매처 provider만 사용');
     }
+    if (!naverShoppingProvider.enabled) {
+      console.log(`네이버 쇼핑 상품 매칭 비활성화: ${naverShoppingConfig.missing.join(', ')} 환경변수 필요`);
+    } else {
+      console.log('네이버 쇼핑 상품 매칭 준비 완료; 고신뢰도 단일 후보만 원격 이미지 URL 사용');
+    }
     startPollingCollector({
       collect: async () => {
         const result = await runRssCollector({
@@ -160,6 +174,7 @@ async function start() {
           allowedHosts: ['www.ppomppu.co.kr'],
           allowedMerchantHosts: providerRegistry.merchantHosts,
           enrichImages: false,
+          productMatcher: naverShoppingProvider,
           store,
         });
         if (imagePipeline.enabled) {
@@ -177,7 +192,7 @@ async function start() {
   }
 
   app.use('/api/live-deals', createLiveDealsRouter(store, {
-    imageBaseUrls: r2Config.enabled ? [r2Config.publicBaseUrl] : [],
+    imageBaseUrls,
   }));
   app.listen(PORT, () => {
     console.log(`이지쇼핑 실행 중: http://localhost:${PORT} (${databaseMode})`);

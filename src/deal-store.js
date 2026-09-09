@@ -128,19 +128,32 @@ function createDealStore(pool) {
           price_amount = COALESCE(EXCLUDED.price_amount, deals.price_amount),
           merchant = COALESCE(EXCLUDED.merchant, deals.merchant),
           original_url = EXCLUDED.original_url,
-          merchant_url = COALESCE(EXCLUDED.merchant_url, deals.merchant_url),
-          source_image_url = COALESCE(EXCLUDED.source_image_url, deals.source_image_url),
-          image_url = COALESCE(EXCLUDED.image_url, deals.image_url),
+          merchant_url = COALESCE(deals.merchant_url, EXCLUDED.merchant_url),
+          source_image_url = CASE
+            WHEN deals.image_url IS NOT NULL THEN deals.source_image_url
+            ELSE COALESCE(EXCLUDED.source_image_url, deals.source_image_url)
+          END,
+          image_url = COALESCE(deals.image_url, EXCLUDED.image_url),
           image_status = CASE
-            WHEN COALESCE(EXCLUDED.image_url, deals.image_url) IS NOT NULL THEN 'ready'
-            WHEN COALESCE(EXCLUDED.merchant_url, deals.merchant_url) IS NULL THEN 'missing_merchant_url'
+            WHEN COALESCE(deals.image_url, EXCLUDED.image_url) IS NOT NULL THEN 'ready'
+            WHEN COALESCE(deals.merchant_url, EXCLUDED.merchant_url) IS NULL THEN 'missing_merchant_url'
             WHEN deals.image_status IN ('failed', 'unsupported_provider') THEN deals.image_status
             WHEN EXCLUDED.merchant_url IS NULL AND deals.merchant_url IS NOT NULL THEN deals.image_status
             ELSE EXCLUDED.image_status
           END,
-          image_provider = COALESCE(EXCLUDED.image_provider, deals.image_provider),
-          image_failure_code = deals.image_failure_code,
-          image_retry_at = deals.image_retry_at,
+          image_provider = CASE
+            WHEN deals.image_url IS NOT NULL THEN deals.image_provider
+            WHEN EXCLUDED.image_url IS NOT NULL THEN EXCLUDED.image_provider
+            ELSE COALESCE(deals.image_provider, EXCLUDED.image_provider)
+          END,
+          image_failure_code = CASE
+            WHEN deals.image_url IS NULL AND EXCLUDED.image_url IS NOT NULL THEN NULL
+            ELSE deals.image_failure_code
+          END,
+          image_retry_at = CASE
+            WHEN deals.image_url IS NULL AND EXCLUDED.image_url IS NOT NULL THEN NULL
+            ELSE deals.image_retry_at
+          END,
           published_at = COALESCE(EXCLUDED.published_at, deals.published_at),
           raw_hash = COALESCE(EXCLUDED.raw_hash, deals.raw_hash),
           category = COALESCE($17, deals.category),

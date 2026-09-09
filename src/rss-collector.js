@@ -457,6 +457,8 @@ async function runRssCollector({
   pageFetchImpl = fetchImpl,
   allowedImageHosts = DEFAULT_IMAGE_HOSTS,
   allowedMerchantHosts = [],
+  productMatcher = null,
+  matchingConcurrency = 2,
   imageConcurrency = DEFAULT_IMAGE_CONCURRENCY,
   maxImageEnrichments = DEFAULT_MAX_IMAGE_ENRICHMENTS,
   imageAttemptCache = negativeImageCache,
@@ -484,6 +486,12 @@ async function runRssCollector({
   if (!(imageAttemptCache instanceof Map) || !Number.isSafeInteger(imageRetryMs) || imageRetryMs < 60_000) {
     throw new TypeError('imageAttemptCache and imageRetryMs are invalid');
   }
+  if (!Number.isSafeInteger(matchingConcurrency) || matchingConcurrency < 1 || matchingConcurrency > 4) {
+    throw new TypeError('matchingConcurrency must be an integer between 1 and 4');
+  }
+  if (productMatcher?.enabled && typeof productMatcher.match !== 'function') {
+    throw new TypeError('enabled productMatcher must implement match');
+  }
 
   const { response, finalUrl } = await requestFeed(feedUrl, { allowedHosts, fetchImpl });
   const xml = await readLimitedBody(response, maxBytes);
@@ -493,9 +501,70 @@ async function runRssCollector({
     allowedImageHosts,
     allowedMerchantHosts,
   });
+  let processedDeals = deals;
+  let matching = null;
+  if (productMatcher?.enabled) {
+    matching = { searched: 0, matched: 0, unresolved: 0, failed: 0, imageUrls: 0, byMerchant: {} };
+    processedDeals = new Array(deals.length);
+    await runWithConcurrency(deals.map((deal, index) => ({ deal, index })), matchingConcurrency, async ({ deal, index }) => {
+      const merchant = String(deal.merchant || '(미상)');
+      let merchantStats = Object.hasOwn(matching.byMerchant, merchant)
+        ? matching.byMerchant[merchant]
+        : null;
+      if (!merchantStats) {
+        merchantStats = { searched: 0, matched: 0, unresolved: 0, failed: 0 };
+        Object.defineProperty(matching.byMerchant, merchant, {
+          value: merchantStats,
+          enumerable: true,
+          configurable: true,
+          writable: true,
+        });
+      }
+      matching.searched += 1;
+      merchantStats.searched += 1;
+      try {
+        const result = await productMatcher.match(deal);
+        if (result?.status === 'matched' && result.match) {
+          const match = result.match;
+          processedDeals[index] = {
+            ...deal,
+            merchantUrl: match.merchantUrl || null,
+            sourceImageUrl: match.sourceImageUrl || null,
+            imageUrl: match.imageUrl || null,
+            imageStatus: match.imageUrl ? 'ready' : 'pending',
+            imageProvider: match.imageProvider || productMatcher.name || null,
+            imageFailureCode: null,
+            imageRetryAt: null,
+          };
+          matching.matched += 1;
+          merchantStats.matched += 1;
+          if (match.imageUrl) matching.imageUrls += 1;
+          return;
+        }
+        processedDeals[index] = deal;
+        matching.unresolved += 1;
+        merchantStats.unresolved += 1;
+      } catch (error) {
+        processedDeals[index] = deal;
+        matching.failed += 1;
+        merchantStats.failed += 1;
+        try {
+          logger?.warn?.('상품 매칭 provider 실패', {
+            source,
+            itemId: diagnosticItemId(deal.originalUrl),
+            provider: productMatcher.name || 'unknown',
+            reason: error?.name === 'AbortError' ? 'timeout' : 'provider_error',
+          });
+        } catch {
+          // Diagnostic logging must not stop deal collection.
+        }
+      }
+    });
+  }
+
   const enrichmentQueue = [];
   const attemptedAt = Date.now();
-  for (const deal of deals) {
+  for (const deal of processedDeals) {
     const stored = await store.upsert(deal);
     const lastAttempt = imageAttemptCache.get(deal.originalUrl);
     const recentlyFailed = Number.isFinite(lastAttempt) && attemptedAt - lastAttempt < imageRetryMs;
@@ -556,7 +625,12 @@ async function runRssCollector({
     if (Number.isNaN(currentTime.getTime())) throw new TypeError('now must return a valid date');
     ended = await store.markEndedBefore(source, new Date(currentTime.getTime() - maxAgeMs));
   }
-  return { fetched: deals.length, stored: deals.length, ended };
+  return {
+    fetched: deals.length,
+    stored: processedDeals.length,
+    ended,
+    ...(matching ? { matching } : {}),
+  };
 }
 
 module.exports = {

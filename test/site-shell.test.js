@@ -31,6 +31,13 @@ test('운영 RSS 수집은 원문 og:image 보조 요청을 비활성화한다',
   assert.doesNotMatch(server, /enrichImages:\s*true/);
 });
 
+test('운영 RSS 수집은 네이버 상품 matcher를 주입하고 기존 R2 파이프라인을 유지한다', () => {
+  assert.match(server, /createNaverShoppingProvider/);
+  assert.match(server, /productMatcher:\s*naverShoppingProvider/);
+  assert.match(server, /createR2Storage/);
+  assert.match(server, /runImageBackfill/);
+});
+
 test('메인·실시간·최신 상품 영역은 실제 이미지와 기존 fallback을 함께 지원한다', () => {
   assert.match(script, /class="product-image[^"']*deal-image/);
   assert.match(script, /class="popular-image[^"']*deal-image/);

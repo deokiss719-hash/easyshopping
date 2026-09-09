@@ -745,3 +745,92 @@ test('RSS를 가져와 저장하고 재수집해도 중복을 만들지 않는�
   assert.equal(listed.total, 1);
   await pool.end();
 });
+
+test('고신뢰도 네이버 매칭만 원격 이미지와 판매 링크로 저장하고 통계를 반환한다', async () => {
+  const stored = [];
+  const feed = `<rss><channel>
+    <item><title>[G마켓] 삼성전자 갤럭시 S25 256GB 블루 (1,099,000원/무료)</title><link>https://feed.example/1</link><guid>matched</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>[옥션] 정체 불명 상품 (10,000원/무료)</title><link>https://feed.example/2</link><guid>unresolved</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+  </channel></rss>`;
+  const productMatcher = {
+    enabled: true,
+    async match(candidate) {
+      if (candidate.sourceItemId === 'matched') {
+        return {
+          status: 'matched',
+          match: {
+            merchantUrl: 'https://item.gmarket.co.kr/Item?goodscode=123',
+            sourceImageUrl: 'https://shopping-phinf.pstatic.net/main_123/123.jpg',
+            imageUrl: 'https://shopping-phinf.pstatic.net/main_123/123.jpg',
+            imageStatus: 'ready',
+            imageProvider: 'naver-shopping',
+          },
+        };
+      }
+      return { status: 'unresolved', reason: 'no_qualified_candidate' };
+    },
+  };
+
+  const result = await runRssCollector({
+    source: 'approved-feed',
+    feedUrl: 'https://feed.example/rss.xml',
+    allowedHosts: ['feed.example'],
+    store: {
+      upsert: async (candidate) => { stored.push(candidate); return candidate; },
+      markEndedBefore: async () => 0,
+    },
+    productMatcher,
+    fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => feed }),
+  });
+
+  assert.equal(stored[0].imageProvider, 'naver-shopping');
+  assert.equal(stored[0].imageUrl, 'https://shopping-phinf.pstatic.net/main_123/123.jpg');
+  assert.equal(stored[1].imageUrl, null);
+  assert.equal(stored[1].merchantUrl, null);
+  assert.deepEqual(result.matching, {
+    searched: 2,
+    matched: 1,
+    unresolved: 1,
+    failed: 0,
+    imageUrls: 1,
+    byMerchant: {
+      'G마켓': { searched: 1, matched: 1, unresolved: 0, failed: 0 },
+      '옥션': { searched: 1, matched: 0, unresolved: 1, failed: 0 },
+    },
+  });
+});
+
+test('RSS 판매처명이 객체 프로토타입 키여도 통계 객체를 오염시키지 않는다', async () => {
+  const feed = `<rss><channel>
+    <item><title>[__proto__] 안전성 확인 상품 (10,000원/무료)</title><link>https://feed.example/1</link><guid>proto</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+  </channel></rss>`;
+
+  try {
+    const result = await runRssCollector({
+      source: 'approved-feed',
+      feedUrl: 'https://feed.example/rss.xml',
+      allowedHosts: ['feed.example'],
+      store: {
+        upsert: async (candidate) => candidate,
+        markEndedBefore: async () => 0,
+      },
+      productMatcher: {
+        enabled: true,
+        match: async () => ({ status: 'unresolved', reason: 'no_qualified_candidate' }),
+      },
+      fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => feed }),
+    });
+
+    assert.equal(Object.hasOwn(result.matching.byMerchant, '__proto__'), true);
+    assert.deepEqual(result.matching.byMerchant.__proto__, {
+      searched: 1, matched: 0, unresolved: 1, failed: 0,
+    });
+    assert.equal(Object.hasOwn(Object.prototype, 'searched'), false);
+    assert.equal(Object.hasOwn(Object.prototype, 'unresolved'), false);
+  } finally {
+    delete Object.prototype.searched;
+    delete Object.prototype.matched;
+    delete Object.prototype.unresolved;
+    delete Object.prototype.failed;
+  }
+});

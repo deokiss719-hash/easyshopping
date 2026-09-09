@@ -23,3 +23,20 @@ test('R2가 비활성화되면 CSP에 R2 origin을 추가하지 않고 HTML meta
   assert.doesNotMatch(policy, /images\.example\.com/);
   assert.doesNotMatch(html, /http-equiv=["']Content-Security-Policy/i);
 });
+
+test('네이버 쇼핑이 활성화된 경우 공식 이미지 CDN origin만 CSP에 추가한다', () => {
+  const policy = buildContentSecurityPolicy(
+    { enabled: false },
+    { enabled: true, imageBaseUrls: ['https://shopping-phinf.pstatic.net/'] },
+  );
+  assert.match(policy, /img-src[^;]*https:\/\/shopping-phinf\.pstatic\.net/);
+  assert.doesNotMatch(policy, /\*\.pstatic\.net/);
+});
+
+test('네이버 자격증명이 비활성화돼도 저장된 네이버 이미지를 위한 고정 CDN origin은 유지한다', () => {
+  const policy = buildContentSecurityPolicy(
+    { enabled: false },
+    { enabled: false, imageBaseUrls: ['https://shopping-phinf.pstatic.net/'] },
+  );
+  assert.match(policy, /img-src[^;]*https:\/\/shopping-phinf\.pstatic\.net/);
+});

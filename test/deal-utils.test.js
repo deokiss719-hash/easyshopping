@@ -41,6 +41,16 @@ test('실데이터를 가짜 반응 수치 없이 카드 표시 모델로 변환
     imageUrl: 'https://images.example.com/other/item.webp',
     imageBaseUrls: ['https://images.example.com/base'],
   }).imageUrl, null);
+  assert.equal(normalizeDeal({
+    ...rawDeal,
+    imageUrl: 'https://shopping-phinf.pstatic.net/main_123/123.jpg',
+    imageBaseUrls: ['https://shopping-phinf.pstatic.net/'],
+  }).imageUrl, 'https://shopping-phinf.pstatic.net/main_123/123.jpg');
+  assert.equal(normalizeDeal({
+    ...rawDeal,
+    imageUrl: 'https://shopping-phinf.pstatic.net.evil.example/main_123/123.jpg',
+    imageBaseUrls: ['https://shopping-phinf.pstatic.net/'],
+  }).imageUrl, null);
   assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'https://evilppomppu.co.kr/item.jpg' }).imageUrl, null);
   assert.equal(normalizeDeal({ ...rawDeal, imageUrl: 'https://cdn.ppomppu.co.kr/item.jpg' }).imageUrl, 'https://cdn.ppomppu.co.kr/item.jpg');
   assert.equal(normalizeDeal({ ...rawDeal, category: '알 수 없는 분류' }).category, '기타');

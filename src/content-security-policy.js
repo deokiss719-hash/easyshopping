@@ -1,7 +1,13 @@
-function buildContentSecurityPolicy(r2Config = { enabled: false }) {
+function buildContentSecurityPolicy(r2Config = { enabled: false }, naverShoppingConfig = { enabled: false }) {
   const imageSources = ["'self'", 'https://ppomppu.co.kr', 'https://*.ppomppu.co.kr'];
   if (r2Config.enabled && r2Config.publicBaseUrl) {
     imageSources.push(new URL(r2Config.publicBaseUrl).origin);
+  }
+  if (Array.isArray(naverShoppingConfig.imageBaseUrls)) {
+    for (const baseUrl of naverShoppingConfig.imageBaseUrls) {
+      const origin = new URL(baseUrl).origin;
+      if (!imageSources.includes(origin)) imageSources.push(origin);
+    }
   }
   return [
     "default-src 'self'",
