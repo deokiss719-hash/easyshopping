@@ -107,7 +107,7 @@ function createDealStore(pool) {
         deal.merchantUrl ?? null,
         deal.sourceImageUrl ?? null,
         deal.imageUrl ?? null,
-        deal.imageStatus ?? (deal.imageUrl ? 'ready' : (deal.merchantUrl ? 'pending' : 'missing_merchant_url')),
+        deal.imageStatus ?? (deal.imageUrl ? 'ready' : 'pending'),
         deal.imageProvider ?? null,
         deal.imageFailureCode ?? null,
         deal.imageRetryAt ?? null,
@@ -136,7 +136,6 @@ function createDealStore(pool) {
           image_url = COALESCE(deals.image_url, EXCLUDED.image_url),
           image_status = CASE
             WHEN COALESCE(deals.image_url, EXCLUDED.image_url) IS NOT NULL THEN 'ready'
-            WHEN COALESCE(deals.merchant_url, EXCLUDED.merchant_url) IS NULL THEN 'missing_merchant_url'
             WHEN deals.image_status IN ('failed', 'unsupported_provider') THEN deals.image_status
             WHEN EXCLUDED.merchant_url IS NULL AND deals.merchant_url IS NOT NULL THEN deals.image_status
             ELSE EXCLUDED.image_status
@@ -194,7 +193,7 @@ function createDealStore(pool) {
       }
     },
 
-    async updateImageState(id, update = {}) {
+    async updateImageState(id, update = {}, { onlyIfImageMissing = false } = {}) {
       if (!/^\d+$/.test(String(id || ''))) throw new TypeError('deal id is invalid');
       if (!IMAGE_STATUSES.has(update.imageStatus)) throw new TypeError('imageStatus is not supported');
       const fields = {
@@ -209,8 +208,9 @@ function createDealStore(pool) {
       const values = entries.map(([name]) => update[name] ?? null);
       values.push(String(id));
       const assignments = entries.map(([, column], index) => `${column} = $${index + 1}`);
+      const condition = onlyIfImageMissing ? ' AND image_url IS NULL' : '';
       const result = await pool.query(
-        `UPDATE deals SET ${assignments.join(', ')} WHERE id = $${values.length} RETURNING *`,
+        `UPDATE deals SET ${assignments.join(', ')} WHERE id = $${values.length}${condition} RETURNING *`,
         values,
       );
       return result.rows[0] ? mapDeal(result.rows[0]) : null;
@@ -224,8 +224,7 @@ function createDealStore(pool) {
         `SELECT * FROM deals
          WHERE is_ended = FALSE
            AND image_url IS NULL
-           AND merchant_url IS NOT NULL
-           AND image_status IN ('pending', 'failed', 'unsupported_provider')
+           AND image_status IN ('missing_merchant_url', 'pending', 'failed', 'unsupported_provider')
            AND (image_retry_at IS NULL OR image_retry_at <= $1)
          ORDER BY published_at DESC NULLS LAST, id DESC
          LIMIT $2`,

@@ -27,6 +27,7 @@ test('provider registry는 실제 HTTPS 판매처 URL이 있을 때만 provider�
 test('WebP 변환은 크기를 제한하고 메타데이터를 제거하는 sharp 옵션을 사용한다', async () => {
   const calls = [];
   const pipeline = {
+    async metadata() { calls.push(['metadata']); return { width: 120, height: 100 }; },
     rotate() { calls.push(['rotate']); return this; },
     resize(options) { calls.push(['resize', options]); return this; },
     webp(options) { calls.push(['webp', options]); return this; },
@@ -41,9 +42,43 @@ test('WebP 변환은 크기를 제한하고 메타데이터를 제거하는 shar
 
   assert.equal(result.toString(), 'webp-image');
   assert.deepEqual(calls[0], ['sharp', 12, { limitInputPixels: 40000000, sequentialRead: true }]);
-  assert.deepEqual(calls[2], ['resize', { width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true }]);
-  assert.deepEqual(calls[3], ['webp', { quality: 82, effort: 4 }]);
+  assert.deepEqual(calls[1], ['metadata']);
+  assert.deepEqual(calls[3], ['resize', { width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true }]);
+  assert.deepEqual(calls[4], ['webp', { quality: 82, effort: 4 }]);
   await assert.rejects(() => convertToWebp(Buffer.alloc(10 * 1024 * 1024 + 1), { sharpImpl }), /too large/);
+});
+
+test('실제 이미지가 80x80 미만이면 WebP 변환과 R2 업로드 전에 거부한다', async () => {
+  const sharp = require('sharp');
+  const tinyImage = await sharp({
+    create: { width: 79, height: 100, channels: 3, background: '#ffffff' },
+  }).png().toBuffer();
+  let uploads = 0;
+  const provider = {
+    name: 'official-shop',
+    merchantHosts: ['shop.example'],
+    canHandle: () => true,
+    isAllowedImageUrl: () => true,
+    fetchImageCandidate: async () => ({
+      body: tinyImage,
+      contentType: 'image/png',
+      sourceImageUrl: 'https://shop.example/tiny.png',
+    }),
+  };
+  const pipeline = createImagePipeline({
+    providerRegistry: createProviderRegistry([provider]),
+    storage: { enabled: true, uploadWebp: async () => { uploads += 1; } },
+    store: { updateImageState: async () => {} },
+    logger: { warn() {} },
+  });
+
+  const result = await pipeline.process({
+    id: 'tiny', source: 'feed', sourceItemId: 'tiny', merchantUrl: 'https://shop.example/tiny',
+  });
+
+  assert.equal(result.status, 'failed');
+  assert.equal(result.code, 'image_too_small');
+  assert.equal(uploads, 0);
 });
 
 test('R2가 비활성화되거나 판매처 URL이 없으면 provider와 저장소를 호출하지 않는다', async () => {
@@ -64,6 +99,85 @@ test('R2가 비활성화되거나 판매처 URL이 없으면 provider와 저장�
   assert.deepEqual(await pipeline.process({ id: '2', source: 'feed', sourceItemId: '2', merchantUrl: 'https://shop.example/2' }), { status: 'disabled' });
   assert.equal(providerCalls, 0);
   assert.equal(uploads, 0);
+});
+
+test('판매처 URL이 없어도 원문 URL provider로 본문 이미지를 R2에 저장한다', async () => {
+  const calls = [];
+  const updates = [];
+  const provider = {
+    name: 'ppomppu-source-post',
+    merchantHosts: ['ppomppu.co.kr'],
+    canHandle: (url) => url.hostname.endsWith('ppomppu.co.kr'),
+    isAllowedImageUrl: (url) => url.hostname.endsWith('ppomppu.co.kr'),
+    fetchImageCandidate: async (input) => {
+      calls.push(input);
+      return {
+        body: Buffer.from('png'),
+        contentType: 'image/png',
+        sourceImageUrl: 'https://cdn4.ppomppu.co.kr/zboard/data3/product.png',
+      };
+    },
+  };
+  const pipeline = createImagePipeline({
+    providerRegistry: createProviderRegistry([provider]),
+    storage: { enabled: true, uploadWebp: async ({ key }) => `https://images.example/${key}` },
+    store: { updateImageState: async (id, update) => updates.push([id, update]) },
+    convert: async () => Buffer.from('webp'),
+  });
+  const deal = {
+    id: '3',
+    source: 'ppomppu',
+    sourceItemId: '123',
+    originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123',
+    merchantUrl: null,
+  };
+
+  const result = await pipeline.process(deal);
+
+  assert.equal(result.status, 'ready');
+  assert.equal(calls[0].sourceUrl, deal.originalUrl);
+  assert.equal(calls[0].merchantUrl, null);
+  assert.equal(updates[0][1].imageProvider, 'ppomppu-source-post');
+});
+
+test('판매처 URL이 있어도 검증된 원문 URL provider를 우선 선택한다', async () => {
+  const called = [];
+  const sourceProvider = {
+    name: 'ppomppu-source-post',
+    merchantHosts: ['ppomppu.co.kr'],
+    canHandle: (url) => url.hostname.endsWith('ppomppu.co.kr'),
+    isAllowedImageUrl: (url) => url.hostname.endsWith('ppomppu.co.kr'),
+    fetchImageCandidate: async ({ sourceUrl, merchantUrl }) => {
+      called.push(['source', sourceUrl, merchantUrl]);
+      return {
+        body: Buffer.from('png'), contentType: 'image/png',
+        sourceImageUrl: 'https://cdn4.ppomppu.co.kr/zboard/data3/product.png',
+      };
+    },
+  };
+  const merchantProvider = {
+    name: 'official-shop',
+    merchantHosts: ['shop.example'],
+    canHandle: (url) => url.hostname === 'shop.example',
+    isAllowedImageUrl: () => true,
+    fetchImageCandidate: async () => { called.push(['merchant']); },
+  };
+  const pipeline = createImagePipeline({
+    providerRegistry: createProviderRegistry([sourceProvider, merchantProvider]),
+    storage: { enabled: true, uploadWebp: async () => 'https://images.example/image.webp' },
+    store: { updateImageState: async () => {} },
+    convert: async () => Buffer.from('webp'),
+  });
+  const deal = {
+    id: 'source-first', source: 'ppomppu', sourceItemId: '123',
+    originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123',
+    merchantUrl: 'https://shop.example/products/123',
+  };
+
+  const result = await pipeline.process(deal);
+
+  assert.equal(result.provider, 'ppomppu-source-post');
+  assert.deepEqual(called, [['source', deal.originalUrl, deal.merchantUrl]]);
 });
 
 test('확정된 판매처 URL의 provider 결과만 WebP로 변환해 R2 URL과 상태를 저장한다', async () => {
@@ -105,7 +219,7 @@ test('확정된 판매처 URL의 provider 결과만 WebP로 변환해 R2 URL과 
   assert.match(updates[0][1].imageUrl, /^https:\/\/images\.example\/deals\/feed\//);
 });
 
-test('provider가 아직 없으면 DB 상태를 고정하지 않아 향후 provider 추가 시 재처리할 수 있다', async () => {
+test('provider가 아직 없으면 재시도 시각을 저장해 같은 후보가 배치를 계속 막지 않는다', async () => {
   const updates = [];
   const pipeline = createImagePipeline({
     providerRegistry: createProviderRegistry([]),
@@ -117,7 +231,12 @@ test('provider가 아직 없으면 DB 상태를 고정하지 않아 향후 provi
     await pipeline.process({ id: '8', source: 'feed', sourceItemId: 'item-8', merchantUrl: 'https://shop.example/products/8' }),
     { status: 'unsupported_provider' },
   );
-  assert.deepEqual(updates, []);
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0][0], '8');
+  assert.equal(updates[0][1].imageStatus, 'unsupported_provider');
+  assert.equal(updates[0][1].imageFailureCode, 'unsupported_provider');
+  assert.match(updates[0][1].imageRetryAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.deepEqual(updates[0][2], { onlyIfImageMissing: true });
 });
 
 test('원본 이미지 URL이 변경되면 R2 캐시 키도 변경한다', async () => {
@@ -171,4 +290,33 @@ test('실패 캐시는 재시도 시각 전 provider 재호출을 막고 backfil
   });
   assert.deepEqual(processed, ['1', '2']);
   assert.deepEqual(result, { status: 'completed', selected: 2, ready: 2, failed: 0, skipped: 0 });
+});
+
+test('동시 작업이 먼저 이미지를 준비하면 늦은 실패는 stale로 건너뛴다', async () => {
+  const updates = [];
+  const provider = {
+    name: 'official-shop',
+    merchantHosts: ['shop.example'],
+    canHandle: () => true,
+    isAllowedImageUrl: () => true,
+    fetchImageCandidate: async () => { throw new Error('late failure'); },
+  };
+  const pipeline = createImagePipeline({
+    providerRegistry: createProviderRegistry([provider]),
+    storage: { enabled: true },
+    store: {
+      updateImageState: async (...args) => {
+        updates.push(args);
+        return null;
+      },
+    },
+    logger: { warn() {} },
+  });
+
+  const result = await pipeline.process({
+    id: 'race', source: 'feed', sourceItemId: 'race', merchantUrl: 'https://shop.example/race',
+  });
+
+  assert.deepEqual(result, { status: 'stale', provider: 'official-shop' });
+  assert.equal(updates[0][2].onlyIfImageMissing, true);
 });

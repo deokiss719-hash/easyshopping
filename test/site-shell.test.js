@@ -31,11 +31,24 @@ test('운영 RSS 수집은 원문 og:image 보조 요청을 비활성화한다',
   assert.doesNotMatch(server, /enrichImages:\s*true/);
 });
 
-test('운영 RSS 수집은 네이버 상품 matcher를 주입하고 기존 R2 파이프라인을 유지한다', () => {
-  assert.match(server, /createNaverShoppingProvider/);
-  assert.match(server, /productMatcher:\s*naverShoppingProvider/);
+test('운영 RSS 수집은 뽐뿌 작성자 본문 provider와 R2 배치 파이프라인만 사용한다', () => {
+  assert.match(server, /createPpomppuImageProvider/);
+  assert.match(server, /productMatcher:\s*null/);
+  assert.doesNotMatch(server, /createNaverShoppingProvider/);
   assert.match(server, /createR2Storage/);
-  assert.match(server, /runImageBackfill/);
+  assert.match(server, /runImageBackfill\(\{ store, pipeline: imagePipeline, limit: 100, concurrency: 3 \}\)/);
+});
+
+test('신규 네이버 매칭은 중단해도 이미 저장된 네이버 이미지 CDN은 계속 표시한다', () => {
+  assert.match(server, /NAVER_IMAGE_BASE_URLS/);
+  assert.match(server, /imageBaseUrls[\s\S]*NAVER_IMAGE_BASE_URLS/);
+  assert.match(server, /buildContentSecurityPolicy\(r2Config,\s*\{\s*enabled:\s*true,\s*imageBaseUrls:\s*NAVER_IMAGE_BASE_URLS,?\s*\}\)/);
+});
+
+test('RSS 수집 실패와 무관하게 R2 backfill을 별도 보호 구간에서 실행한다', () => {
+  assert.match(server, /let collectionError = null/);
+  assert.match(server, /catch \(error\) \{\s*collectionError = error;/);
+  assert.match(server, /if \(collectionError\) throw collectionError/);
 });
 
 test('메인·실시간·최신 상품 영역은 실제 이미지와 기존 fallback을 함께 지원한다', () => {

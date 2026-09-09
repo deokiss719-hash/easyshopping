@@ -152,7 +152,7 @@ test('재수집 네이버 매칭은 기존 R2 이미지와 관련 메타데이�
   await pool.end();
 });
 
-test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매처 URL 후보만 backfill한다', async () => {
+test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매처 또는 원문 URL 후보를 backfill한다', async () => {
   const { pool, store } = await makeStore();
   const pending = await store.upsert({
     ...firstDeal,
@@ -161,10 +161,14 @@ test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매�
     merchantUrl: 'https://shop.example/products/1',
     imageStatus: 'pending',
   });
-  await store.upsert({ ...firstDeal, sourceItemId: 'no-url', imageUrl: null, merchantUrl: null });
+  const sourceOnly = await store.upsert({ ...firstDeal, sourceItemId: 'source-only', imageUrl: null, merchantUrl: null });
 
   let candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z' });
-  assert.deepEqual(candidates.map((deal) => deal.id), [pending.id]);
+  assert.deepEqual(new Set(candidates.map((deal) => deal.id)), new Set([pending.id, sourceOnly.id]));
+  await store.updateImageState(sourceOnly.id, {
+    imageStatus: 'ready',
+    imageUrl: 'https://images.example.com/deals/feed/source-only.webp',
+  });
 
   await store.updateImageState(pending.id, {
     imageStatus: 'failed',
@@ -197,6 +201,42 @@ test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매�
   assert.equal(ready.merchantUrl, 'https://shop.example/products/1');
   assert.equal(ready.sourceImageUrl, 'https://cdn.shop.example/item.jpg');
   assert.equal(ready.imageProvider, 'official-shop');
+  await pool.end();
+});
+
+test('backfill의 늦은 성공·실패 업데이트는 이미 준비된 이미지를 덮어쓰지 않는다', async () => {
+  const { pool, store } = await makeStore();
+  const deal = await store.upsert({
+    ...firstDeal,
+    sourceItemId: 'concurrent-image',
+    imageStatus: 'pending',
+  });
+  const trustedImageUrl = 'https://images.example.com/deals/feed/trusted.webp';
+  await store.updateImageState(deal.id, {
+    imageStatus: 'ready',
+    imageUrl: trustedImageUrl,
+    sourceImageUrl: 'https://cdn.example.com/trusted.jpg',
+    imageProvider: 'trusted-provider',
+  });
+
+  const lateFailure = await store.updateImageState(deal.id, {
+    imageStatus: 'failed',
+    imageFailureCode: 'provider_error',
+  }, { onlyIfImageMissing: true });
+  const lateSuccess = await store.updateImageState(deal.id, {
+    imageStatus: 'ready',
+    imageUrl: 'https://images.example.com/deals/feed/stale.webp',
+    sourceImageUrl: 'https://cdn.example.com/stale.jpg',
+    imageProvider: 'stale-provider',
+  }, { onlyIfImageMissing: true });
+
+  assert.equal(lateFailure, null);
+  assert.equal(lateSuccess, null);
+  const stored = (await store.list({ source: firstDeal.source })).items.find((item) => item.id === deal.id);
+  assert.equal(stored.imageStatus, 'ready');
+  assert.equal(stored.imageUrl, trustedImageUrl);
+  assert.equal(stored.imageProvider, 'trusted-provider');
+  assert.equal(stored.imageFailureCode, null);
   await pool.end();
 });
 

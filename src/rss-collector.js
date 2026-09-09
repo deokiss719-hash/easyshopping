@@ -1,6 +1,7 @@
 const net = require('node:net');
 const { createHash } = require('node:crypto');
 const { XMLParser } = require('fast-xml-parser');
+const cheerio = require('cheerio');
 const { classifyDeal } = require('./deal-category');
 
 const DEFAULT_MAX_BYTES = 1024 * 1024;
@@ -96,6 +97,7 @@ function isAllowedImageHost(hostname, allowedImageHosts) {
 }
 
 function safeImageUrl(value, baseUrl, allowedImageHosts = DEFAULT_IMAGE_HOSTS) {
+  if (!String(value || '').trim()) return null;
   try {
     const url = new URL(decodeAttribute(value), baseUrl);
     if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return null;
@@ -311,6 +313,41 @@ function extractOpenGraphImage(html, pageUrl, allowedImageHosts = DEFAULT_IMAGE_
   return null;
 }
 
+function isPpomppuUiImage(element, imageUrl) {
+  const pathname = imageUrl.pathname.toLowerCase();
+  const filename = pathname.split('/').at(-1) || '';
+  const uiName = /(?:^|[_-])(icon|loading|lazy|spacer|blank|pixel)(?:[_-]|\.)/i.test(filename);
+  const siteAsset = /^\/(?:images?|skin|css|js)\//i.test(pathname);
+  const width = Number.parseInt(element.attr('width'), 10);
+  const height = Number.parseInt(element.attr('height'), 10);
+  const tiny = (Number.isFinite(width) && width <= 32) || (Number.isFinite(height) && height <= 32);
+  return uiName || siteAsset || tiny;
+}
+
+function extractPpomppuBodyImage(html, pageUrl, allowedImageHosts = DEFAULT_IMAGE_HOSTS) {
+  const $ = cheerio.load(String(html || ''), null, false);
+  const content = $('td.board-contents').first();
+  if (!content.length) return null;
+
+  for (const node of content.find('img').toArray()) {
+    const image = $(node);
+    const candidates = [
+      image.attr('data-original'),
+      image.attr('data-src'),
+      image.attr('data-lazy-src'),
+      image.attr('src'),
+    ];
+    for (const candidate of candidates) {
+      const safeUrl = safeImageUrl(candidate, pageUrl, allowedImageHosts);
+      if (!safeUrl) continue;
+      const parsed = new URL(safeUrl);
+      if (isPpomppuUiImage(image, parsed)) continue;
+      return safeUrl;
+    }
+  }
+  return null;
+}
+
 async function fetchOpenGraphImage(pageUrl, {
   allowedHosts,
   allowedImageHosts = DEFAULT_IMAGE_HOSTS,
@@ -318,6 +355,11 @@ async function fetchOpenGraphImage(pageUrl, {
   maxBytes = DEFAULT_HTML_MAX_BYTES,
   timeoutMs = 8000,
   onDiagnostic = () => {},
+  extractImage = extractOpenGraphImage,
+  missingReason = 'og_image_missing',
+  missingField = 'ogImageMissing',
+  validatePageUrl = null,
+  requireContentType = false,
 } = {}) {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1024) {
     throw new TypeError('maxBytes must be a safe integer of at least 1024');
@@ -352,6 +394,7 @@ async function fetchOpenGraphImage(pageUrl, {
 
   try {
     let url = validateFeedUrl(pageUrl, allowedHosts);
+    if (validatePageUrl && !validatePageUrl(url)) throw new Error('Page URL is not allowed');
     hostname = url.hostname;
     finalRedirectHostname = url.hostname;
     const signal = AbortSignal.timeout(timeoutMs);
@@ -380,6 +423,7 @@ async function fetchOpenGraphImage(pageUrl, {
         const redirectUrl = new URL(location, url);
         finalRedirectHostname = redirectUrl.hostname.toLowerCase();
         url = validateFeedUrl(redirectUrl.href, allowedHosts);
+        if (validatePageUrl && !validatePageUrl(url)) throw new Error('Page URL is not allowed');
         continue;
       }
       if (!response.ok) {
@@ -387,14 +431,15 @@ async function fetchOpenGraphImage(pageUrl, {
         report('http_status');
         return null;
       }
-      if (contentType && !/text\/html|application\/xhtml\+xml/i.test(contentType)) {
+      if ((requireContentType && !contentType)
+        || (contentType && !/text\/html|application\/xhtml\+xml/i.test(contentType))) {
         await cancelResponseBody(response);
         report('content_type');
         return null;
       }
       const html = await readLimitedBody(response, maxBytes, 'Page');
-      const imageUrl = extractOpenGraphImage(html, url.href, allowedImageHosts);
-      if (!imageUrl) report('og_image_missing', { ogImageMissing: true });
+      const imageUrl = extractImage(html, url.href, allowedImageHosts);
+      if (!imageUrl) report(missingReason, { [missingField]: true });
       return imageUrl;
     }
     return null;
@@ -412,6 +457,31 @@ async function fetchOpenGraphImage(pageUrl, {
     report(reason, { timeout, responseTooLarge, hostnameValidationFailed });
     throw error;
   }
+}
+
+function fetchPpomppuBodyImage(pageUrl, options = {}) {
+  let expectedBoard = null;
+  let expectedNumber = null;
+  try {
+    const requestedUrl = new URL(pageUrl);
+    expectedBoard = requestedUrl.searchParams.get('id');
+    expectedNumber = requestedUrl.searchParams.get('no');
+  } catch {
+    // fetchOpenGraphImage will return the canonical URL validation error.
+  }
+  return fetchOpenGraphImage(pageUrl, {
+    ...options,
+    validatePageUrl: (url) => (url.hostname === 'ppomppu.co.kr' || url.hostname.endsWith('.ppomppu.co.kr'))
+      && url.pathname === '/zboard/view.php'
+      && expectedBoard === 'ppomppu'
+      && url.searchParams.get('id') === expectedBoard
+      && /^\d{1,20}$/.test(expectedNumber || '')
+      && url.searchParams.get('no') === expectedNumber,
+    requireContentType: true,
+    extractImage: extractPpomppuBodyImage,
+    missingReason: 'body_image_missing',
+    missingField: 'bodyImageMissing',
+  });
 }
 
 async function runWithConcurrency(items, concurrency, worker) {
@@ -638,5 +708,7 @@ module.exports = {
   runRssCollector,
   safeImageUrl,
   fetchOpenGraphImage,
+  fetchPpomppuBodyImage,
   extractOpenGraphImage,
+  extractPpomppuBodyImage,
 };

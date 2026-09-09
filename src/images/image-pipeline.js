@@ -45,6 +45,7 @@ function safeSourceImageUrl(value) {
 
 function failureCode(error) {
   if (error?.code === 'unsafe_source_image_url') return 'unsafe_source_image_url';
+  if (error?.code === 'image_too_small') return 'image_too_small';
   if (error instanceof RangeError) return 'image_too_large';
   if (/unsupported|content.?type/i.test(String(error?.message || ''))) return 'unsupported_image';
   return 'provider_error';
@@ -64,18 +65,34 @@ function createImagePipeline({
   return Object.freeze({
     enabled: storage.enabled,
     async process(deal) {
-      if (!deal?.merchantUrl) return { status: 'missing_merchant_url' };
+      const originalUrl = deal?.originalUrl || null;
+      const merchantUrl = deal?.merchantUrl || null;
+      if (!originalUrl && !merchantUrl) return { status: 'missing_merchant_url' };
       if (!storage.enabled) return { status: 'disabled' };
 
-      const provider = providerRegistry.find(deal.merchantUrl);
-      if (!provider) return { status: 'unsupported_provider' };
-
+      const originalProvider = providerRegistry.find(originalUrl);
+      const provider = originalProvider || providerRegistry.find(merchantUrl);
       const key = dealCacheKey(deal);
       if (!failureCache.canAttempt(key)) return { status: 'cached_failure' };
+      if (!provider) {
+        const imageRetryAt = failureCache.record(key);
+        const updated = await store?.updateImageState?.(deal.id, {
+          imageStatus: 'unsupported_provider',
+          imageFailureCode: 'unsupported_provider',
+          imageRetryAt,
+        }, { onlyIfImageMissing: true });
+        if (updated === null) {
+          failureCache.clear(key);
+          return { status: 'stale' };
+        }
+        return { status: 'unsupported_provider' };
+      }
+      const sourceUrl = originalProvider ? originalUrl : merchantUrl;
 
       try {
         const candidate = await provider.fetchImageCandidate({
-          merchantUrl: deal.merchantUrl,
+          merchantUrl: deal.merchantUrl || null,
+          sourceUrl,
           deal: Object.freeze({ ...deal }),
         });
         if (!candidate || !Buffer.isBuffer(candidate.body)) throw new Error('provider returned no image');
@@ -94,24 +111,32 @@ function createImagePipeline({
         const sourceSegment = String(deal.source || 'unknown').toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 64) || 'unknown';
         const objectKey = `deals/${sourceSegment}/${objectHash}.webp`;
         const imageUrl = await storage.uploadWebp({ key: objectKey, body });
-        await store?.updateImageState?.(deal.id, {
+        const updated = await store?.updateImageState?.(deal.id, {
           imageStatus: 'ready',
           imageUrl,
           sourceImageUrl,
           imageProvider: provider.name,
           imageFailureCode: null,
           imageRetryAt: null,
-        });
+        }, { onlyIfImageMissing: true });
+        if (updated === null) {
+          failureCache.clear(key);
+          return { status: 'stale', provider: provider.name };
+        }
         failureCache.clear(key);
         return { status: 'ready', provider: provider.name, imageUrl };
       } catch (error) {
         const code = failureCode(error);
         const imageRetryAt = failureCache.record(key);
-        await store?.updateImageState?.(deal.id, {
+        const updated = await store?.updateImageState?.(deal.id, {
           imageStatus: 'failed',
           imageFailureCode: code,
           imageRetryAt,
-        });
+        }, { onlyIfImageMissing: true });
+        if (updated === null) {
+          failureCache.clear(key);
+          return { status: 'stale', provider: provider.name };
+        }
         logger?.warn?.('상품 이미지 처리 실패', { source: deal.source, sourceItemId: deal.sourceItemId, provider: provider.name, code });
         return { status: 'failed', provider: provider.name, code };
       }

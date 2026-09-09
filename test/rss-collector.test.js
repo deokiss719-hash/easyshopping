@@ -8,7 +8,39 @@ const {
   runRssCollector,
   safeImageUrl,
   fetchOpenGraphImage,
+  extractPpomppuBodyImage,
 } = require('../src/rss-collector');
+
+test('뽐뿌 본문의 UI 아이콘을 건너뛰고 첫 사용자 업로드 이미지를 고른다', () => {
+  const html = `
+    <meta property="og:image" content="https://cdn.ppomppu.co.kr/board-og.jpg">
+    <td class="board-contents">
+      <img src="/images/icon_expand_img.png">
+      <p><br></p>
+      <img data-original="//cdn4.ppomppu.co.kr/zboard/data3/2026/0909/product.png"
+           src="/images/lazy-loading.gif">
+      <img src="//cdn4.ppomppu.co.kr/zboard/data3/2026/0909/second.jpg">
+    </td>`;
+
+  assert.equal(
+    extractPpomppuBodyImage(html, 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123'),
+    'https://cdn4.ppomppu.co.kr/zboard/data3/2026/0909/product.png',
+  );
+});
+
+test('뽐뿌 본문 밖 이미지나 허용되지 않은 외부 이미지는 사용하지 않는다', () => {
+  const outsideOnly = '<img src="https://cdn4.ppomppu.co.kr/ad.jpg"><td class="board-contents"><p>본문</p></td>';
+  assert.equal(
+    extractPpomppuBodyImage(outsideOnly, 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123'),
+    null,
+  );
+
+  const external = '<td class="board-contents"><img src="https://tracking.example/pixel.jpg"></td>';
+  assert.equal(
+    extractPpomppuBodyImage(external, 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123'),
+    null,
+  );
+});
 
 const RSS = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
