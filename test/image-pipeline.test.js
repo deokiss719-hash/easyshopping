@@ -239,6 +239,36 @@ test('provider가 아직 없으면 재시도 시각을 저장해 같은 후보�
   assert.deepEqual(updates[0][2], { onlyIfImageMissing: true });
 });
 
+test('본문 이미지가 없으면 상세 실패 코드를 보존한다', async () => {
+  const updates = [];
+  const provider = {
+    name: 'ppomppu-source-post',
+    merchantHosts: ['ppomppu.co.kr'],
+    canHandle: () => true,
+    isAllowedImageUrl: () => true,
+    fetchImageCandidate: async () => {
+      throw Object.assign(new Error('본문 상품 이미지가 없습니다'), { code: 'body_image_missing' });
+    },
+  };
+  const pipeline = createImagePipeline({
+    providerRegistry: createProviderRegistry([provider]),
+    storage: { enabled: true },
+    store: { updateImageState: async (...args) => updates.push(args) },
+    logger: { warn() {} },
+  });
+
+  const result = await pipeline.process({
+    id: 'missing-body',
+    source: 'ppomppu',
+    sourceItemId: '123',
+    originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123',
+  });
+
+  assert.equal(result.status, 'failed');
+  assert.equal(result.code, 'body_image_missing');
+  assert.equal(updates[0][1].imageFailureCode, 'body_image_missing');
+});
+
 test('원본 이미지 URL이 변경되면 R2 캐시 키도 변경한다', async () => {
   let sourceImageUrl = 'https://cdn.shop.example/images/a.jpg';
   const keys = [];
