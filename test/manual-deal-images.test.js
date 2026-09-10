@@ -1,9 +1,30 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
-const { fetchStoredImage, createManualDealImageRouter, MAX_IMAGE_BYTES } = require('../src/manual-deal-images');
+const {
+  fetchStoredImage, createManualDealImageRouter, createPinnedLookup, MAX_IMAGE_BYTES,
+} = require('../src/manual-deal-images');
 
 const PUBLIC = [{ address: '93.184.216.34', family: 4 }];
+
+test('pinned DNS lookup supports Node single and all-address callback forms', async () => {
+  const lookup = createPinnedLookup(PUBLIC[0]);
+  const single = await new Promise((resolve, reject) => {
+    lookup('cdn.example', { all: false }, (error, address, family) => {
+      if (error) reject(error);
+      else resolve({ address, family });
+    });
+  });
+  const multiple = await new Promise((resolve, reject) => {
+    lookup('cdn.example', { all: true }, (error, addresses) => {
+      if (error) reject(error);
+      else resolve(addresses);
+    });
+  });
+
+  assert.deepEqual(single, PUBLIC[0]);
+  assert.deepEqual(multiple, PUBLIC);
+});
 
 async function listen(app) {
   const server = app.listen(0, '127.0.0.1');

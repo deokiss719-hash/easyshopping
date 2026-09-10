@@ -23,6 +23,16 @@ async function resolvePublic(url, lookup) {
   return addresses[0];
 }
 
+function createPinnedLookup(selected) {
+  return (_hostname, options, callback) => {
+    if (options?.all === true) {
+      callback(null, [selected]);
+      return;
+    }
+    callback(null, selected.address, selected.family);
+  };
+}
+
 function nativeImageRequest(url, selected, { timeoutMs, maxBytes }) {
   return new Promise((resolve, reject) => {
     const request = https.request(url, {
@@ -32,7 +42,7 @@ function nativeImageRequest(url, selected, { timeoutMs, maxBytes }) {
         'accept-encoding': 'identity',
         'user-agent': 'easyshopping-manual-image/1.0',
       },
-      lookup: (_hostname, _options, callback) => callback(null, selected.address, selected.family),
+      lookup: createPinnedLookup(selected),
       agent: false,
     }, (response) => {
       const declared = Number(response.headers['content-length']);
@@ -120,5 +130,5 @@ function createManualDealImageRouter({ store, imageFetcher = fetchStoredImage } 
 }
 
 module.exports = {
-  fetchStoredImage, createManualDealImageRouter, MAX_IMAGE_BYTES, IMAGE_TYPES,
+  fetchStoredImage, createManualDealImageRouter, createPinnedLookup, MAX_IMAGE_BYTES, IMAGE_TYPES,
 };
