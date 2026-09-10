@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  safeImageUrl, normalizeDeal, filterAndSortDeals, fetchAllLiveDeals, mixHomeDeals, fetchPublicSiteSettings,
+  safeImageUrl, normalizeDeal, filterAndSortDeals, fetchAllLiveDeals, mixHomeDeals, selectPhoneDeals, fetchPublicSiteSettings,
 } = require('../public/deal-utils');
 
 const rawDeal = {
@@ -177,11 +177,32 @@ test('메인 수동 특가는 우선순위로 제한하고 RSS 첫 네 개 뒤�
 test('공개 사이트 설정은 유효한 값만 사용하고 실패 시 기본값 4를 쓴다', async () => {
   assert.deepEqual(await fetchPublicSiteSettings({
     fetchImpl: async () => ({ ok: true, json: async () => ({ home_manual_limit: 7, admin_note: 'secret' }) }),
-  }), { home_manual_limit: 7 });
+  }), { home_manual_limit: 7, phone_section_title: '휴대폰 초특가 핫딜' });
   assert.deepEqual(await fetchPublicSiteSettings({
     fetchImpl: async () => ({ ok: true, json: async () => ({ home_manual_limit: -1 }) }),
-  }), { home_manual_limit: 4 });
+  }), { home_manual_limit: 4, phone_section_title: '휴대폰 초특가 핫딜' });
   assert.deepEqual(await fetchPublicSiteSettings({ fetchImpl: async () => { throw new Error('offline'); } }), {
-    home_manual_limit: 4,
+    home_manual_limit: 4, phone_section_title: '휴대폰 초특가 핫딜',
   });
+});
+
+test('전용 휴대폰 섹션은 게시 API의 메인 수동 딜만 우선순위 순으로 최대 네 개 선택한다', () => {
+  const deals = [
+    { id: 'auto', isManual: false, showOnHome: true, priority: 999 },
+    { id: 'off', isManual: true, showOnHome: false, priority: 999 },
+    ...Array.from({ length: 6 }, (_, index) => ({
+      id: `m${index}`, isManual: true, showOnHome: true, priority: index,
+      publishedAt: `2026-09-0${index + 1}T00:00:00Z`,
+    })),
+  ];
+  assert.deepEqual(selectPhoneDeals(deals, { limit: 20 }).map((deal) => deal.id), ['m5', 'm4', 'm3', 'm2']);
+  assert.deepEqual(selectPhoneDeals(deals, { limit: 2 }).map((deal) => deal.id), ['m5', 'm4']);
+  assert.deepEqual(selectPhoneDeals(deals, { limit: 0 }), []);
+});
+
+test('공개 사이트 설정은 휴대폰 섹션 제목을 보존하되 비정상 값은 기본 제목으로 닫는다', async () => {
+  assert.deepEqual(await fetchPublicSiteSettings({
+    fetchImpl: async () => ({ ok: true, json: async () => ({ home_manual_limit: 4, phone_section_title: '오늘의 폰딜', admin_note: 'secret' }) }),
+  }), { home_manual_limit: 4, phone_section_title: '오늘의 폰딜' });
+  assert.equal((await fetchPublicSiteSettings({ fetchImpl: async () => ({ ok: true, json: async () => ({ phone_section_title: '' }) }) })).phone_section_title, '휴대폰 초특가 핫딜');
 });

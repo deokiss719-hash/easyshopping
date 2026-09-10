@@ -53,4 +53,146 @@ test('published manual API mapping exposes same-origin image endpoint instead of
   });
   assert.equal(mapped.imageUrl, '/api/manual-deal-images/7');
   assert.equal(mapped.imageUrl.includes('external.example'), false);
+  assert.equal(mapped.url, 'https://shop.example/phone');
+});
+
+test('admin image upload is authenticated, same-origin/CSRF protected, decoded, and stored under a server key', async (t) => {
+  const uploads = [];
+  let conversions = 0;
+  const auth = {
+    requireAuth(req, res, next) {
+      if (req.get('authorization') !== 'ok') return res.status(401).json({ error: 'authentication_required' });
+      return next();
+    },
+    requireMutationProtection(req, res, next) {
+      if (req.get('origin') !== `http://${req.get('host')}`) return res.status(403).json({ error: 'same_origin_required' });
+      if (req.get('x-csrf-token') !== 'ok') return res.status(403).json({ error: 'csrf_invalid' });
+      return next();
+    },
+  };
+  const store = { listManualDeals: async () => [] };
+  const storage = {
+    enabled: true,
+    publicUrlForKey(key) { return `https://images.example.test/${key}`; },
+    async uploadWebp(value) {
+      uploads.push(value);
+      return `https://images.example.test/${value.key}`;
+    },
+  };
+  const convertImage = async (body) => {
+    conversions += 1;
+    assert.deepEqual(body, Buffer.from('valid png bytes'));
+    return Buffer.from('encoded webp');
+  };
+  const app = express();
+  app.use('/api/admin', createAdminApiRouter({ store, auth, imageStorage: storage, convertImage }));
+  app.use(adminJsonErrorHandler);
+  const { server, origin } = await listen(app); t.after(() => server.close());
+  const url = `${origin}/api/admin/images`;
+
+  assert.equal((await fetch(url, { method: 'POST', headers: { 'content-type': 'image/png' }, body: 'x' })).status, 401);
+  assert.equal((await fetch(url, { method: 'POST', headers: { authorization: 'ok', origin, 'content-type': 'image/png' }, body: 'x' })).status, 403);
+  assert.equal((await fetch(url, { method: 'POST', headers: { authorization: 'ok', origin: 'https://evil.example', 'x-csrf-token': 'ok', 'content-type': 'image/png' }, body: 'x' })).status, 403);
+  assert.equal((await fetch(url, { method: 'POST', headers: { authorization: 'ok', origin, 'x-csrf-token': 'ok', 'content-type': 'image/svg+xml' }, body: '<svg/>' })).status, 415);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { authorization: 'ok', origin, 'x-csrf-token': 'ok', 'content-type': 'image/png', 'x-file-name': '../../secret.png' },
+    body: 'valid png bytes',
+  });
+  assert.equal(response.status, 201);
+  assert.deepEqual(await response.json(), { imageUrl: `https://images.example.test/${uploads[0].key}` });
+  assert.equal(conversions, 1);
+  assert.equal(uploads.length, 1);
+  assert.match(uploads[0].key, /^deals\/manual\/[a-f0-9]{64}\.webp$/);
+  assert.equal(uploads[0].key.includes('secret'), false);
+  assert.deepEqual(uploads[0].body, Buffer.from('encoded webp'));
+});
+
+test('admin image upload fails closed for unavailable storage, bad images, unsafe output URLs, and oversized bodies', async (t) => {
+  const auth = { requireAuth: (_req, _res, next) => next(), requireMutationProtection: (_req, _res, next) => next() };
+  const store = { listManualDeals: async () => [] };
+  const app = express();
+  app.use('/unavailable', createAdminApiRouter({ store, auth, imageStorage: { enabled: false }, convertImage: async () => Buffer.from('no') }));
+  app.use('/invalid', createAdminApiRouter({ store, auth, imageStorage: { enabled: true, publicUrlForKey: (key) => `https://images.example/${key}`, uploadWebp: async () => 'https://images.example/x.webp' }, convertImage: async () => { throw new Error('decoder internals'); } }));
+  app.use('/unsafe', createAdminApiRouter({ store, auth, imageStorage: { enabled: true, publicUrlForKey: (key) => `https://images.example/${key}`, uploadWebp: async () => 'http://127.0.0.1/credentials' }, convertImage: async () => Buffer.from('webp') }));
+  app.use(adminJsonErrorHandler);
+  const { server, origin } = await listen(app); t.after(() => server.close());
+  const options = { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: 'not really an image' };
+
+  const unavailable = await fetch(`${origin}/unavailable/images`, options);
+  assert.equal(unavailable.status, 503);
+  assert.deepEqual(await unavailable.json(), { error: 'image_storage_unavailable' });
+  const invalid = await fetch(`${origin}/invalid/images`, options);
+  assert.equal(invalid.status, 422);
+  assert.deepEqual(await invalid.json(), { error: 'invalid_image' });
+  const unsafe = await fetch(`${origin}/unsafe/images`, options);
+  assert.equal(unsafe.status, 502);
+  assert.deepEqual(await unsafe.json(), { error: 'image_upload_failed' });
+  const oversized = await fetch(`${origin}/invalid/images`, {
+    method: 'POST', headers: { 'content-type': 'image/png' }, body: Buffer.alloc((10 * 1024 * 1024) + 1),
+  });
+  assert.equal(oversized.status, 413);
+  assert.deepEqual(await oversized.json(), { error: 'request_too_large' });
+});
+
+test('admin image upload accepts only the storage-owned URL for the exact generated key', async (t) => {
+  const auth = { requireAuth: (_req, _res, next) => next(), requireMutationProtection: (_req, _res, next) => next() };
+  const store = { listManualDeals: async () => [] };
+  let returnedUrl = (_key) => '';
+  const storage = Object.freeze({
+    enabled: true,
+    publicUrlForKey: (key) => `https://images.example.test/base/${key}`,
+    uploadWebp: async ({ key }) => returnedUrl(key),
+  });
+  const app = express();
+  app.use('/api/admin', createAdminApiRouter({ store, auth, imageStorage: storage, convertImage: async () => Buffer.from('webp') }));
+  const { server, origin } = await listen(app); t.after(() => server.close());
+  const upload = () => fetch(`${origin}/api/admin/images`, {
+    method: 'POST', headers: { 'content-type': 'image/png' }, body: 'decoded image',
+  });
+
+  const attacks = [
+    (key) => `https://evil.example/${key}`,
+    (key) => `https://images.example.test/baseball/${key}`,
+    (key) => `https://user:pass@images.example.test/base/${key}`,
+    (key) => `https://images.example.test/base/${key}?token=secret`,
+    (key) => `https://images.example.test/base/${key}#fragment`,
+    (key) => `https://images.example.test/base/${key}/extra`,
+    (key) => `https://images.example.test/base/%2e%2e/base/${key}`,
+    (key) => `https://images.example.test/base%2f${key}`,
+  ];
+  for (const attack of attacks) {
+    returnedUrl = attack;
+    const response = await upload();
+    assert.equal(response.status, 502, attack('deals/manual/key.webp'));
+    assert.deepEqual(await response.json(), { error: 'image_upload_failed' });
+  }
+
+  returnedUrl = (key) => storage.publicUrlForKey(key);
+  const accepted = await upload();
+  assert.equal(accepted.status, 201);
+  assert.match((await accepted.json()).imageUrl, /^https:\/\/images\.example\.test\/base\/deals\/manual\/[a-f0-9]{64}\.webp$/);
+});
+
+test('admin image upload rejects decoded SVG even when it is labelled as an allowed image type', async (t) => {
+  const auth = { requireAuth: (_req, _res, next) => next(), requireMutationProtection: (_req, _res, next) => next() };
+  let uploads = 0;
+  const storage = {
+    enabled: true,
+    publicUrlForKey: (key) => `https://images.example.test/${key}`,
+    uploadWebp: async ({ key }) => { uploads += 1; return `https://images.example.test/${key}`; },
+  };
+  const app = express();
+  app.use('/api/admin', createAdminApiRouter({ store: { listManualDeals: async () => [] }, auth, imageStorage: storage }));
+  const { server, origin } = await listen(app); t.after(() => server.close());
+
+  const response = await fetch(`${origin}/api/admin/images`, {
+    method: 'POST',
+    headers: { 'content-type': 'image/png' },
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100"/></svg>',
+  });
+  assert.equal(response.status, 422);
+  assert.deepEqual(await response.json(), { error: 'invalid_image' });
+  assert.equal(uploads, 0);
 });

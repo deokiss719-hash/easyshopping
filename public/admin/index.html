@@ -42,6 +42,8 @@
               <label class="span-2">상품명<input id="title" maxlength="300" required></label>
               <label>현재 가격<input id="current-price" type="number" min="0" step="1" inputmode="numeric"></label>
               <label>정상 가격<input id="original-price" type="number" min="0" step="1" inputmode="numeric"></label>
+              <label class="span-2">이미지 파일<input id="image-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label>
+              <div class="span-2 image-upload"><img id="image-preview" alt="선택한 상품 이미지 미리보기" hidden><p id="image-upload-status" class="field-help" aria-live="polite">이미지를 선택하면 안전한 WebP 파일로 업로드합니다. (최대 10 MiB)</p></div>
               <label class="span-2">이미지 URL<input id="image-url" type="url" inputmode="url" placeholder="https://..."></label>
               <label>판매처<input id="merchant" maxlength="200"></label>
               <label>카테고리<select id="category"><option selected>디지털/가전</option><option>식품</option><option>생활/주방</option><option>패션/의류</option><option>뷰티</option><option>건강</option><option>육아/아동</option><option>게임</option><option>스포츠/레저</option><option>반려동물</option><option>자동차</option><option>여행/숙박</option><option>상품권/쿠폰</option><option>기타</option></select></label>

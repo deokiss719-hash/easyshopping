@@ -106,6 +106,10 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .search-suggestions span { color: var(--text-tertiary); font-weight: 700; }
 .search-suggestions button { padding: 5px 0; color: var(--text-secondary); background: transparent; border: 0; cursor: pointer; }
 .search-suggestions button:hover { color: var(--primary); }
+.phone-deals { margin-top: 48px; }
+.phone-deals[hidden] { display: none; }
+.phone-deals .section-head { margin-bottom: 20px; }
+.phone-deals .section-head h2 { margin: 5px 0 0; color: var(--navy); font-size: clamp(24px,3vw,30px); letter-spacing: -.04em; }
 .quick-menu { max-width: 880px; margin: 42px auto 0; display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
 .quick-menu a, .quick-menu button { min-width: 0; padding: 16px; display: grid; grid-template-columns: 42px 1fr; grid-template-rows: auto auto; column-gap: 12px; text-align: left; background: var(--surface); border: 0; border-radius: 16px; cursor: pointer; transition: background .18s, transform .18s; }
 .quick-menu a:hover, .quick-menu button:hover { background: var(--background); transform: translateY(-2px); }
@@ -270,6 +274,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   .hero-search input { font-size: 15px; }
   .hero-search kbd { display: none; }
   .search-suggestions { justify-content: flex-start; padding-inline: 2px; }
+  .phone-deals { margin-top: 34px; }
+  .phone-deals .deal-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .quick-menu { margin-top: 30px; grid-template-columns: 1fr 1fr; gap: 7px; }
   .quick-menu a, .quick-menu button { padding: 12px; grid-template-columns: 38px 1fr; column-gap: 9px; }
   .quick-icon { width: 38px; height: 38px; border-radius: 12px; }

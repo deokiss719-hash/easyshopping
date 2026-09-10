@@ -1,6 +1,14 @@
 const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 3 * 1024 * 1024;
 const MIN_IMAGE_DIMENSION = 80;
+const ALLOWED_DECODED_FORMATS = new Set(['jpeg', 'png', 'webp', 'gif']);
+
+function isAllowedDecodedFormat(metadata) {
+  if (ALLOWED_DECODED_FORMATS.has(metadata?.format)) return true;
+  return metadata?.format === 'heif'
+    && metadata.compression === 'av1'
+    && metadata.mediaType === 'image/avif';
+}
 
 async function convertToWebp(input, { sharpImpl } = {}) {
   if (!Buffer.isBuffer(input) || input.length === 0) throw new TypeError('image body is required');
@@ -8,6 +16,7 @@ async function convertToWebp(input, { sharpImpl } = {}) {
   const sharp = sharpImpl || require('sharp');
   const image = sharp(input, { limitInputPixels: 40_000_000, sequentialRead: true });
   const metadata = await image.metadata();
+  if (!isAllowedDecodedFormat(metadata)) throw new TypeError('unsupported decoded image format');
   if (!Number.isSafeInteger(metadata.width) || !Number.isSafeInteger(metadata.height)
     || metadata.width < MIN_IMAGE_DIMENSION || metadata.height < MIN_IMAGE_DIMENSION) {
     throw Object.assign(new Error(`image dimensions must be at least ${MIN_IMAGE_DIMENSION}x${MIN_IMAGE_DIMENSION}`), {

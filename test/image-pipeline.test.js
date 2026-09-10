@@ -33,7 +33,7 @@ test('provider registry는 실제 HTTPS 판매처 URL이 있을 때만 provider�
 test('WebP 변환은 크기를 제한하고 메타데이터를 제거하는 sharp 옵션을 사용한다', async () => {
   const calls = [];
   const pipeline = {
-    async metadata() { calls.push(['metadata']); return { width: 120, height: 100 }; },
+    async metadata() { calls.push(['metadata']); return { format: 'jpeg', width: 120, height: 100 }; },
     rotate() { calls.push(['rotate']); return this; },
     resize(options) { calls.push(['resize', options]); return this; },
     webp(options) { calls.push(['webp', options]); return this; },
@@ -52,6 +52,38 @@ test('WebP 변환은 크기를 제한하고 메타데이터를 제거하는 shar
   assert.deepEqual(calls[3], ['resize', { width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true }]);
   assert.deepEqual(calls[4], ['webp', { quality: 82, effort: 4 }]);
   await assert.rejects(() => convertToWebp(Buffer.alloc(10 * 1024 * 1024 + 1), { sharpImpl }), /too large/);
+});
+
+test('WebP 변환은 디코딩된 JPEG/PNG/WebP/GIF/AVIF만 허용한다', async () => {
+  function sharpFor(metadata) {
+    return () => ({
+      metadata: async () => metadata,
+      rotate() { return this; },
+      resize() { return this; },
+      webp() { return this; },
+      toBuffer: async () => Buffer.from('webp'),
+    });
+  }
+  for (const format of ['jpeg', 'png', 'webp', 'gif']) {
+    await assert.doesNotReject(() => convertToWebp(Buffer.from('input'), {
+      sharpImpl: sharpFor({ format, width: 100, height: 100 }),
+    }));
+  }
+  await assert.doesNotReject(() => convertToWebp(Buffer.from('input'), {
+    sharpImpl: sharpFor({ format: 'heif', compression: 'av1', mediaType: 'image/avif', width: 100, height: 100 }),
+  }));
+  for (const metadata of [
+    { format: 'svg' },
+    { format: 'tiff' },
+    { format: 'heif', compression: 'hevc', mediaType: 'image/heic' },
+    { format: 'heif', compression: 'av1', mediaType: 'image/heic' },
+    { format: 'avif' },
+    {},
+  ]) {
+    await assert.rejects(() => convertToWebp(Buffer.from('input'), {
+      sharpImpl: sharpFor({ ...metadata, width: 100, height: 100 }),
+    }), /unsupported decoded image format/);
+  }
 });
 
 test('실제 이미지가 80x80 미만이면 WebP 변환과 R2 업로드 전에 거부한다', async () => {

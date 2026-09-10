@@ -4,11 +4,14 @@ const state = {
   query: '',
   deals: [],
   visibleCount: 8,
-  siteSettings: { home_manual_limit: 4 },
+  siteSettings: { home_manual_limit: 4, phone_section_title: '휴대폰 초특가 핫딜' },
 };
 
 const elements = {
   searchInput: document.querySelector('#searchInput'),
+  phoneDeals: document.querySelector('#phone-deals'),
+  phoneDealTitle: document.querySelector('#phone-deal-title'),
+  phoneDealGrid: document.querySelector('#phoneDealGrid'),
   dealGrid: document.querySelector('#dealGrid'),
   popularList: document.querySelector('#popularList'),
   latestList: document.querySelector('#latestList'),
@@ -79,6 +82,7 @@ function productCard(deal) {
         <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(deal.source)}</span></div>
         <h3 class="card-title">${escapeHtml(deal.title)}</h3>
         <div class="price-row"><strong class="current-price">${formatPrice(deal.price)}</strong></div>
+        ${deal.originalPrice != null ? `<p class="original-price">${formatPrice(deal.originalPrice)}</p>` : ''}
         <div class="card-meta"><span>${escapeHtml(deal.postedAt)}</span><span>${escapeHtml(deal.category)}</span></div>
       </div>
     </article>`;
@@ -163,6 +167,15 @@ function renderDeals() {
   bindDealClicks(elements.dealGrid);
 }
 
+function renderPhoneDeals(deals) {
+  const phoneDeals = DealUtils.selectPhoneDeals(deals);
+  elements.phoneDealTitle.textContent = state.siteSettings.phone_section_title;
+  elements.phoneDealGrid.innerHTML = phoneDeals.map(productCard).join('');
+  elements.phoneDeals.hidden = phoneDeals.length === 0;
+  bindImageFallbacks(elements.phoneDealGrid);
+  bindDealClicks(elements.phoneDealGrid);
+}
+
 async function loadDeals({ scroll = false } = {}) {
   dealsController?.abort();
   const controller = new AbortController();
@@ -175,6 +188,7 @@ async function loadDeals({ scroll = false } = {}) {
     });
     if (controller !== dealsController) return;
     state.deals = rawDeals.map((deal) => DealUtils.normalizeDeal(deal));
+    if (!state.query) renderPhoneDeals(state.deals);
     renderDeals();
     renderLatest(state.deals);
     if (scroll) document.querySelector('#all-deals').scrollIntoView({ behavior: 'smooth', block: 'start' });

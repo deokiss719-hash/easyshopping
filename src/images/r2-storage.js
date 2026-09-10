@@ -59,6 +59,11 @@ function validObjectKey(key) {
     && !key.includes('..');
 }
 
+function publicUrlForKey(config, key) {
+  if (!validObjectKey(key)) throw new TypeError('R2 object key is invalid');
+  return `${config.publicBaseUrl}/${key.split('/').map(encodeURIComponent).join('/')}`;
+}
+
 function createR2Storage({ config = readR2Config(), client, PutObjectCommand } = {}) {
   if (!config.enabled) {
     return Object.freeze({ enabled: false, reason: 'missing_configuration', missing: config.missing || [] });
@@ -81,6 +86,9 @@ function createR2Storage({ config = readR2Config(), client, PutObjectCommand } =
 
   return Object.freeze({
     enabled: true,
+    publicUrlForKey(key) {
+      return publicUrlForKey(config, key);
+    },
     async uploadWebp({ key, body }) {
       if (!validObjectKey(key)) throw new TypeError('R2 object key is invalid');
       if (!Buffer.isBuffer(body) || body.length === 0) throw new TypeError('WebP body is required');
@@ -91,7 +99,7 @@ function createR2Storage({ config = readR2Config(), client, PutObjectCommand } =
         ContentType: 'image/webp',
         CacheControl: 'public, max-age=31536000, immutable',
       }));
-      return `${config.publicBaseUrl}/${key.split('/').map(encodeURIComponent).join('/')}`;
+      return publicUrlForKey(config, key);
     },
   });
 }

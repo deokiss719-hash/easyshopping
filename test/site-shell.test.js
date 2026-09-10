@@ -80,3 +80,16 @@ test('공개 화면은 수동 휴대폰 특가를 기존 카드에 작게 표시
   assert.match(script, /mixHomeDeals/);
   assert.match(script, /home_manual_limit/);
 });
+
+test('휴대폰 초특가 섹션은 검색 바로 뒤, 빠른 메뉴 앞에 있고 설정 제목과 공용 카드를 쓴다', () => {
+  const searchAt = html.indexOf('class="hero-search-wrap"');
+  const phoneAt = html.indexOf('id="phone-deals"');
+  const quickAt = html.indexOf('class="quick-menu"');
+  assert.ok(searchAt >= 0 && searchAt < phoneAt && phoneAt < quickAt);
+  assert.match(html, /id="phone-deal-title"/);
+  assert.match(html, /id="phoneDealGrid"/);
+  assert.match(script, /selectPhoneDeals\(/);
+  assert.match(script, /phone_section_title/);
+  assert.match(script, /elements\.phoneDealGrid\.innerHTML\s*=\s*phoneDeals\.map\(productCard\)/);
+  assert.match(script, /class="original-price"/);
+});

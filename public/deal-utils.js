@@ -123,18 +123,33 @@
     return mixed;
   }
 
+  function selectPhoneDeals(deals, { limit = 4 } = {}) {
+    const safeLimit = Number.isSafeInteger(limit) && limit >= 0 ? Math.min(limit, 4) : 4;
+    return deals
+      .filter((deal) => deal.isManual && deal.showOnHome)
+      .sort((a, b) => (b.priority - a.priority)
+        || (new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0)))
+      .slice(0, safeLimit);
+  }
+
   async function fetchPublicSiteSettings({ fetchImpl = fetch, signal } = {}) {
-    const defaults = { home_manual_limit: 4 };
+    const defaults = { home_manual_limit: 4, phone_section_title: '휴대폰 초특가 핫딜' };
     try {
       const response = await fetchImpl('/api/site-settings', { signal });
       if (!response?.ok) return defaults;
       const settings = await response.json();
       const homeManualLimit = settings?.home_manual_limit;
+      const phoneSectionTitle = typeof settings?.phone_section_title === 'string'
+        ? settings.phone_section_title.trim()
+        : '';
       return {
         home_manual_limit: Number.isSafeInteger(homeManualLimit)
           && homeManualLimit >= 0 && homeManualLimit <= 20
           ? homeManualLimit
           : defaults.home_manual_limit,
+        phone_section_title: phoneSectionTitle.length >= 1 && phoneSectionTitle.length <= 100
+          ? phoneSectionTitle
+          : defaults.phone_section_title,
       };
     } catch (error) {
       if (error?.name === 'AbortError') throw error;
@@ -171,6 +186,6 @@
 
   return {
     safeImageUrl, relativeTime, normalizeDeal,
-    filterAndSortDeals, mixHomeDeals, fetchPublicSiteSettings, fetchAllLiveDeals,
+    filterAndSortDeals, mixHomeDeals, selectPhoneDeals, fetchPublicSiteSettings, fetchAllLiveDeals,
   };
 });

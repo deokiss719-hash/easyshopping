@@ -8,6 +8,7 @@ const { classifyDeal } = require('./src/deal-category');
 const { startPollingCollector } = require('./src/polling-collector');
 const { createProviderRegistry } = require('./src/images/provider-registry');
 const { readR2Config, createR2Storage } = require('./src/images/r2-storage');
+const { convertToWebp } = require('./src/images/webp');
 const {
   createImagePipeline,
   runGuardedImageBackfill,
@@ -158,12 +159,19 @@ async function start() {
     await migrate(pool);
     store = createDealStore(pool);
     const adminStore = createAdminStore(pool);
+    const imageStorage = createR2Storage({ config: r2Config });
     adminAuth = await mountDatabaseApis({
       app,
       adminStore,
       adminRuntime,
       createAuth: (sessionSecret) => createAdminAuth({ store: adminStore, csrfSecret: sessionSecret }),
-      createAdminApi: (auth) => createAdminApiRouter({ store: adminStore, auth, metadataFetcher: fetchUrlMetadata }),
+      createAdminApi: (auth) => createAdminApiRouter({
+        store: adminStore,
+        auth,
+        metadataFetcher: fetchUrlMetadata,
+        imageStorage,
+        convertImage: convertToWebp,
+      }),
       createPublicSettings: () => createPublicSettingsRouter(adminStore),
       createManualImages: () => createManualDealImageRouter({ store: adminStore }),
     });
@@ -171,7 +179,6 @@ async function start() {
     console.log(`기존 핫딜 카테고리 재분류 완료: ${reclassified}건 변경`);
     databaseMode = 'postgresql';
 
-    const imageStorage = createR2Storage({ config: r2Config });
     const providerRegistry = createProviderRegistry([
       createPpomppuImageProvider({ requestIntervalMs: 5_000 }),
     ]);

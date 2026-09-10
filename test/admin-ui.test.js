@@ -39,7 +39,28 @@ test('admin login is public and noindex while management HTML remains authentica
   assert.equal(shell.status, 200);
   const html = await shell.text();
   for (const text of ['대시보드', '휴대폰 핫딜 관리', '상품 관리', '메인 노출 관리', '사이트 설정']) assert.match(html, new RegExp(text));
-  for (const control of ['deal-form', 'metadata-fetch', 'current-price', 'original-price', 'image-url', 'target-url', 'category', 'is-published', 'show-on-home', 'priority']) assert.match(html, new RegExp(`id="${control}"`));
+  for (const control of ['deal-form', 'metadata-fetch', 'current-price', 'original-price', 'image-file', 'image-preview', 'image-upload-status', 'image-url', 'target-url', 'category', 'is-published', 'show-on-home', 'priority']) assert.match(html, new RegExp(`id="${control}"`));
+  assert.match(html, /id="image-file"[^>]+type="file"[^>]+accept="image\/jpeg,image\/png,image\/webp,image\/gif,image\/avif"/);
+  const adminScript = await (await fetch(`${origin}/admin/admin.js`)).text();
+  assert.match(adminScript, /\/api\/admin\/images/);
+  assert.match(adminScript, /setValue\('image-url',\s*data\.imageUrl\)/);
+  assert.doesNotMatch(adminScript, /URL\.(?:createObjectURL|revokeObjectURL)|blob:|data:/);
+  assert.match(adminScript, /preview\.src\s*=\s*data\.imageUrl/);
+  assert.match(adminScript, /new AbortController\(\)/);
+  assert.match(adminScript, /signal:\s*controller\.signal/);
+  assert.match(adminScript, /state\.uploadController\?\.abort\(\)/);
+  assert.match(adminScript, /state\.formGeneration\s*\+=\s*1/);
+  assert.match(adminScript, /\+\+state\.uploadGeneration/);
+  assert.match(adminScript, /state\.uploadPromise\s*=\s*uploadPromise/);
+  assert.match(adminScript, /await\s+(?:state\.)?uploadPromise/);
+  assert.match(adminScript, /state\.uploadPromise\s*!==\s*null/);
+  assert.match(adminScript, /state\.formGeneration\s*!==\s*formGeneration\s*\|\|\s*state\.uploadGeneration\s*!==\s*uploadGeneration/);
+  assert.match(adminScript, /state\.uploadPromise\s*===\s*uploadPromise/);
+  assert.match(adminScript, /setValue\('image-url',\s*''\)/);
+  assert.doesNotMatch(adminScript, /X-File-Name/i);
+  assert.match(adminScript, /'current-price'/);
+  assert.match(adminScript, /'original-price'/);
+  assert.match(adminScript, /productUrl:\s*byId\('target-url'\)/);
 });
 
 test('admin assets are public with noindex headers but cannot expose management document', async (t) => {

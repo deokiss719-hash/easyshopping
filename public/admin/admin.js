@@ -1,7 +1,16 @@
 (() => {
   'use strict';
 
-  const state = { csrfToken: '', deals: [], fetchedMetadataUrl: '' };
+  const state = {
+    csrfToken: '',
+    deals: [],
+    fetchedMetadataUrl: '',
+    formGeneration: 0,
+    uploadGeneration: 0,
+    uploadController: null,
+    uploadPromise: null,
+    savingDeal: false,
+  };
   const byId = (id) => document.getElementById(id);
 
   function showMessage(id, message, kind = 'notice') {
@@ -19,7 +28,7 @@
   async function api(path, options = {}) {
     const headers = new Headers(options.headers || {});
     const method = String(options.method || 'GET').toUpperCase();
-    if (options.body != null) headers.set('Content-Type', 'application/json');
+    if (options.body != null && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
     if (!['GET', 'HEAD'].includes(method) && state.csrfToken) headers.set('X-CSRF-Token', state.csrfToken);
     const response = await fetch(path, { ...options, method, headers, credentials: 'same-origin' });
     if (response.status === 401) {
@@ -58,6 +67,22 @@
     const article = document.createElement('article');
     article.className = compact ? 'compact-item' : 'deal-item';
     const body = document.createElement('div');
+    if (!compact) {
+      body.className = 'deal-content';
+      let thumbnail;
+      if (isTrustedImageUrl(deal.imageUrl)) {
+        thumbnail = document.createElement('img');
+        thumbnail.className = 'deal-thumb';
+        thumbnail.src = deal.imageUrl;
+        thumbnail.alt = '';
+        thumbnail.addEventListener('error', () => {
+          thumbnail.replaceWith(textNode('div', '이미지 없음', 'deal-thumb deal-thumb-placeholder'));
+        }, { once: true });
+      } else {
+        thumbnail = textNode('div', '이미지 없음', 'deal-thumb deal-thumb-placeholder');
+      }
+      article.append(thumbnail);
+    }
     body.append(textNode('strong', deal.title || '제목 없음'));
     body.append(textNode('p', `${deal.merchant || '판매처 미정'} · ${priceText(deal.priceAmount)}`));
     const flags = [];
@@ -65,7 +90,6 @@
     if (deal.showOnHome) flags.push('메인 노출');
     flags.push(`우선순위 ${Number.isSafeInteger(deal.priority) ? deal.priority : 0}`);
     body.append(textNode('span', flags.join(' · '), 'deal-meta'));
-    article.append(body);
     if (!compact) {
       const actions = document.createElement('div');
       actions.className = 'deal-actions';
@@ -76,8 +100,9 @@
       remove.type = 'button';
       remove.addEventListener('click', () => deleteDeal(deal.id));
       actions.append(edit, remove);
-      article.append(actions);
+      body.append(actions);
     }
+    article.append(body);
     return article;
   }
 
@@ -111,7 +136,45 @@
     if (element) element.value = value == null ? '' : String(value);
   }
 
+  function updateSaveControl() {
+    const button = byId('save-deal');
+    if (button) button.disabled = state.savingDeal || state.uploadPromise !== null;
+  }
+
+  function clearImagePreview() {
+    const preview = byId('image-preview');
+    if (!preview) return;
+    preview.removeAttribute('src');
+    preview.hidden = true;
+  }
+
+  function isTrustedImageUrl(value) {
+    try {
+      return new URL(value).protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  function showExistingImagePreview(value) {
+    clearImagePreview();
+    if (!isTrustedImageUrl(value)) return;
+    const preview = byId('image-preview');
+    preview.src = value;
+    preview.hidden = false;
+  }
+
+  function invalidateUpload() {
+    state.formGeneration += 1;
+    state.uploadGeneration += 1;
+    state.uploadController?.abort();
+    state.uploadController = null;
+    state.uploadPromise = null;
+    updateSaveControl();
+  }
+
   function resetForm() {
+    invalidateUpload();
     byId('deal-form').reset();
     setValue('deal-id', '');
     setValue('priority', 0);
@@ -119,12 +182,15 @@
     byId('form-title').textContent = '새 핫딜 등록';
     byId('cancel-edit').classList.add('hidden');
     state.fetchedMetadataUrl = '';
+    clearImagePreview();
+    byId('image-upload-status').textContent = '이미지를 선택하면 안전한 WebP 파일로 업로드합니다. (최대 10 MiB)';
     byId('metadata-message').textContent = 'HTTPS 상품 URL을 입력하면 제목, 가격, 이미지 등을 자동으로 채워요.';
   }
 
   function editDeal(id) {
     const deal = state.deals.find((item) => String(item.id) === String(id));
     if (!deal) return;
+    invalidateUpload();
     setView('phone-deals');
     setValue('deal-id', deal.id);
     setValue('metadata-url', deal.productUrl);
@@ -133,6 +199,7 @@
     setValue('current-price', deal.priceAmount);
     setValue('original-price', deal.originalPriceAmount);
     setValue('image-url', deal.imageUrl);
+    showExistingImagePreview(deal.imageUrl);
     setValue('merchant', deal.merchant);
     setValue('category', deal.category || '디지털/가전');
     setValue('description', deal.description);
@@ -199,11 +266,61 @@
     }
   }
 
+  async function uploadImage() {
+    const input = byId('image-file');
+    const file = input.files?.[0];
+    if (!file) return;
+
+    state.uploadController?.abort();
+    const formGeneration = state.formGeneration;
+    const uploadGeneration = ++state.uploadGeneration;
+    const controller = new AbortController();
+    state.uploadController = controller;
+
+    const preview = byId('image-preview');
+    clearImagePreview();
+    setValue('image-url', '');
+    byId('image-upload-status').textContent = '이미지를 업로드하는 중입니다…';
+
+    let uploadPromise;
+    try {
+      uploadPromise = api('/api/admin/images', {
+        method: 'POST',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+        signal: controller.signal,
+      });
+      state.uploadPromise = uploadPromise;
+      updateSaveControl();
+      const data = await uploadPromise;
+      if (state.formGeneration !== formGeneration || state.uploadGeneration !== uploadGeneration || controller.signal.aborted) return;
+      if (!isTrustedImageUrl(data?.imageUrl)) throw new Error('서버가 안전한 이미지 URL을 반환하지 않았습니다.');
+      setValue('image-url', data.imageUrl);
+      preview.src = data.imageUrl;
+      preview.hidden = false;
+      byId('image-upload-status').textContent = '이미지를 업로드했습니다.';
+    } catch (error) {
+      if (state.formGeneration === formGeneration && state.uploadGeneration === uploadGeneration && !controller.signal.aborted) {
+        byId('image-upload-status').textContent = errorMessage(error, '이미지를 업로드하지 못했습니다.');
+      }
+    } finally {
+      if (state.formGeneration === formGeneration && state.uploadGeneration === uploadGeneration && state.uploadPromise === uploadPromise) {
+        state.uploadController = null;
+        state.uploadPromise = null;
+        updateSaveControl();
+      }
+    }
+  }
+
   async function saveDeal(event) {
     event.preventDefault();
-    const button = byId('save-deal');
-    button.disabled = true;
+    const formGeneration = state.formGeneration;
+    const uploadGeneration = state.uploadGeneration;
+    state.savingDeal = true;
+    updateSaveControl();
     try {
+      if (state.uploadPromise) await state.uploadPromise;
+      if (state.formGeneration !== formGeneration || state.uploadGeneration !== uploadGeneration) return;
       const id = byId('deal-id').value;
       const payload = formPayload();
       await api(id ? `/api/admin/manual-deals/${encodeURIComponent(id)}` : '/api/admin/manual-deals', {
@@ -215,13 +332,15 @@
     } catch (error) {
       showMessage('status-message', errorMessage(error, '핫딜을 저장하지 못했습니다.'), 'error');
     } finally {
-      button.disabled = false;
+      state.savingDeal = false;
+      updateSaveControl();
     }
   }
 
   async function deleteDeal(id) {
     const deal = state.deals.find((item) => String(item.id) === String(id));
     if (!deal || !window.confirm(`“${deal.title}” 핫딜을 삭제할까요?`)) return;
+    invalidateUpload();
     try {
       await api(`/api/admin/manual-deals/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (byId('deal-id').value === String(id)) resetForm();
@@ -273,6 +392,7 @@
     byId('cancel-edit').addEventListener('click', resetForm);
     byId('deal-form').addEventListener('submit', saveDeal);
     byId('metadata-fetch').addEventListener('click', () => fetchMetadata());
+    byId('image-file').addEventListener('change', uploadImage);
     byId('metadata-url').addEventListener('input', () => { state.fetchedMetadataUrl = ''; });
     byId('metadata-url').addEventListener('change', () => { if (byId('metadata-url').checkValidity()) fetchMetadata({ quiet: true }); });
     byId('settings-form')?.addEventListener('submit', saveSettings);

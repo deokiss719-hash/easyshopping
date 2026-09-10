@@ -59,6 +59,8 @@ test('R2 adapter는 WebP와 장기 캐시 헤더로 업로드하고 자체 공�
   });
 
   const key = `deals/feed/${'a'.repeat(64)}.webp`;
+  assert.equal(Object.isFrozen(storage), true);
+  assert.equal(storage.publicUrlForKey(key), `https://images.example.com/${key}`);
   const url = await storage.uploadWebp({ key, body: Buffer.from('webp') });
 
   assert.equal(url, `https://images.example.com/${key}`);
@@ -70,4 +72,5 @@ test('R2 adapter는 WebP와 장기 캐시 헤더로 업로드하고 자체 공�
     CacheControl: 'public, max-age=31536000, immutable',
   });
   await assert.rejects(() => storage.uploadWebp({ key: '../secret.webp', body: Buffer.from('x') }), /key/);
+  assert.throws(() => storage.publicUrlForKey('../secret.webp'), /key/);
 });
