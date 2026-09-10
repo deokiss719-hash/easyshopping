@@ -12,6 +12,7 @@
     savingDeal: false,
   };
   const byId = (id) => document.getElementById(id);
+  const normalizeHttpsUrlInput = window.AdminUrlUtils.normalizeHttpsUrlInput;
 
   function showMessage(id, message, kind = 'notice') {
     const element = byId(id);
@@ -223,9 +224,11 @@
   function formPayload() {
     const priority = Number(byId('priority').value);
     if (!Number.isSafeInteger(priority)) throw new TypeError('우선순위는 정수로 입력해 주세요.');
+    const productUrl = normalizeHttpsUrlInput(byId('target-url').value);
+    setValue('target-url', productUrl);
     return {
       title: byId('title').value.trim(),
-      productUrl: byId('target-url').value.trim(),
+      productUrl,
       imageUrl: byId('image-url').value.trim() || null,
       merchant: byId('merchant').value.trim() || null,
       priceAmount: parsePrice('current-price'),
@@ -239,7 +242,8 @@
   }
 
   async function fetchMetadata({ quiet = false } = {}) {
-    const url = byId('metadata-url').value.trim();
+    const url = normalizeHttpsUrlInput(byId('metadata-url').value);
+    setValue('metadata-url', url);
     if (!url) {
       if (!quiet) byId('metadata-message').textContent = '상품 URL을 입력해 주세요.';
       return false;

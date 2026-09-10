@@ -60,7 +60,9 @@ test('admin login is public and noindex while management HTML remains authentica
   assert.doesNotMatch(adminScript, /X-File-Name/i);
   assert.match(adminScript, /'current-price'/);
   assert.match(adminScript, /'original-price'/);
-  assert.match(adminScript, /productUrl:\s*byId\('target-url'\)/);
+  assert.match(adminScript, /normalizeHttpsUrlInput\(byId\('target-url'\)\.value\)/);
+  assert.match(adminScript, /normalizeHttpsUrlInput\(byId\('metadata-url'\)\.value\)/);
+  assert.match(adminScript, /productUrl,\s*\n/);
 });
 
 test('admin assets are public with noindex headers but cannot expose management document', async (t) => {
@@ -69,7 +71,7 @@ test('admin assets are public with noindex headers but cannot expose management 
   const { server, origin } = await listen(app);
   t.after(() => server.close());
 
-  for (const asset of ['admin.css', 'login.js', 'admin.js']) {
+  for (const asset of ['admin.css', 'login.js', 'admin.js', 'url-utils.js']) {
     const response = await fetch(`${origin}/admin/${asset}`);
     assert.equal(response.status, 200, asset);
     assert.match(response.headers.get('x-robots-tag'), /noindex/);

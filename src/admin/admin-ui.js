@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('node:path');
 
-const PUBLIC_ASSETS = new Set(['admin.css', 'admin.js', 'login.js']);
+const PUBLIC_ASSETS = new Set(['admin.css', 'admin.js', 'login.js', 'url-utils.js']);
 
 function createAdminUiRouter({ auth, publicDir = path.join(__dirname, '..', '..', 'public', 'admin') } = {}) {
   const router = express.Router();
