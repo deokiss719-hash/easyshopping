@@ -2,9 +2,14 @@ const express = require('express');
 const { InvalidQueryError } = require('./deal-store');
 
 function toApiDeal(deal) {
+  const manualImageUrl = deal.source === 'manual'
+    && /^\d+$/.test(String(deal.manualId || ''))
+    && deal.sourceImageUrl
+    ? `/api/manual-deal-images/${deal.manualId}`
+    : deal.imageUrl;
   return {
     id: deal.id,
-    badge: deal.isEnded ? '종료' : 'LIVE',
+    badge: deal.isEnded ? '종료' : (deal.badge || 'LIVE'),
     title: deal.title,
     price: deal.priceAmount,
     priceText: deal.priceText,
@@ -13,8 +18,13 @@ function toApiDeal(deal) {
     source: deal.source,
     publishedAt: deal.publishedAt,
     postedAt: deal.publishedAt,
-    imageUrl: deal.imageUrl,
-    imageStatus: deal.imageStatus || (deal.imageUrl ? 'ready' : 'missing_merchant_url'),
+    imageUrl: manualImageUrl,
+    imageStatus: deal.imageStatus || (manualImageUrl ? 'ready' : 'missing_merchant_url'),
+    originalPrice: deal.originalPriceAmount ?? null,
+    description: deal.description ?? null,
+    isManual: deal.source === 'manual',
+    showOnHome: deal.showOnHome ?? false,
+    priority: deal.priority ?? 0,
     url: deal.originalUrl,
     isEnded: deal.isEnded,
   };

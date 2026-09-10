@@ -70,3 +70,13 @@ test('메인·실시간·최신 상품 영역은 실제 이미지와 기존 fall
   assert.match(styles, /\.popular-image[^}]*object-fit:\s*cover/);
   assert.match(styles, /\.latest-image[^}]*object-fit:\s*cover/);
 });
+
+test('공개 화면은 수동 휴대폰 특가를 기존 카드에 작게 표시하고 전체 source를 조회한다', () => {
+  assert.match(script, /manual-deal-badge[^\n]*이지폰 특가/);
+  assert.match(styles, /\.manual-deal-badge\s*\{/);
+  assert.match(script, /fetchAllLiveDeals\(\{\s*query:\s*state\.query/);
+  assert.doesNotMatch(script, /fetchAllLiveDeals\(\{\s*source:\s*['"]ppomppu['"]/);
+  assert.match(script, /fetchPublicSiteSettings/);
+  assert.match(script, /mixHomeDeals/);
+  assert.match(script, /home_manual_limit/);
+});

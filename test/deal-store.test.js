@@ -50,6 +50,48 @@ test('upsert inserts a deal and exposes it through the listing API', async () =>
   await pool.end();
 });
 
+test('public listing exposes only manual projections linked to a published manual deal', async () => {
+  const { pool, store } = await makeStore();
+  await store.upsert(firstDeal);
+  const published = await store.upsert({
+    ...firstDeal,
+    source: 'manual',
+    sourceItemId: 'published-projection',
+    title: '공개 수동 상품',
+    originalUrl: 'https://example.com/manual/published',
+  });
+  const draft = await store.upsert({
+    ...firstDeal,
+    source: 'manual',
+    sourceItemId: 'draft-projection',
+    title: '비공개 수동 상품',
+    originalUrl: 'https://example.com/manual/draft',
+  });
+  await store.upsert({
+    ...firstDeal,
+    source: 'manual',
+    sourceItemId: 'orphan-projection',
+    title: '고아 수동 상품',
+    originalUrl: 'https://example.com/manual/orphan',
+  });
+  await pool.query(
+    `INSERT INTO manual_deals (deal_id, title, product_url, is_published)
+     VALUES ($1, '공개 수동 상품', 'https://example.com/manual/published', TRUE),
+            ($2, '비공개 수동 상품', 'https://example.com/manual/draft', FALSE)`,
+    [published.id, draft.id],
+  );
+
+  const all = await store.list({ page: 1, size: 1 });
+  assert.equal(all.total, 2);
+  assert.equal(all.items.length, 1);
+  assert.equal(all.items[0].sourceItemId, 'published-projection');
+
+  const manual = await store.list({ source: 'manual', page: 1, size: 20 });
+  assert.equal(manual.total, 1);
+  assert.deepEqual(manual.items.map((deal) => deal.sourceItemId), ['published-projection']);
+  await pool.end();
+});
+
 test('upsert updates an existing source item instead of creating a duplicate', async () => {
   const { pool, store } = await makeStore();
   await store.upsert(firstDeal);
@@ -289,7 +331,7 @@ test('재분류 대상 행을 PostgreSQL FOR UPDATE로 잠근다', async () => {
 
   await store.reclassify(() => '기타');
 
-  assert.ok(queries.some((sql) => /SELECT id, title, category FROM deals WHERE category IS NULL OR category = '기타' FOR UPDATE/i.test(sql)));
+  assert.ok(queries.some((sql) => /SELECT id, title, category FROM deals WHERE source <> 'manual' AND \(category IS NULL OR category = '기타'\) FOR UPDATE/i.test(sql)));
 });
 
 test('이미 유효한 카테고리는 시작 시 재분류로 덮어쓰지 않는다', async () => {

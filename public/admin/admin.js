@@ -1,0 +1,306 @@
+(() => {
+  'use strict';
+
+  const state = { csrfToken: '', deals: [], fetchedMetadataUrl: '' };
+  const byId = (id) => document.getElementById(id);
+
+  function showMessage(id, message, kind = 'notice') {
+    const element = byId(id);
+    if (!element) return;
+    element.textContent = message;
+    element.className = `message ${kind}`;
+  }
+
+  function errorMessage(error, fallback) {
+    if (error && error.message && !/^HTTP \d+$/.test(error.message)) return error.message;
+    return fallback;
+  }
+
+  async function api(path, options = {}) {
+    const headers = new Headers(options.headers || {});
+    const method = String(options.method || 'GET').toUpperCase();
+    if (options.body != null) headers.set('Content-Type', 'application/json');
+    if (!['GET', 'HEAD'].includes(method) && state.csrfToken) headers.set('X-CSRF-Token', state.csrfToken);
+    const response = await fetch(path, { ...options, method, headers, credentials: 'same-origin' });
+    if (response.status === 401) {
+      window.location.replace('/admin/login');
+      throw new Error('로그인이 만료되었습니다.');
+    }
+    if (!response.ok) {
+      let detail = null;
+      try { detail = await response.json(); } catch { /* An empty error response is valid. */ }
+      throw new Error(detail?.message || detail?.error || `HTTP ${response.status}`);
+    }
+    if (response.status === 204) return null;
+    return response.json();
+  }
+
+  function setView(viewId) {
+    document.querySelectorAll('.view').forEach((view) => view.classList.toggle('active', view.id === viewId));
+    document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button.dataset.view === viewId));
+    byId('sidebar')?.classList.remove('open');
+    byId('scrim')?.classList.remove('open');
+    byId('menu-toggle')?.setAttribute('aria-expanded', 'false');
+  }
+
+  function textNode(tag, text, className) {
+    const node = document.createElement(tag);
+    node.textContent = text;
+    if (className) node.className = className;
+    return node;
+  }
+
+  function priceText(value) {
+    return Number.isSafeInteger(value) ? `${value.toLocaleString('ko-KR')}원` : '가격 미정';
+  }
+
+  function dealSummary(deal, compact = false) {
+    const article = document.createElement('article');
+    article.className = compact ? 'compact-item' : 'deal-item';
+    const body = document.createElement('div');
+    body.append(textNode('strong', deal.title || '제목 없음'));
+    body.append(textNode('p', `${deal.merchant || '판매처 미정'} · ${priceText(deal.priceAmount)}`));
+    const flags = [];
+    flags.push(deal.isPublished ? '게시 중' : '초안');
+    if (deal.showOnHome) flags.push('메인 노출');
+    flags.push(`우선순위 ${Number.isSafeInteger(deal.priority) ? deal.priority : 0}`);
+    body.append(textNode('span', flags.join(' · '), 'deal-meta'));
+    article.append(body);
+    if (!compact) {
+      const actions = document.createElement('div');
+      actions.className = 'deal-actions';
+      const edit = textNode('button', '편집', 'button secondary');
+      edit.type = 'button';
+      edit.addEventListener('click', () => editDeal(deal.id));
+      const remove = textNode('button', '삭제', 'text-button danger');
+      remove.type = 'button';
+      remove.addEventListener('click', () => deleteDeal(deal.id));
+      actions.append(edit, remove);
+      article.append(actions);
+    }
+    return article;
+  }
+
+  function renderDeals() {
+    byId('stat-total').textContent = String(state.deals.length);
+    byId('stat-published').textContent = String(state.deals.filter((deal) => deal.isPublished).length);
+    byId('stat-home').textContent = String(state.deals.filter((deal) => deal.isPublished && deal.showOnHome).length);
+    byId('deal-count').textContent = String(state.deals.length);
+
+    const recent = byId('recent-deals');
+    const list = byId('deal-list');
+    recent.replaceChildren();
+    list.replaceChildren();
+    if (!state.deals.length) {
+      recent.append(textNode('p', '등록된 핫딜이 없습니다.', 'empty-state'));
+      list.append(textNode('p', '새 핫딜을 등록해 주세요.', 'empty-state'));
+      return;
+    }
+    state.deals.slice(0, 5).forEach((deal) => recent.append(dealSummary(deal, true)));
+    state.deals.forEach((deal) => list.append(dealSummary(deal)));
+  }
+
+  async function loadDeals() {
+    const data = await api('/api/admin/manual-deals');
+    state.deals = Array.isArray(data?.deals) ? data.deals : [];
+    renderDeals();
+  }
+
+  function setValue(id, value) {
+    const element = byId(id);
+    if (element) element.value = value == null ? '' : String(value);
+  }
+
+  function resetForm() {
+    byId('deal-form').reset();
+    setValue('deal-id', '');
+    setValue('priority', 0);
+    setValue('category', '디지털/가전');
+    byId('form-title').textContent = '새 핫딜 등록';
+    byId('cancel-edit').classList.add('hidden');
+    state.fetchedMetadataUrl = '';
+    byId('metadata-message').textContent = 'HTTPS 상품 URL을 입력하면 제목, 가격, 이미지 등을 자동으로 채워요.';
+  }
+
+  function editDeal(id) {
+    const deal = state.deals.find((item) => String(item.id) === String(id));
+    if (!deal) return;
+    setView('phone-deals');
+    setValue('deal-id', deal.id);
+    setValue('metadata-url', deal.productUrl);
+    setValue('target-url', deal.productUrl);
+    setValue('title', deal.title);
+    setValue('current-price', deal.priceAmount);
+    setValue('original-price', deal.originalPriceAmount);
+    setValue('image-url', deal.imageUrl);
+    setValue('merchant', deal.merchant);
+    setValue('category', deal.category || '디지털/가전');
+    setValue('description', deal.description);
+    setValue('priority', Number.isSafeInteger(deal.priority) ? deal.priority : 0);
+    byId('is-published').checked = deal.isPublished === true;
+    byId('show-on-home').checked = deal.showOnHome === true;
+    byId('form-title').textContent = '핫딜 편집';
+    byId('cancel-edit').classList.remove('hidden');
+    state.fetchedMetadataUrl = deal.productUrl || '';
+    byId('deal-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function parsePrice(id) {
+    const raw = byId(id).value.trim();
+    if (!raw) return null;
+    const value = Number(raw.replaceAll(',', ''));
+    if (!Number.isSafeInteger(value) || value < 0) throw new TypeError('가격은 0 이상의 정수로 입력해 주세요.');
+    return value;
+  }
+
+  function formPayload() {
+    const priority = Number(byId('priority').value);
+    if (!Number.isSafeInteger(priority)) throw new TypeError('우선순위는 정수로 입력해 주세요.');
+    return {
+      title: byId('title').value.trim(),
+      productUrl: byId('target-url').value.trim(),
+      imageUrl: byId('image-url').value.trim() || null,
+      merchant: byId('merchant').value.trim() || null,
+      priceAmount: parsePrice('current-price'),
+      originalPriceAmount: parsePrice('original-price'),
+      description: byId('description').value.trim() || null,
+      category: byId('category').value,
+      isPublished: byId('is-published').checked,
+      showOnHome: byId('show-on-home').checked,
+      priority,
+    };
+  }
+
+  async function fetchMetadata({ quiet = false } = {}) {
+    const url = byId('metadata-url').value.trim();
+    if (!url) {
+      if (!quiet) byId('metadata-message').textContent = '상품 URL을 입력해 주세요.';
+      return false;
+    }
+    const button = byId('metadata-fetch');
+    button.disabled = true;
+    byId('metadata-message').textContent = '상품 정보를 가져오는 중입니다…';
+    try {
+      const data = await api('/api/admin/url-metadata', { method: 'POST', body: JSON.stringify({ url }) });
+      if (data.title) setValue('title', data.title);
+      if (data.priceAmount != null) setValue('current-price', data.priceAmount);
+      if (data.imageUrl) setValue('image-url', data.imageUrl);
+      if (data.merchant) setValue('merchant', data.merchant);
+      setValue('target-url', data.productUrl || url);
+      state.fetchedMetadataUrl = url;
+      byId('metadata-message').textContent = '상품 정보를 가져왔습니다. 내용을 확인해 주세요.';
+      return true;
+    } catch (error) {
+      state.fetchedMetadataUrl = '';
+      byId('metadata-message').textContent = errorMessage(error, '상품 정보를 가져오지 못했습니다.');
+      return false;
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function saveDeal(event) {
+    event.preventDefault();
+    const button = byId('save-deal');
+    button.disabled = true;
+    try {
+      const id = byId('deal-id').value;
+      const payload = formPayload();
+      await api(id ? `/api/admin/manual-deals/${encodeURIComponent(id)}` : '/api/admin/manual-deals', {
+        method: id ? 'PUT' : 'POST', body: JSON.stringify(payload),
+      });
+      resetForm();
+      await loadDeals();
+      showMessage('status-message', id ? '핫딜을 수정했습니다.' : '새 핫딜을 등록했습니다.', 'success');
+    } catch (error) {
+      showMessage('status-message', errorMessage(error, '핫딜을 저장하지 못했습니다.'), 'error');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function deleteDeal(id) {
+    const deal = state.deals.find((item) => String(item.id) === String(id));
+    if (!deal || !window.confirm(`“${deal.title}” 핫딜을 삭제할까요?`)) return;
+    try {
+      await api(`/api/admin/manual-deals/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (byId('deal-id').value === String(id)) resetForm();
+      await loadDeals();
+      showMessage('status-message', '핫딜을 삭제했습니다.', 'success');
+    } catch (error) {
+      showMessage('status-message', errorMessage(error, '핫딜을 삭제하지 못했습니다.'), 'error');
+    }
+  }
+
+  async function loadSettings() {
+    const settings = await api('/api/admin/settings');
+    setValue('setting-home-limit', settings.home_manual_limit ?? 4);
+    setValue('setting-searches', Array.isArray(settings.recommended_searches) ? settings.recommended_searches.join(', ') : '');
+    setValue('setting-main-copy', settings.main_copy);
+    setValue('setting-phone-title', settings.phone_section_title);
+    setValue('setting-admin-note', settings.admin_note);
+  }
+
+  async function saveSettings(event) {
+    event.preventDefault();
+    const values = {
+      home_manual_limit: Number(byId('setting-home-limit').value),
+      recommended_searches: byId('setting-searches').value.split(',').map((value) => value.trim()).filter(Boolean),
+      main_copy: byId('setting-main-copy').value.trim(),
+      phone_section_title: byId('setting-phone-title').value.trim(),
+      admin_note: byId('setting-admin-note').value.trim(),
+    };
+    const button = byId('save-settings');
+    button.disabled = true;
+    try {
+      await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ values }) });
+      showMessage('settings-message', '사이트 설정을 저장했습니다.', 'success');
+    } catch (error) {
+      showMessage('settings-message', errorMessage(error, '설정을 저장하지 못했습니다.'), 'error');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function logout() {
+    try { await api('/api/admin/auth/logout', { method: 'POST' }); } finally { window.location.replace('/admin/login'); }
+  }
+
+  function bindEvents() {
+    document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
+    document.querySelectorAll('[data-open-deals]').forEach((button) => button.addEventListener('click', () => setView('phone-deals')));
+    byId('new-deal').addEventListener('click', () => { resetForm(); setView('phone-deals'); byId('title').focus(); });
+    byId('cancel-edit').addEventListener('click', resetForm);
+    byId('deal-form').addEventListener('submit', saveDeal);
+    byId('metadata-fetch').addEventListener('click', () => fetchMetadata());
+    byId('metadata-url').addEventListener('input', () => { state.fetchedMetadataUrl = ''; });
+    byId('metadata-url').addEventListener('change', () => { if (byId('metadata-url').checkValidity()) fetchMetadata({ quiet: true }); });
+    byId('settings-form')?.addEventListener('submit', saveSettings);
+    byId('logout').addEventListener('click', logout);
+    byId('menu-toggle').addEventListener('click', () => {
+      const open = !byId('sidebar').classList.contains('open');
+      byId('sidebar').classList.toggle('open', open);
+      byId('scrim').classList.toggle('open', open);
+      byId('menu-toggle').setAttribute('aria-expanded', String(open));
+    });
+    byId('scrim').addEventListener('click', () => {
+      byId('sidebar').classList.remove('open');
+      byId('scrim').classList.remove('open');
+      byId('menu-toggle').setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  async function start() {
+    bindEvents();
+    try {
+      const session = await api('/api/admin/auth/session');
+      state.csrfToken = session.csrfToken;
+      byId('admin-user').textContent = session.username || '';
+      await Promise.all([loadDeals(), loadSettings()]);
+    } catch (error) {
+      showMessage('status-message', errorMessage(error, '관리자 데이터를 불러오지 못했습니다.'), 'error');
+    }
+  }
+
+  start();
+})();

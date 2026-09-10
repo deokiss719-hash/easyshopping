@@ -66,3 +66,53 @@ CREATE TABLE IF NOT EXISTS image_backfill_control (
   failure_code TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS admin_users (
+  id BIGSERIAL PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  last_login_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CHECK (username = LOWER(username))
+);
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  id BIGSERIAL PRIMARY KEY,
+  admin_user_id BIGINT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+  token_hash VARCHAR(64) NOT NULL UNIQUE,
+  csrf_hash VARCHAR(64) NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS admin_sessions_expires_idx ON admin_sessions (expires_at);
+
+CREATE TABLE IF NOT EXISTS manual_deals (
+  id BIGSERIAL PRIMARY KEY,
+  deal_id BIGINT UNIQUE REFERENCES deals(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  product_url TEXT NOT NULL,
+  image_url TEXT,
+  merchant TEXT,
+  price_amount BIGINT CHECK (price_amount IS NULL OR price_amount >= 0),
+  original_price_amount BIGINT CHECK (original_price_amount IS NULL OR original_price_amount >= 0),
+  description TEXT,
+  badge TEXT,
+  category TEXT NOT NULL DEFAULT '디지털/가전',
+  is_published BOOLEAN NOT NULL DEFAULT FALSE,
+  show_on_home BOOLEAN NOT NULL DEFAULT FALSE,
+  priority INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE manual_deals
+  ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '디지털/가전';
+CREATE INDEX IF NOT EXISTS manual_deals_public_idx
+  ON manual_deals (is_published, show_on_home, priority DESC);
+
+CREATE TABLE IF NOT EXISTS site_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

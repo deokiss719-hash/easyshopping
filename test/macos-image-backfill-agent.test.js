@@ -13,7 +13,7 @@ const {
 const projectDir = path.resolve(__dirname, '..');
 const packageJson = require('../package.json');
 
-test('LaunchAgent는 30분 주기·로그인 실행·절대 경로만 기록하고 자격증명을 포함하지 않는다', () => {
+test('LaunchAgent는 15분 주기·로그인 실행·절대 경로만 기록하고 자격증명을 포함하지 않는다', () => {
   const plist = buildLaunchAgentPlist({
     projectDir,
     nodeBinary: process.execPath,
@@ -21,9 +21,9 @@ test('LaunchAgent는 30분 주기·로그인 실행·절대 경로만 기록하�
     stderrPath: '/Users/example/Library/Logs/EasyHotDeal/image-backfill.error.log',
   });
 
-  assert.equal(INTERVAL_SECONDS, 1800);
+  assert.equal(INTERVAL_SECONDS, 900);
   assert.match(plist, new RegExp(`<string>${LABEL}</string>`));
-  assert.match(plist, /<key>StartInterval<\/key>\s*<integer>1800<\/integer>/);
+  assert.match(plist, /<key>StartInterval<\/key>\s*<integer>900<\/integer>/);
   assert.match(plist, /<key>RunAtLoad<\/key>\s*<true\/>/);
   assert.match(plist, /run-image-backfill\.sh/);
   assert.match(plist, /EASYHOTDEAL_NODE_BINARY/);

@@ -30,8 +30,10 @@
   }
 
   function safeImageUrl(value, allowedBaseUrls = []) {
+    const raw = String(value || '');
+    if (/^\/api\/manual-deal-images\/\d+$/.test(raw)) return raw;
     try {
-      const url = new URL(String(value || ''));
+      const url = new URL(raw);
       if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return '';
       const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
       const legacyAllowed = host === 'ppomppu.co.kr' || host.endsWith('.ppomppu.co.kr');
@@ -62,11 +64,16 @@
 
   function normalizeDeal(raw, now = new Date()) {
     const category = categories.has(raw.category) ? raw.category : '기타';
+    const isManual = raw.isManual === true || raw.source === 'manual';
     return {
       id: String(raw.id),
-      badge: raw.isEnded ? '종료' : 'LIVE',
+      badge: raw.isEnded ? '종료' : String(raw.badge || 'LIVE'),
       title: String(raw.title || ''),
       price: Number.isSafeInteger(raw.price) && raw.price >= 0 ? raw.price : null,
+      originalPrice: Number.isSafeInteger(raw.originalPrice) && raw.originalPrice >= 0
+        ? raw.originalPrice
+        : null,
+      description: raw.description == null ? null : String(raw.description),
       store: String(raw.store || raw.source || '판매처 확인'),
       category,
       source: String(raw.source || ''),
@@ -77,6 +84,9 @@
       imageLabel: category,
       url: safeExternalUrl(raw.url),
       isEnded: Boolean(raw.isEnded),
+      isManual,
+      showOnHome: isManual && raw.showOnHome === true,
+      priority: Number.isSafeInteger(raw.priority) ? raw.priority : 0,
     };
   }
 
@@ -92,13 +102,54 @@
     return filtered.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
   }
 
-  async function fetchAllLiveDeals({ source = 'ppomppu', query = '', fetchImpl = fetch, signal } = {}) {
+  function mixHomeDeals(deals, { manualLimit = 4, rssLead = 4, interval = 4 } = {}) {
+    const safeLimit = Number.isSafeInteger(manualLimit) && manualLimit >= 0 ? manualLimit : 4;
+    const rssDeals = deals.filter((deal) => !deal.isManual);
+    const manualDeals = deals
+      .filter((deal) => deal.isManual && deal.showOnHome)
+      .sort((a, b) => (b.priority - a.priority)
+        || (new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0)))
+      .slice(0, safeLimit);
+
+    const mixed = rssDeals.slice(0, rssLead);
+    if (rssDeals.length < rssLead) return [...mixed, ...manualDeals];
+    let rssIndex = rssLead;
+    for (const manualDeal of manualDeals) {
+      mixed.push(manualDeal);
+      mixed.push(...rssDeals.slice(rssIndex, rssIndex + interval));
+      rssIndex += interval;
+    }
+    mixed.push(...rssDeals.slice(rssIndex));
+    return mixed;
+  }
+
+  async function fetchPublicSiteSettings({ fetchImpl = fetch, signal } = {}) {
+    const defaults = { home_manual_limit: 4 };
+    try {
+      const response = await fetchImpl('/api/site-settings', { signal });
+      if (!response?.ok) return defaults;
+      const settings = await response.json();
+      const homeManualLimit = settings?.home_manual_limit;
+      return {
+        home_manual_limit: Number.isSafeInteger(homeManualLimit)
+          && homeManualLimit >= 0 && homeManualLimit <= 20
+          ? homeManualLimit
+          : defaults.home_manual_limit,
+      };
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error;
+      return defaults;
+    }
+  }
+
+  async function fetchAllLiveDeals({ source, query = '', fetchImpl = fetch, signal } = {}) {
     const all = [];
     let page = 1;
     let total = 0;
 
     do {
-      const params = new URLSearchParams({ source, q: query, page: String(page), size: '100' });
+      const params = new URLSearchParams({ q: query, page: String(page), size: '100' });
+      if (source != null && source !== '') params.set('source', source);
       const response = await fetchImpl(`/api/live-deals?${params}`, { signal });
       if (!response?.ok) throw new Error(`Live deals request failed: HTTP ${response?.status || 'unknown'}`);
       const data = await response.json();
@@ -120,6 +171,6 @@
 
   return {
     safeImageUrl, relativeTime, normalizeDeal,
-    filterAndSortDeals, fetchAllLiveDeals,
+    filterAndSortDeals, mixHomeDeals, fetchPublicSiteSettings, fetchAllLiveDeals,
   };
 });

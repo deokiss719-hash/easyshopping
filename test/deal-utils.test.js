@@ -1,7 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { normalizeDeal, filterAndSortDeals, fetchAllLiveDeals } = require('../public/deal-utils');
+const {
+  safeImageUrl, normalizeDeal, filterAndSortDeals, fetchAllLiveDeals, mixHomeDeals, fetchPublicSiteSettings,
+} = require('../public/deal-utils');
 
 const rawDeal = {
   id: '1',
@@ -82,7 +84,25 @@ test('실데이터 API의 모든 페이지를 가져와 전체 필터·정렬 �
   assert.deepEqual(result[0].imageBaseUrls, ['https://images.example.com/base']);
   assert.equal(calls.length, 2);
   assert.match(calls[0], /q=%EC%95%84%EC%9D%B4%ED%8F%B0/);
+  assert.match(calls[0], /source=ppomppu/);
   assert.match(calls[1], /page=2/);
+});
+
+test('source를 요청하지 않으면 API에서 모든 live source를 가져온다', async () => {
+  const calls = [];
+  await fetchAllLiveDeals({
+    query: '',
+    fetchImpl: async (url) => {
+      calls.push(url);
+      return { ok: true, json: async () => ({ deals: [], total: 0 }) };
+    },
+  });
+
+  const params = new URL(calls[0], 'https://example.test').searchParams;
+  assert.equal(params.has('source'), false);
+  assert.equal(params.get('q'), '');
+  assert.equal(params.get('page'), '1');
+  assert.equal(params.get('size'), '100');
 });
 
 test('실데이터 API 응답 형식이 잘못되면 명시적으로 실패한다', async () => {
@@ -102,4 +122,66 @@ test('카테고리 필터와 최신순·가격순이 실제 필드로 동작한�
   assert.deepEqual(filterAndSortDeals(deals, { category: '식품', sort: 'latest' }).map((deal) => deal.id), ['2']);
   assert.deepEqual(filterAndSortDeals(deals, { category: '전체', sort: 'latest' }).map((deal) => deal.id), ['3', '2', '1']);
   assert.deepEqual(filterAndSortDeals(deals, { category: '전체', sort: 'price-low' }).map((deal) => deal.id), ['2', '1', '3']);
+});
+
+test('수동 특가 API 필드를 카드 모델에 안전하게 보존한다', () => {
+  const deal = normalizeDeal({
+    ...rawDeal,
+    source: 'manual',
+    isManual: true,
+    badge: '한정 특가',
+    originalPrice: 1350000,
+    description: '공시지원금 기준 안내',
+    showOnHome: true,
+    priority: 20,
+  });
+
+  assert.equal(deal.badge, '한정 특가');
+  assert.equal(deal.originalPrice, 1350000);
+  assert.equal(deal.description, '공시지원금 기준 안내');
+  assert.equal(deal.isManual, true);
+  assert.equal(deal.showOnHome, true);
+  assert.equal(deal.priority, 20);
+});
+
+test('이미지는 허용된 HTTPS 원본과 정확한 same-origin 수동 이미지 경로만 허용한다', () => {
+  assert.equal(safeImageUrl('/api/manual-deal-images/123'), '/api/manual-deal-images/123');
+  for (const value of [
+    '/api/manual-deal-images/123/', '/api/manual-deal-images/abc',
+    '/api/manual-deal-images/1?url=https://evil.example', '//evil.example/api/manual-deal-images/1',
+    '/api/manual-deal-images/1#x', '/other/1',
+  ]) assert.equal(safeImageUrl(value), '', value);
+  assert.equal(safeImageUrl('https://images.example/base/a.jpg', ['https://images.example/base']), 'https://images.example/base/a.jpg');
+});
+
+test('메인 수동 특가는 우선순위로 제한하고 RSS 첫 네 개 뒤부터 일정하게 섞는다', () => {
+  const rss = Array.from({ length: 10 }, (_, index) => ({ id: `r${index + 1}`, isManual: false }));
+  const manual = [
+    { id: 'm-low', isManual: true, showOnHome: true, priority: 1, publishedAt: '2026-09-10T10:00:00Z' },
+    { id: 'm-off', isManual: true, showOnHome: false, priority: 100 },
+    { id: 'm-high', isManual: true, showOnHome: true, priority: 20, publishedAt: '2026-09-09T10:00:00Z' },
+    { id: 'm-mid', isManual: true, showOnHome: true, priority: 10, publishedAt: '2026-09-10T10:00:00Z' },
+  ];
+
+  const mixed = mixHomeDeals([...manual, ...rss], { manualLimit: 2 });
+  assert.deepEqual(mixed.slice(0, 4).map((deal) => deal.id), ['r1', 'r2', 'r3', 'r4']);
+  assert.deepEqual(mixed.filter((deal) => deal.isManual).map((deal) => deal.id), ['m-high', 'm-mid']);
+  assert.deepEqual(mixed.map((deal) => deal.id), [
+    'r1', 'r2', 'r3', 'r4', 'm-high', 'r5', 'r6', 'r7', 'r8', 'm-mid', 'r9', 'r10',
+  ]);
+  assert.deepEqual(mixHomeDeals([...manual, ...rss.slice(0, 3)]).map((deal) => deal.id), [
+    'r1', 'r2', 'r3', 'm-high', 'm-mid', 'm-low',
+  ]);
+});
+
+test('공개 사이트 설정은 유효한 값만 사용하고 실패 시 기본값 4를 쓴다', async () => {
+  assert.deepEqual(await fetchPublicSiteSettings({
+    fetchImpl: async () => ({ ok: true, json: async () => ({ home_manual_limit: 7, admin_note: 'secret' }) }),
+  }), { home_manual_limit: 7 });
+  assert.deepEqual(await fetchPublicSiteSettings({
+    fetchImpl: async () => ({ ok: true, json: async () => ({ home_manual_limit: -1 }) }),
+  }), { home_manual_limit: 4 });
+  assert.deepEqual(await fetchPublicSiteSettings({ fetchImpl: async () => { throw new Error('offline'); } }), {
+    home_manual_limit: 4,
+  });
 });

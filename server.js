@@ -16,10 +16,21 @@ const {
 const { createPpomppuImageProvider } = require('./src/images/ppomppu-source-provider');
 const { buildContentSecurityPolicy } = require('./src/content-security-policy');
 const { NAVER_IMAGE_BASE_URLS } = require('./src/product-matching/naver-shopping');
+const { createAdminStore } = require('./src/admin/admin-store');
+const { createAdminAuth } = require('./src/admin/admin-auth');
+const { createAdminApiRouter, createPublicSettingsRouter, adminJsonErrorHandler } = require('./src/admin/admin-api');
+const { fetchUrlMetadata } = require('./src/url-metadata/url-metadata');
+const { createAdminUiRouter } = require('./src/admin/admin-ui');
+const { createManualDealImageRouter } = require('./src/manual-deal-images');
+const { readAdminRuntime, readCollectorRuntime, mountDatabaseApis } = require('./src/production-runtime');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 let databaseMode = 'fixture';
+// Render terminates requests at one controlled proxy hop. Direct deployments
+// must not let clients choose req.ip through X-Forwarded-For.
+app.set('trust proxy', process.env.RENDER === 'true' ? 1 : false);
+app.use(express.json({ limit: '32kb' }));
 
 const deals = [
   {
@@ -126,6 +137,9 @@ app.get('/api/popular', (_req, res) => {
 
 async function start() {
   let store = null;
+  let adminAuth = null;
+  const adminRuntime = readAdminRuntime(process.env);
+  const { source, feedUrl, intervalMs } = readCollectorRuntime(process.env);
   const r2Config = readR2Config(process.env);
   const imageBaseUrls = [
     ...(r2Config.enabled ? [r2Config.publicBaseUrl] : []),
@@ -139,20 +153,24 @@ async function start() {
     res.setHeader('Content-Security-Policy', contentSecurityPolicy);
     next();
   });
-  app.use(express.static(path.join(__dirname, 'public')));
-
   if (process.env.DATABASE_URL) {
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     await migrate(pool);
     store = createDealStore(pool);
+    const adminStore = createAdminStore(pool);
+    adminAuth = await mountDatabaseApis({
+      app,
+      adminStore,
+      adminRuntime,
+      createAuth: (sessionSecret) => createAdminAuth({ store: adminStore, csrfSecret: sessionSecret }),
+      createAdminApi: (auth) => createAdminApiRouter({ store: adminStore, auth, metadataFetcher: fetchUrlMetadata }),
+      createPublicSettings: () => createPublicSettingsRouter(adminStore),
+      createManualImages: () => createManualDealImageRouter({ store: adminStore }),
+    });
     const reclassified = await store.reclassify(classifyDeal);
     console.log(`기존 핫딜 카테고리 재분류 완료: ${reclassified}건 변경`);
     databaseMode = 'postgresql';
 
-    const feedUrl = process.env.RSS_FEED_URL
-      || 'https://www.ppomppu.co.kr/rss.php?id=ppomppu';
-    const source = process.env.RSS_FEED_SOURCE || 'ppomppu';
-    const intervalMs = Number(process.env.RSS_POLL_INTERVAL_MS || 600000);
     const imageStorage = createR2Storage({ config: r2Config });
     const providerRegistry = createProviderRegistry([
       createPpomppuImageProvider({ requestIntervalMs: 5_000 }),
@@ -192,6 +210,7 @@ async function start() {
               store,
               pipeline: imagePipeline,
               breaker: imageBackfillCircuitBreaker,
+              source,
               limit: 5,
             });
             console.log('상품 이미지 backfill 완료', imageResult);
@@ -208,9 +227,13 @@ async function start() {
     });
   }
 
+  app.use('/admin', createAdminUiRouter({ auth: adminAuth }));
+  app.use(express.static(path.join(__dirname, 'public')));
+
   app.use('/api/live-deals', createLiveDealsRouter(store, {
     imageBaseUrls,
   }));
+  app.use(adminJsonErrorHandler);
   app.listen(PORT, () => {
     console.log(`이지쇼핑 실행 중: http://localhost:${PORT} (${databaseMode})`);
   });

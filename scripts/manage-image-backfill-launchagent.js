@@ -6,7 +6,7 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const LABEL = 'com.easyhotdeal.image-backfill';
-const INTERVAL_SECONDS = 30 * 60;
+const INTERVAL_SECONDS = 15 * 60;
 
 function xmlEscape(value) {
   return String(value)

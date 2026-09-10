@@ -4,6 +4,7 @@ const state = {
   query: '',
   deals: [],
   visibleCount: 8,
+  siteSettings: { home_manual_limit: 4 },
 };
 
 const elements = {
@@ -63,10 +64,14 @@ function productCard(deal) {
   const image = deal.imageUrl
     ? `<img class="product-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" />`
     : '';
+  const manualBadge = deal.isManual
+    ? '<span class="manual-deal-badge">이지폰 특가</span>'
+    : '';
   return `
     <article class="deal-card" tabindex="0" data-deal-url="${escapeHtml(deal.url)}" aria-label="${escapeHtml(deal.title)}, ${formatPrice(deal.price)}">
       <div class="product-media tone-${escapeHtml(deal.imageTone)}">
         <span class="badge ${badgeClass(deal.badge)}">${escapeHtml(deal.badge)}</span>
+        ${manualBadge}
         <div class="product-placeholder" aria-hidden="true"><span>${categoryEmoji(deal.category)}</span><strong>${escapeHtml(deal.imageLabel)}</strong></div>
         ${image}
       </div>
@@ -126,7 +131,13 @@ function bindDealClicks(container) {
 }
 
 function renderDeals() {
-  const matchingDeals = DealUtils.filterAndSortDeals(state.deals, state);
+  let matchingDeals = DealUtils.filterAndSortDeals(state.deals, state);
+  const isDefaultHome = state.category === '전체' && state.sort === 'latest' && !state.query;
+  if (isDefaultHome) {
+    matchingDeals = DealUtils.mixHomeDeals(matchingDeals, {
+      manualLimit: state.siteSettings.home_manual_limit,
+    });
+  }
   const visibleDeals = matchingDeals.slice(0, state.visibleCount);
   elements.dealGrid.classList.remove('skeleton-grid');
   elements.dealGrid.innerHTML = visibleDeals.map(productCard).join('');
@@ -159,7 +170,6 @@ async function loadDeals({ scroll = false } = {}) {
 
   try {
     const rawDeals = await DealUtils.fetchAllLiveDeals({
-      source: 'ppomppu',
       query: state.query,
       signal: controller.signal,
     });
@@ -178,6 +188,10 @@ async function loadDeals({ scroll = false } = {}) {
   } finally {
     if (controller === dealsController) dealsController = null;
   }
+}
+
+async function loadSiteSettings() {
+  state.siteSettings = await DealUtils.fetchPublicSiteSettings();
 }
 
 async function loadPopular() {
@@ -288,4 +302,4 @@ document.querySelector('#latestRefresh').addEventListener('click', () => {
   showToast('최신 핫딜을 새로 확인했어요.');
 });
 
-Promise.all([loadPopular(), loadDeals()]);
+Promise.all([loadPopular(), loadSiteSettings().then(() => loadDeals())]);

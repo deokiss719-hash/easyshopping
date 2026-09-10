@@ -8,12 +8,15 @@ const MAX_PAGE_SIZE = 100;
 const IMAGE_STATUSES = new Set(['missing_merchant_url', 'pending', 'ready', 'failed', 'unsupported_provider']);
 const IMAGE_BACKFILL_ADVISORY_LOCK_NAMESPACE = 1163086169;
 const IMAGE_BACKFILL_ADVISORY_LOCK_ID = 1835627636;
+const migratedPools = new WeakSet();
 
 class InvalidQueryError extends TypeError {}
 
 async function migrate(pool) {
+  if (migratedPools.has(pool)) return;
   const sql = await fs.readFile(schemaPath, 'utf8');
   await pool.query(sql);
+  migratedPools.add(pool);
 }
 
 function normalizeDeal(deal) {
@@ -69,7 +72,7 @@ function positiveInteger(value, name, fallback, maximum) {
 }
 
 function mapDeal(row) {
-  return {
+  const deal = {
     id: String(row.id),
     source: row.source,
     sourceItemId: row.source_item_id,
@@ -92,6 +95,15 @@ function mapDeal(row) {
     endedAt: row.ended_at,
     isEnded: row.is_ended,
   };
+  if (row.manual_id != null) {
+    deal.manualId = String(row.manual_id);
+    deal.originalPriceAmount = row.manual_original_price_amount == null ? null : safeNumber(row.manual_original_price_amount, 'originalPriceAmount');
+    deal.description = row.manual_description;
+    deal.badge = row.manual_badge;
+    deal.showOnHome = row.manual_show_on_home;
+    deal.priority = row.manual_priority;
+  }
+  return deal;
 }
 
 function createDealStore(pool) {
@@ -242,7 +254,7 @@ function createDealStore(pool) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        const result = await client.query("SELECT id, title, category FROM deals WHERE category IS NULL OR category = '기타' FOR UPDATE");
+        const result = await client.query("SELECT id, title, category FROM deals WHERE source <> 'manual' AND (category IS NULL OR category = '기타') FOR UPDATE");
         let updated = 0;
         for (const row of result.rows) {
           const category = classifier({ title: row.title });
@@ -330,17 +342,20 @@ function createDealStore(pool) {
     async list({ q = '', source = '', page = 1, size = 20 } = {}) {
       const safePage = positiveInteger(page, 'page', 1, MAX_PAGE);
       const safeSize = positiveInteger(size, 'size', 20, MAX_PAGE_SIZE);
-      const conditions = ['is_ended = FALSE'];
+      const conditions = [
+        'd.is_ended = FALSE',
+        `(d.source <> 'manual' OR (m.deal_id IS NOT NULL AND m.is_published = TRUE))`,
+      ];
       const values = [];
 
       if (String(q).trim()) {
         values.push(String(q).trim());
-        conditions.push(`(STRPOS(LOWER(title), LOWER($${values.length})) > 0
-          OR STRPOS(LOWER(COALESCE(merchant, '')), LOWER($${values.length})) > 0)`);
+        conditions.push(`(STRPOS(LOWER(d.title), LOWER($${values.length})) > 0
+          OR STRPOS(LOWER(COALESCE(d.merchant, '')), LOWER($${values.length})) > 0)`);
       }
       if (String(source).trim()) {
         values.push(String(source).trim());
-        conditions.push(`source = $${values.length}`);
+        conditions.push(`d.source = $${values.length}`);
       }
 
       const where = `WHERE ${conditions.join(' AND ')}`;
@@ -348,13 +363,25 @@ function createDealStore(pool) {
       try {
         await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
         const countResult = await client.query(
-          `SELECT COUNT(*) AS total FROM deals ${where}`,
+          `SELECT COUNT(*) AS total
+           FROM deals d
+           LEFT JOIN manual_deals m ON d.source = 'manual' AND m.deal_id = d.id
+           ${where}`,
           values,
         );
         const listValues = [...values, safeSize, (safePage - 1) * safeSize];
         const listResult = await client.query(
-          `SELECT * FROM deals ${where}
-           ORDER BY published_at DESC NULLS LAST, first_seen_at DESC, id DESC
+          `SELECT d.*,
+             m.id AS manual_id,
+             m.original_price_amount AS manual_original_price_amount,
+             m.description AS manual_description,
+             m.badge AS manual_badge,
+             m.show_on_home AS manual_show_on_home,
+             m.priority AS manual_priority
+           FROM deals d
+           LEFT JOIN manual_deals m ON d.source = 'manual' AND m.deal_id = d.id
+           ${where}
+           ORDER BY d.published_at DESC NULLS LAST, d.first_seen_at DESC, d.id DESC
            LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
           listValues,
         );

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>이지쇼핑 관리자</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <header class="mobile-header"><button id="menu-toggle" class="icon-button" type="button" aria-label="메뉴 열기" aria-expanded="false">☰</button><strong>easyshopping admin</strong></header>
+  <div class="admin-layout">
+    <aside id="sidebar" class="sidebar">
+      <a class="brand inverse" href="/admin">easyshopping</a>
+      <p class="admin-label">ADMIN CONSOLE</p>
+      <nav id="admin-nav" aria-label="관리자 메뉴">
+        <button type="button" class="nav-item active" data-view="dashboard">대시보드</button>
+        <button type="button" class="nav-item" data-view="phone-deals">휴대폰 핫딜 관리</button>
+        <button type="button" class="nav-item" data-view="products">상품 관리</button>
+        <button type="button" class="nav-item" data-view="home-display">메인 노출 관리</button>
+        <button type="button" class="nav-item" data-view="settings">사이트 설정</button>
+      </nav>
+      <div class="sidebar-footer"><span id="admin-user"></span><button id="logout" class="text-button" type="button">로그아웃</button></div>
+    </aside>
+    <main class="admin-main">
+      <section id="dashboard" class="view active" aria-labelledby="dashboard-title">
+        <div class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1 id="dashboard-title">대시보드</h1><p>수동 휴대폰 핫딜 현황을 확인하세요.</p></div><button class="button primary" type="button" data-open-deals>핫딜 등록</button></div>
+        <div class="stat-grid"><article><span>전체 핫딜</span><strong id="stat-total">-</strong></article><article><span>게시 중</span><strong id="stat-published">-</strong></article><article><span>메인 노출</span><strong id="stat-home">-</strong></article></div>
+        <div class="panel"><div class="panel-title"><h2>최근 휴대폰 핫딜</h2><button class="text-button" type="button" data-open-deals>전체 보기</button></div><div id="recent-deals" class="compact-list"></div></div>
+      </section>
+
+      <section id="phone-deals" class="view" aria-labelledby="phone-title">
+        <div class="page-heading"><div><p class="eyebrow">MANUAL DEALS</p><h1 id="phone-title">휴대폰 핫딜 관리</h1><p>상품 정보를 가져오거나 직접 입력해 게시할 수 있어요.</p></div><button id="new-deal" class="button primary" type="button">새 핫딜</button></div>
+        <div id="status-message" class="message notice" role="status" aria-live="polite"></div>
+        <div class="deal-workspace">
+          <form id="deal-form" class="panel form-panel">
+            <div class="panel-title"><h2 id="form-title">새 핫딜 등록</h2><button id="cancel-edit" class="text-button hidden" type="button">편집 취소</button></div>
+            <input id="deal-id" type="hidden">
+            <div class="metadata-row"><label>상품 URL<input id="metadata-url" type="url" inputmode="url" placeholder="https://shop.example/product" required></label><button id="metadata-fetch" class="button secondary" type="button">URL 정보 가져오기</button></div>
+            <p id="metadata-message" class="field-help" aria-live="polite">HTTPS 상품 URL을 입력하면 제목, 가격, 이미지 등을 자동으로 채워요.</p>
+            <div class="form-grid">
+              <label class="span-2">상품명<input id="title" maxlength="300" required></label>
+              <label>현재 가격<input id="current-price" type="number" min="0" step="1" inputmode="numeric"></label>
+              <label>정상 가격<input id="original-price" type="number" min="0" step="1" inputmode="numeric"></label>
+              <label class="span-2">이미지 URL<input id="image-url" type="url" inputmode="url" placeholder="https://..."></label>
+              <label>판매처<input id="merchant" maxlength="200"></label>
+              <label>카테고리<select id="category"><option selected>디지털/가전</option><option>식품</option><option>생활/주방</option><option>패션/의류</option><option>뷰티</option><option>건강</option><option>육아/아동</option><option>게임</option><option>스포츠/레저</option><option>반려동물</option><option>자동차</option><option>여행/숙박</option><option>상품권/쿠폰</option><option>기타</option></select></label>
+              <label class="span-2">상세 설명<textarea id="description" maxlength="2000" rows="4"></textarea></label>
+              <label class="span-2">이동할 URL<input id="target-url" type="url" inputmode="url" required></label>
+              <label>노출 우선순위<input id="priority" type="number" min="-100000" max="100000" step="1" value="0" required></label>
+              <div class="switches"><label class="check"><input id="is-published" type="checkbox"><span>게시 활성화</span></label><label class="check"><input id="show-on-home" type="checkbox"><span>메인에 노출</span></label></div>
+            </div>
+            <button id="save-deal" class="button primary wide" type="submit">저장하기</button>
+          </form>
+          <section class="panel list-panel" aria-labelledby="deal-list-title"><div class="panel-title"><h2 id="deal-list-title">등록된 핫딜</h2><span id="deal-count" class="count-pill">0</span></div><div id="deal-list" class="deal-list"></div></section>
+        </div>
+      </section>
+
+      <section id="products" class="view scaffold"><p class="eyebrow">COMING SOON</p><h1>상품 관리</h1><p>일반 상품 관리 기능을 준비하고 있어요. 현재 사용할 수 있는 작업은 없습니다.</p></section>
+      <section id="home-display" class="view scaffold"><p class="eyebrow">COMING SOON</p><h1>메인 노출 관리</h1><p>통합 메인 편집 기능을 준비하고 있어요. 휴대폰 핫딜의 메인 노출은 핫딜 편집에서 설정해 주세요.</p></section>
+      <section id="settings" class="view" aria-labelledby="settings-title">
+        <div class="page-heading"><div><p class="eyebrow">SITE SETTINGS</p><h1 id="settings-title">사이트 설정</h1><p>공개 화면의 문구와 수동 핫딜 노출 수를 관리하세요.</p></div></div>
+        <div id="settings-message" class="message notice" role="status" aria-live="polite"></div>
+        <form id="settings-form" class="panel form-panel">
+          <div class="form-grid">
+            <label>메인 수동 핫딜 수<input id="setting-home-limit" type="number" min="0" max="20" step="1" value="4" required></label>
+            <label>추천 검색어 (쉼표로 구분)<input id="setting-searches" maxlength="380" placeholder="아이폰, 갤럭시, 노트북"></label>
+            <label class="span-2">메인 문구<textarea id="setting-main-copy" maxlength="300" rows="3" required></textarea></label>
+            <label class="span-2">휴대폰 섹션 제목<input id="setting-phone-title" maxlength="100" required></label>
+            <label class="span-2">관리자 메모 (비공개)<textarea id="setting-admin-note" maxlength="500" rows="3"></textarea></label>
+          </div>
+          <button id="save-settings" class="button primary" type="submit">설정 저장</button>
+        </form>
+      </section>
+    </main>
+  </div>
+  <div id="scrim" class="scrim"></div>
+  <script src="/admin/admin.js" defer></script>
+</body>
+</html>

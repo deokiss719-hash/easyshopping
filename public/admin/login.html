@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>관리자 로그인 | 이지쇼핑</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <a class="brand" href="/" aria-label="이지쇼핑 홈">easyshopping</a>
+    <div class="login-copy">
+      <p class="eyebrow">ADMIN</p>
+      <h1>관리자 로그인</h1>
+      <p>운영 계정으로 로그인해 주세요.</p>
+    </div>
+    <form id="login-form" class="stack">
+      <label>아이디<input id="username" name="username" autocomplete="username" maxlength="64" required></label>
+      <label>비밀번호<input id="password" name="password" type="password" autocomplete="current-password" maxlength="1024" required></label>
+      <p id="login-message" class="message" role="alert" aria-live="polite"></p>
+      <button class="button primary wide" type="submit">로그인</button>
+    </form>
+  </main>
+  <script src="/admin/login.js" defer></script>
+</body>
+</html>
