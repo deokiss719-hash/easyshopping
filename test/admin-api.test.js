@@ -1,7 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
-const { createAdminApiRouter, adminJsonErrorHandler } = require('../src/admin/admin-api');
+const {
+  createAdminApiRouter, createManualImageUrlValidator, adminJsonErrorHandler,
+} = require('../src/admin/admin-api');
 const { toApiDeal } = require('../src/live-deals-api');
 
 async function listen(app) { const server = app.listen(0, '127.0.0.1'); await new Promise((r) => server.once('listening', r)); return { server, origin: `http://127.0.0.1:${server.address().port}` }; }
@@ -46,14 +48,75 @@ test('admin JSON parser returns bounded JSON errors without HTML or stacks', asy
   assert.deepEqual(await oversized.json(), { error: 'request_too_large' });
 });
 
-test('published manual API mapping exposes same-origin image endpoint instead of source URL', () => {
+test('published manual API mapping exposes only the canonical same-origin image endpoint', () => {
   const mapped = toApiDeal({
-    id: '42', manualId: '7', source: 'manual', title: 'Phone', imageUrl: null,
+    id: '42', manualId: '7', source: 'manual', title: 'Phone', imageUrl: 'https://drift.example/projected.webp',
+    hasManualImage: true,
     sourceImageUrl: 'https://external.example/phone.jpg', originalUrl: 'https://shop.example/phone', isEnded: false,
   });
-  assert.equal(mapped.imageUrl, '/api/manual-deal-images/7');
+  assert.equal(mapped.imageUrl, '/api/public/manual-deals/7/image');
   assert.equal(mapped.imageUrl.includes('external.example'), false);
   assert.equal(mapped.url, 'https://shop.example/phone');
+});
+
+test('manual API mapping fails closed instead of returning drifted raw image URLs', () => {
+  for (const deal of [
+    { source: 'manual', manualId: null, hasManualImage: true },
+    { source: 'manual', manualId: '7', hasManualImage: false },
+    { source: 'manual', manualId: 'not-numeric', hasManualImage: true },
+  ]) {
+    const mapped = toApiDeal({
+      id: '42', title: 'Phone', imageUrl: 'https://drift.example/projected.webp',
+      sourceImageUrl: 'https://drift.example/source.webp', isEnded: false, ...deal,
+    });
+    assert.equal(mapped.imageUrl, null);
+  }
+});
+
+test('manual create and update accept only exact app-owned R2 manual object URLs', async (t) => {
+  const hash = 'a'.repeat(64);
+  const owned = `https://images.example.test/base/deals/manual/${hash}.webp`;
+  const saved = [];
+  const auth = { requireAuth: (_req, _res, next) => next(), requireMutationProtection: (_req, _res, next) => next() };
+  const store = {
+    async createManualDeal(input) { saved.push(input); return input; },
+    async updateManualDeal(_id, input) { saved.push(input); return input; },
+    listManualDeals: async () => [],
+  };
+  const imageStorage = { enabled: true, publicUrlForKey: (key) => `https://images.example.test/base/${key}` };
+  const app = express(); app.use(express.json());
+  app.use('/api/admin', createAdminApiRouter({
+    store, auth, imageUrlValidator: createManualImageUrlValidator(imageStorage),
+  }));
+  const { server, origin } = await listen(app); t.after(() => server.close());
+  const request = (method, imageUrl) => fetch(`${origin}/api/admin/manual-deals${method === 'PUT' ? '/7' : ''}`, {
+    method, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'Phone', imageUrl }),
+  });
+
+  assert.equal((await request('POST', owned)).status, 201);
+  assert.equal((await request('PUT', owned)).status, 200);
+  for (const rejected of [
+    'https://external.example/image.webp',
+    `https://images.example.test/base/deals/manual/${'A'.repeat(64)}.webp`,
+    `https://images.example.test/base/deals/manual/${hash}.png`,
+    `${owned}?token=x`,
+  ]) assert.equal((await request('POST', rejected)).status, 400, rejected);
+  assert.equal(saved.length, 2);
+});
+
+test('manual image URL persistence fails closed when R2 is not configured', async (t) => {
+  let writes = 0;
+  const auth = { requireAuth: (_req, _res, next) => next(), requireMutationProtection: (_req, _res, next) => next() };
+  const store = { listManualDeals: async () => [], createManualDeal: async () => { writes += 1; } };
+  const app = express(); app.use(express.json());
+  app.use('/api/admin', createAdminApiRouter({ store, auth, imageUrlValidator: createManualImageUrlValidator({ enabled: false }) }));
+  const { server, origin } = await listen(app); t.after(() => server.close());
+  const response = await fetch(`${origin}/api/admin/manual-deals`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ title: 'Phone', imageUrl: `https://images.example/deals/manual/${'a'.repeat(64)}.webp` }),
+  });
+  assert.equal(response.status, 400);
+  assert.equal(writes, 0);
 });
 
 test('admin image upload is authenticated, same-origin/CSRF protected, decoded, and stored under a server key', async (t) => {

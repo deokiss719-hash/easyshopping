@@ -3,7 +3,10 @@ const state = {
   sort: 'latest',
   query: '',
   deals: [],
-  visibleCount: 8,
+  homeDeals: [],
+  page: 0,
+  total: 0,
+  hasNextPage: false,
   siteSettings: { home_manual_limit: 4, phone_section_title: '휴대폰 초특가 핫딜' },
 };
 
@@ -26,6 +29,7 @@ const won = new Intl.NumberFormat('ko-KR');
 let searchTimer;
 let toastTimer;
 let dealsController;
+let dealsRequestSequence = 0;
 
 function formatPrice(price) {
   return Number.isSafeInteger(price) ? `${won.format(price)}원` : '가격 확인';
@@ -70,8 +74,7 @@ function productCard(deal) {
   const manualBadge = deal.isManual
     ? '<span class="manual-deal-badge">이지폰 특가</span>'
     : '';
-  return `
-    <article class="deal-card" tabindex="0" data-deal-url="${escapeHtml(deal.url)}" aria-label="${escapeHtml(deal.title)}, ${formatPrice(deal.price)}">
+  return DealCardLink.renderCardContainer('deal-card', deal.url, `
       <div class="product-media tone-${escapeHtml(deal.imageTone)}">
         <span class="badge ${badgeClass(deal.badge)}">${escapeHtml(deal.badge)}</span>
         ${manualBadge}
@@ -84,32 +87,27 @@ function productCard(deal) {
         <div class="price-row"><strong class="current-price">${formatPrice(deal.price)}</strong></div>
         ${deal.originalPrice != null ? `<p class="original-price">${formatPrice(deal.originalPrice)}</p>` : ''}
         <div class="card-meta"><span>${escapeHtml(deal.postedAt)}</span><span>${escapeHtml(deal.category)}</span></div>
-      </div>
-    </article>`;
+      </div>`);
 }
 
 function popularItem(deal, index) {
   const visual = deal.imageUrl
     ? `<span class="popular-visual"><span class="rank-heat">실시간</span><img class="popular-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" /></span>`
     : '<span class="rank-heat">실시간</span>';
-  return `
-    <article class="popular-item" tabindex="0" data-deal-url="${escapeHtml(deal.url)}">
+  return DealCardLink.renderCardContainer('popular-item', deal.url, `
       <div class="rank-line"><span class="rank-number">${index + 1}</span>${visual}</div>
       <h3>${escapeHtml(deal.title)}</h3>
-      <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>
-    </article>`;
+      <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>`);
 }
 
 function latestItem(deal) {
   const image = deal.imageUrl
     ? `<img class="latest-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" />`
     : '';
-  return `
-    <article class="latest-item" tabindex="0" data-deal-url="${escapeHtml(deal.url)}">
+  return DealCardLink.renderCardContainer('latest-item', deal.url, `
       <span class="latest-media" aria-hidden="true"><span class="latest-icon">${categoryEmoji(deal.category)}</span>${image}</span>
       <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}</small></div>
-      <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>
-    </article>`;
+      <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>`);
 }
 
 function bindImageFallbacks(container) {
@@ -118,89 +116,90 @@ function bindImageFallbacks(container) {
   });
 }
 
-function bindDealClicks(container) {
-  container.querySelectorAll('[data-deal-url]').forEach((card) => {
-    const open = () => {
-      const url = card.dataset.dealUrl;
-      if (url) window.open(url, '_blank', 'noopener,noreferrer');
-    };
-    card.addEventListener('click', open);
-    card.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        open();
-      }
-    });
-  });
-}
-
 function renderDeals() {
-  let matchingDeals = DealUtils.filterAndSortDeals(state.deals, state);
-  const isDefaultHome = state.category === '전체' && state.sort === 'latest' && !state.query;
-  if (isDefaultHome) {
-    matchingDeals = DealUtils.mixHomeDeals(matchingDeals, {
-      manualLimit: state.siteSettings.home_manual_limit,
-    });
-  }
-  const visibleDeals = matchingDeals.slice(0, state.visibleCount);
+  const visibleDeals = state.deals;
   elements.dealGrid.classList.remove('skeleton-grid');
   elements.dealGrid.innerHTML = visibleDeals.map(productCard).join('');
 
-  const hasResults = matchingDeals.length > 0;
+  const hasResults = visibleDeals.length > 0;
   elements.dealGrid.hidden = !hasResults;
   elements.emptyState.hidden = hasResults;
-  elements.loadMore.hidden = !hasResults || state.visibleCount >= matchingDeals.length;
+  elements.loadMore.hidden = !hasResults || !state.hasNextPage;
+  elements.loadMore.disabled = false;
 
   if (!hasResults) {
     elements.resultSummary.textContent = state.query
       ? `“${state.query}” 검색 결과가 없어요.`
       : `${state.category} 카테고리에 아직 등록된 핫딜이 없어요.`;
   } else if (state.query) {
-    elements.resultSummary.textContent = `“${state.query}” 핫딜 ${matchingDeals.length}개를 찾았어요.`;
+    elements.resultSummary.textContent = `“${state.query}” 핫딜 ${state.total}개를 찾았어요.`;
   } else if (state.category !== '전체') {
-    elements.resultSummary.textContent = `${state.category} 핫딜 ${matchingDeals.length}개를 모았어요.`;
+    elements.resultSummary.textContent = `${state.category} 핫딜 ${state.total}개를 모았어요.`;
   } else {
-    elements.resultSummary.textContent = `지금 확인할 수 있는 핫딜 ${matchingDeals.length}개예요.`;
+    elements.resultSummary.textContent = `지금 확인할 수 있는 핫딜 ${state.total}개예요.`;
   }
 
   bindImageFallbacks(elements.dealGrid);
-  bindDealClicks(elements.dealGrid);
 }
 
 function renderPhoneDeals(deals) {
-  const phoneDeals = DealUtils.selectPhoneDeals(deals);
+  const phoneDeals = DealUtils.selectPhoneDeals(deals, { limit: state.siteSettings.home_manual_limit });
   elements.phoneDealTitle.textContent = state.siteSettings.phone_section_title;
   elements.phoneDealGrid.innerHTML = phoneDeals.map(productCard).join('');
   elements.phoneDeals.hidden = phoneDeals.length === 0;
   bindImageFallbacks(elements.phoneDealGrid);
-  bindDealClicks(elements.phoneDealGrid);
 }
 
-async function loadDeals({ scroll = false } = {}) {
+async function loadDeals({ scroll = false, append = false } = {}) {
   dealsController?.abort();
   const controller = new AbortController();
+  const sequence = ++dealsRequestSequence;
   dealsController = controller;
+  const requestedPage = append ? state.page + 1 : 1;
+  if (append) elements.loadMore.disabled = true;
 
   try {
-    const rawDeals = await DealUtils.fetchAllLiveDeals({
+    const result = await DealPage.fetchLiveDealsPage({
       query: state.query,
+      category: state.category,
+      sort: state.sort,
+      source: 'ppomppu',
+      page: requestedPage,
+      size: 8,
       signal: controller.signal,
     });
-    if (controller !== dealsController) return;
-    state.deals = rawDeals.map((deal) => DealUtils.normalizeDeal(deal));
-    if (!state.query) renderPhoneDeals(state.deals);
+    if (sequence !== dealsRequestSequence || controller !== dealsController) return;
+    const nextDeals = result.deals.map((deal) => DealUtils.normalizeDeal(deal));
+    if (append) {
+      const byId = new Map(state.deals.map((deal) => [deal.id, deal]));
+      nextDeals.forEach((deal) => byId.set(deal.id, deal));
+      state.deals = [...byId.values()];
+    } else {
+      state.deals = nextDeals;
+    }
+    state.page = result.page;
+    state.total = result.total;
+    state.hasNextPage = result.hasNextPage;
     renderDeals();
-    renderLatest(state.deals);
     if (scroll) document.querySelector('#all-deals').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
-    if (error.name === 'AbortError') return;
+    if (error.name === 'AbortError' || sequence !== dealsRequestSequence) return;
     console.error('핫딜 데이터를 불러오지 못했습니다.', error);
+    if (append && state.deals.length) {
+      elements.loadMore.disabled = false;
+      showToast('다음 핫딜을 불러오지 못했어요.');
+      return;
+    }
+    state.deals = [];
+    state.page = 0;
+    state.total = 0;
+    state.hasNextPage = false;
     elements.dealGrid.hidden = true;
     elements.emptyState.hidden = false;
     elements.loadMore.hidden = true;
     elements.resultSummary.textContent = '핫딜을 불러오지 못했어요. 잠시 후 다시 시도해주세요.';
   } finally {
-    if (controller === dealsController) dealsController = null;
+    if (sequence === dealsRequestSequence && controller === dealsController) dealsController = null;
   }
 }
 
@@ -208,17 +207,34 @@ async function loadSiteSettings() {
   state.siteSettings = await DealUtils.fetchPublicSiteSettings();
 }
 
+async function loadHomeDeals() {
+  if (state.siteSettings.home_manual_limit === 0) {
+    state.homeDeals = [];
+    renderPhoneDeals([]);
+    return;
+  }
+  try {
+    const result = await DealPage.fetchLiveDealsPage({
+      source: 'manual', featured: true, page: 1,
+      size: state.siteSettings.home_manual_limit,
+    });
+    state.homeDeals = result.deals.map((deal) => DealUtils.normalizeDeal(deal));
+    renderPhoneDeals(state.homeDeals);
+    if (state.page) renderDeals();
+  } catch (error) {
+    console.error('휴대폰 특가를 불러오지 못했습니다.', error);
+    state.homeDeals = [];
+    renderPhoneDeals([]);
+  }
+}
+
 async function loadPopular() {
   try {
-    const response = await fetch('/api/live-deals?source=ppomppu&size=5');
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    const imageBaseUrls = Array.isArray(data.imageBaseUrls) ? data.imageBaseUrls : [];
-    const deals = data.deals.map((deal) => DealUtils.normalizeDeal({ ...deal, imageBaseUrls }));
+    const result = await DealPage.fetchLiveDealsPage({ source: 'ppomppu', page: 1, size: 5 });
+    const deals = result.deals.map((deal) => DealUtils.normalizeDeal(deal));
     elements.popularList.classList.remove('skeleton-list');
     elements.popularList.innerHTML = deals.map(popularItem).join('');
     bindImageFallbacks(elements.popularList);
-    bindDealClicks(elements.popularList);
   } catch (error) {
     console.error('인기 핫딜을 불러오지 못했습니다.', error);
     elements.popularList.innerHTML = '<p>인기 핫딜을 불러오지 못했어요.</p>';
@@ -226,29 +242,61 @@ async function loadPopular() {
 }
 
 function renderLatest(deals) {
-  const latest = DealUtils.filterAndSortDeals(deals, { category: '전체', sort: 'latest' }).slice(0, 6);
+  const latest = deals.slice(0, 6);
   elements.latestList.innerHTML = latest.map(latestItem).join('');
   if (!latest.length) {
     elements.latestList.innerHTML = '<p style="color:#91a6c8">조건에 맞는 최신 핫딜이 없어요.</p>';
   }
   bindImageFallbacks(elements.latestList);
-  bindDealClicks(elements.latestList);
 }
 
-function setCategory(category, { scroll = true } = {}) {
+async function loadLatest() {
+  try {
+    const result = await DealPage.fetchLiveDealsPage({ source: 'ppomppu', page: 1, size: 6, sort: 'latest' });
+    renderLatest(result.deals.map((deal) => DealUtils.normalizeDeal(deal)));
+  } catch (error) {
+    console.error('최신 핫딜을 불러오지 못했습니다.', error);
+    renderLatest([]);
+  }
+}
+
+function syncDealUrl(mode = 'push') {
+  const nextUrl = DealUrlState.buildDealStateUrl(window.location, state);
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextUrl === currentUrl) return;
+  if (mode === 'replace') window.history.replaceState(null, '', nextUrl);
+  else window.history.pushState(null, '', nextUrl);
+}
+
+function applyUrlState(nextState) {
+  state.query = nextState.query;
+  state.category = nextState.category;
+  state.sort = nextState.sort;
+  elements.searchInput.value = nextState.query;
+  elements.categoryList.querySelectorAll('[data-category]').forEach((button) => {
+    const active = button.dataset.category === nextState.category;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  document.querySelectorAll('.sort-control button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.sort === nextState.sort);
+  });
+}
+
+function setCategory(category, { scroll = true, updateUrl = true } = {}) {
   state.category = category;
-  state.visibleCount = 8;
   elements.categoryList.querySelectorAll('[data-category]').forEach((button) => {
     const active = button.dataset.category === category;
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   });
+  if (updateUrl) syncDealUrl();
   loadDeals({ scroll });
 }
 
-function runSearch(value, { scroll = true } = {}) {
-  state.query = value.trim();
-  state.visibleCount = 8;
+function runSearch(value, { scroll = true, updateUrl = true } = {}) {
+  state.query = value.trim().slice(0, 100);
+  if (updateUrl) syncDealUrl('replace');
   loadDeals({ scroll });
 }
 
@@ -264,8 +312,8 @@ document.querySelectorAll('[data-quick-category]').forEach((button) => {
 document.querySelectorAll('.sort-control button').forEach((button) => {
   button.addEventListener('click', () => {
     state.sort = button.dataset.sort;
-    state.visibleCount = 8;
     document.querySelectorAll('.sort-control button').forEach((item) => item.classList.toggle('active', item === button));
+    syncDealUrl();
     loadDeals();
   });
 });
@@ -301,8 +349,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 elements.loadMore.addEventListener('click', () => {
-  state.visibleCount += 4;
-  renderDeals();
+  if (state.hasNextPage) loadDeals({ append: true });
 });
 
 document.querySelector('#resetSearch').addEventListener('click', () => {
@@ -312,8 +359,22 @@ document.querySelector('#resetSearch').addEventListener('click', () => {
 });
 
 document.querySelector('#latestRefresh').addEventListener('click', () => {
-  loadDeals();
+  loadLatest();
   showToast('최신 핫딜을 새로 확인했어요.');
 });
 
-Promise.all([loadPopular(), loadSiteSettings().then(() => loadDeals())]);
+window.addEventListener('popstate', () => {
+  clearTimeout(searchTimer);
+  const nextState = DealUrlState.readDealState(window.location.search);
+  applyUrlState(nextState);
+  loadDeals();
+});
+
+const initialUrlState = DealUrlState.readDealState(window.location.search);
+applyUrlState(initialUrlState);
+syncDealUrl('replace');
+Promise.all([
+  loadPopular(),
+  loadLatest(),
+  loadSiteSettings().then(() => Promise.all([loadHomeDeals(), loadDeals()])),
+]);

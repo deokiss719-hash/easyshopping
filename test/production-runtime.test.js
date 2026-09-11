@@ -35,7 +35,7 @@ test('production database APIs stay public and fail closed when admin session se
   assert.deepEqual(bootstraps, []);
   assert.deepEqual(mounted, [
     ['/api/site-settings', 'public-settings-router'],
-    ['/api/manual-deal-images', 'published-manual-images-router'],
+    ['/api/public/manual-deals', 'published-manual-images-router'],
   ]);
 });
 
@@ -71,7 +71,7 @@ test('admin auth and bootstrap are enabled only by a session secret and a comple
     '/api/admin/auth',
     '/api/admin',
     '/api/site-settings',
-    '/api/manual-deal-images',
+    '/api/public/manual-deals',
   ]);
 
   assert.equal(readAdminRuntime({ ADMIN_SESSION_SECRET: 'x'.repeat(32) }).bootstrap, null);
@@ -90,7 +90,15 @@ test('production collector ignores feed overrides but preserves interval configu
     source: APPROVED_FEED_SOURCE,
     feedUrl: APPROVED_FEED_URL,
     intervalMs: 12345,
+    freshnessThresholdMs: 37035,
   });
   assert.equal(runtime.source, 'ppomppu');
   assert.equal(runtime.feedUrl, 'https://www.ppomppu.co.kr/rss.php?id=ppomppu');
+});
+
+test('RSS freshness threshold supports an environment override', () => {
+  assert.equal(readCollectorRuntime({
+    RSS_POLL_INTERVAL_MS: '600000',
+    RSS_FRESHNESS_THRESHOLD_MS: '1200000',
+  }).freshnessThresholdMs, 1200000);
 });

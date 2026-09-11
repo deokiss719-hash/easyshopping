@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS collection_runs (
   upserted_count INTEGER NOT NULL DEFAULT 0,
   error_message TEXT
 );
+CREATE INDEX IF NOT EXISTS collection_runs_source_status_idx
+  ON collection_runs (source, status, finished_at DESC, started_at DESC);
 
 CREATE TABLE IF NOT EXISTS image_backfill_control (
   singleton BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (singleton),

@@ -36,7 +36,7 @@ async function withServer(store, callback, options = {}) {
 test('live deals API returns stored deals with pagination metadata and original links', async () => {
   const { pool, store } = await makeStore();
   await store.upsert({
-    source: 'approved-feed',
+    source: 'ppomppu',
     sourceItemId: 'item-1',
     title: '승인된 모니터 특가',
     priceText: '199,000원',
@@ -50,7 +50,7 @@ test('live deals API returns stored deals with pagination metadata and original 
   });
 
   await withServer(store, async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/api/live-deals?q=모니터&source=approved-feed&page=1&size=20`);
+    const response = await fetch(`${baseUrl}/api/live-deals?q=모니터&source=ppomppu&page=1&size=20`);
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.equal(body.total, 1);
@@ -80,6 +80,38 @@ test('live deals API returns 400 for malformed pagination', async () => {
   await withServer(store, async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/live-deals?page=oops`);
     assert.equal(response.status, 400);
+  });
+  await pool.end();
+});
+
+test('live deals API forwards safe server filters and returns filtered page metadata', async () => {
+  const calls = [];
+  const store = {
+    async list(query) {
+      calls.push(query);
+      return { page: 2, size: 8, total: 17, items: [] };
+    },
+  };
+  await withServer(store, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/live-deals?q=모니터&category=${encodeURIComponent('디지털/가전')}&sort=price-low&page=2&size=8`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(calls, [{
+      q: '모니터', source: 'ppomppu', category: '디지털/가전', sort: 'price-low', featured: undefined, page: '2', size: '8',
+    }]);
+    assert.equal(body.total, 17);
+    assert.equal(body.totalPages, 3);
+    assert.equal(body.hasNextPage, true);
+  });
+});
+
+test('live deals API rejects unsupported category, sort, source, and oversized q', async () => {
+  const { pool, store } = await makeStore();
+  await withServer(store, async (baseUrl) => {
+    for (const query of ['category=invalid', 'sort=random', 'source=unknown', `q=${'a'.repeat(101)}`]) {
+      const response = await fetch(`${baseUrl}/api/live-deals?${query}`);
+      assert.equal(response.status, 400);
+    }
   });
   await pool.end();
 });

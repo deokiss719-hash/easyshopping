@@ -31,7 +31,7 @@
 
   function safeImageUrl(value, allowedBaseUrls = []) {
     const raw = String(value || '');
-    if (/^\/api\/manual-deal-images\/\d+$/.test(raw)) return raw;
+    if (/^\/api\/public\/manual-deals\/\d+\/image$/.test(raw)) return raw;
     try {
       const url = new URL(raw);
       if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return '';
@@ -157,35 +157,8 @@
     }
   }
 
-  async function fetchAllLiveDeals({ source, query = '', fetchImpl = fetch, signal } = {}) {
-    const all = [];
-    let page = 1;
-    let total = 0;
-
-    do {
-      const params = new URLSearchParams({ q: query, page: String(page), size: '100' });
-      if (source != null && source !== '') params.set('source', source);
-      const response = await fetchImpl(`/api/live-deals?${params}`, { signal });
-      if (!response?.ok) throw new Error(`Live deals request failed: HTTP ${response?.status || 'unknown'}`);
-      const data = await response.json();
-      if (!Array.isArray(data?.deals) || !Number.isSafeInteger(data.total) || data.total < 0
-        || (data.imageBaseUrls != null && (!Array.isArray(data.imageBaseUrls)
-          || data.imageBaseUrls.some((value) => typeof value !== 'string')))) {
-        throw new TypeError('Invalid live deals response');
-      }
-      total = data.total;
-      const imageBaseUrls = data.imageBaseUrls || [];
-      all.push(...data.deals.map((deal) => ({ ...deal, imageBaseUrls })));
-      if (data.deals.length === 0) break;
-      page += 1;
-      if (page > Math.ceil(total / 100) + 1) throw new Error('Live deals pagination did not terminate');
-    } while (all.length < total);
-
-    return all.slice(0, total);
-  }
-
   return {
     safeImageUrl, relativeTime, normalizeDeal,
-    filterAndSortDeals, mixHomeDeals, selectPhoneDeals, fetchPublicSiteSettings, fetchAllLiveDeals,
+    filterAndSortDeals, mixHomeDeals, selectPhoneDeals, fetchPublicSiteSettings,
   };
 });

@@ -3,6 +3,7 @@ const { createHash } = require('node:crypto');
 const { XMLParser } = require('fast-xml-parser');
 const cheerio = require('cheerio');
 const { classifyDeal } = require('./deal-category');
+const { requestPinnedHttps } = require('./pinned-https');
 
 const DEFAULT_MAX_BYTES = 1024 * 1024;
 const DEFAULT_HTML_MAX_BYTES = 256 * 1024;
@@ -40,17 +41,76 @@ function cleanText(value) {
     .replace(/&amp;/gi, '&');
 }
 
+function parseKrwAmount(value) {
+  const normalized = String(value);
+  const plain = /^\d+$/.test(normalized);
+  const grouped = /^\d{1,3}(?:([,.])\d{3})(?:\1\d{3})*$/.test(normalized);
+  if (!plain && !grouped) return null;
+
+  const amount = Number(normalized.replace(/[,.]/g, ''));
+  return Number.isSafeInteger(amount) ? amount : null;
+}
+
+const PRICE_FOUND = 'found';
+const PRICE_ABSENT = 'absent';
+const PRICE_INVALID = 'invalid';
+const ANCILLARY_PRICE_BEFORE_PATTERN = /(?:배송\s*비|배송료|배달비|운임|쿠폰(?:\s*할인(?:액)?)?|할인액|할인금액|적립금|포인트)\s*[:：]?\s*(?:[-−]\s*)?$/i;
+const ANCILLARY_PRICE_AFTER_PATTERN = /^\s*(?:배송\s*비|배송료|배달비|운임|할인액|할인금액|적립금|포인트)/i;
+
+function isAncillaryPrice(value, match) {
+  const before = value.slice(0, match.index);
+  const after = value.slice(match.index + match[0].length);
+  const shippingStatusFollowsAmount = /^\s*(?:배송\s*비|배송료|배달비|운임)\s*(?:[:：]\s*|\(\s*)?(?:무료|별도|포함|착불|조건부|문의|0(?!\s*원))/i.test(after);
+  const couponLabelClosesGroup = /^\s*쿠폰\s*\)/i.test(after);
+  const labelFollowsAmount = (
+    ANCILLARY_PRICE_AFTER_PATTERN.test(after)
+    && !shippingStatusFollowsAmount
+    && !/\d+(?:[,.]\d+)*\s*원/.test(after)
+  ) || couponLabelClosesGroup;
+  return ANCILLARY_PRICE_BEFORE_PATTERN.test(before)
+    || /[-−]\s*$/.test(before)
+    || labelFollowsAmount;
+}
+
 function parseKrw(text) {
   const value = String(text || '');
-  const parentheticalGroups = [...value.matchAll(/\(([^()]*)\)/g)].map((match) => match[1]).reverse();
-  for (const group of parentheticalGroups) {
-    const deliveredPrice = group.match(/(\d{1,3}(?:,\d{3})+|\d+)\s*(?:원)?\s*(?=\/|$)/);
-    if (deliveredPrice) return Number(deliveredPrice[1].replaceAll(',', ''));
+  const wonAmounts = [...value.matchAll(/(?<![\d.,])(\d+(?:[,.]\d+)*)(?![\d.,])\s*원/g)];
+  const parentheticalGroups = [...value.matchAll(/\(([^()]*)\)/g)].reverse();
+  for (const parentheticalMatch of parentheticalGroups) {
+    const group = parentheticalMatch[1];
+    const deliveredPrice = group.match(/(?<![\d.,])(\d+(?:[,.]\d+)*)(?![\d.,])\s*(?:원)?\s*(?=\/|$)/);
+    if (deliveredPrice) {
+      const contextualMatch = {
+        0: deliveredPrice[0],
+        index: parentheticalMatch.index + 1 + deliveredPrice.index,
+      };
+      if (isAncillaryPrice(value, contextualMatch)) continue;
+      const hasEarlierInvalidAmount = wonAmounts.some((match) => (
+        match.index < contextualMatch.index
+        && !isAncillaryPrice(value, match)
+        && parseKrwAmount(match[1]) == null
+      ));
+      if (hasEarlierInvalidAmount) return { status: PRICE_INVALID, amount: null };
+      const amount = parseKrwAmount(deliveredPrice[1]);
+      return amount == null
+        ? { status: PRICE_INVALID, amount: null }
+        : { status: PRICE_FOUND, amount };
+    }
   }
 
-  const wonAmounts = [...value.matchAll(/(\d{1,3}(?:,\d{3})+|\d+)\s*원/g)];
-  const match = wonAmounts.at(-1);
-  return match ? Number(match[1].replaceAll(',', '')) : null;
+  let selectedAmount = null;
+  let hasInvalidAmount = false;
+  for (const match of wonAmounts) {
+    if (isAncillaryPrice(value, match)) continue;
+    const amount = parseKrwAmount(match[1]);
+    if (amount == null) hasInvalidAmount = true;
+    else selectedAmount = amount;
+  }
+  if (selectedAmount != null) return { status: PRICE_FOUND, amount: selectedAmount };
+  return {
+    status: hasInvalidAmount ? PRICE_INVALID : PRICE_ABSENT,
+    amount: null,
+  };
 }
 
 function normalizeItemUrl(value, feedUrl) {
@@ -169,12 +229,16 @@ function parseFeed(xml, {
       const originalUrl = normalizeItemUrl(item.link, feedUrl);
       const sourceImageUrl = extractRssImage(item, originalUrl, allowedImageHosts);
       const merchantUrl = extractExplicitMerchantUrl(item, feedUrl, originalUrl, allowedMerchantHosts);
+      const titlePrice = parseKrw(title);
+      const priceAmount = titlePrice.status === PRICE_ABSENT
+        ? parseKrw(description).amount
+        : titlePrice.amount;
       return [{
         source,
         sourceItemId: cleanText(item.guid) || originalUrl,
         title,
         originalUrl,
-        priceAmount: parseKrw(title) ?? parseKrw(description),
+        priceAmount,
         currency: 'KRW',
         merchant: parseMerchant(title),
         category: classifyDeal({ title, description }),
@@ -232,17 +296,24 @@ async function cancelResponseBody(response) {
   }
 }
 
-async function requestFeed(startUrl, { allowedHosts, fetchImpl }) {
+function requestHop(url, options, { lookup, request, fetchImpl }) {
+  const transport = request || (fetchImpl
+    ? (target, _selected, requestOptions) => fetchImpl(target, requestOptions)
+    : undefined);
+  return requestPinnedHttps(url, { ...options, lookup, request: transport });
+}
+
+async function requestFeed(startUrl, { allowedHosts, fetchImpl, lookup, request }) {
   let url = validateFeedUrl(startUrl, allowedHosts);
   for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
-    const response = await fetchImpl(url, {
+    const response = await requestHop(url, {
       headers: {
         Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml',
         'User-Agent': 'easyshopping-feed-collector/0.1 (+https://easyshoopping.com)',
       },
       redirect: 'manual',
       signal: AbortSignal.timeout(15000),
-    });
+    }, { lookup, request, fetchImpl });
 
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers?.get?.('location');
@@ -351,7 +422,9 @@ function extractPpomppuBodyImage(html, pageUrl, allowedImageHosts = DEFAULT_IMAG
 async function fetchOpenGraphImage(pageUrl, {
   allowedHosts,
   allowedImageHosts = DEFAULT_IMAGE_HOSTS,
-  fetchImpl = fetch,
+  fetchImpl,
+  lookup,
+  request,
   maxBytes = DEFAULT_HTML_MAX_BYTES,
   timeoutMs = 8000,
   onDiagnostic = () => {},
@@ -399,7 +472,7 @@ async function fetchOpenGraphImage(pageUrl, {
     finalRedirectHostname = url.hostname;
     const signal = AbortSignal.timeout(timeoutMs);
     for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
-      const response = await fetchImpl(url, {
+      const response = await requestHop(url, {
         headers: {
           Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
           'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.7',
@@ -412,7 +485,7 @@ async function fetchOpenGraphImage(pageUrl, {
         },
         redirect: 'manual',
         signal,
-      });
+      }, { lookup, request, fetchImpl });
       httpStatus = response.status;
       contentType = response.headers?.get?.('content-type') || null;
       if (response.status >= 300 && response.status < 400) {
@@ -522,9 +595,13 @@ async function runRssCollector({
   feedUrl,
   allowedHosts,
   store,
-  fetchImpl = fetch,
+  fetchImpl,
+  lookup,
+  request,
   enrichImages = false,
   pageFetchImpl = fetchImpl,
+  pageLookup = lookup,
+  pageRequest = request,
   allowedImageHosts = DEFAULT_IMAGE_HOSTS,
   allowedMerchantHosts = [],
   productMatcher = null,
@@ -563,7 +640,9 @@ async function runRssCollector({
     throw new TypeError('enabled productMatcher must implement match');
   }
 
-  const { response, finalUrl } = await requestFeed(feedUrl, { allowedHosts, fetchImpl });
+  const { response, finalUrl } = await requestFeed(feedUrl, {
+    allowedHosts, fetchImpl, lookup, request,
+  });
   const xml = await readLimitedBody(response, maxBytes);
   const deals = parseFeed(xml, {
     source,
@@ -656,6 +735,8 @@ async function runRssCollector({
         allowedHosts,
         allowedImageHosts,
         fetchImpl: pageFetchImpl,
+        lookup: pageLookup,
+        request: pageRequest,
         onDiagnostic: (detail) => { diagnostic = detail; },
       });
       if (imageUrl) {

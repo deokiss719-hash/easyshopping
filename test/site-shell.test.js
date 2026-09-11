@@ -71,14 +71,27 @@ test('메인·실시간·최신 상품 영역은 실제 이미지와 기존 fall
   assert.match(styles, /\.latest-image[^}]*object-fit:\s*cover/);
 });
 
-test('공개 화면은 수동 휴대폰 특가를 기존 카드에 작게 표시하고 전체 source를 조회한다', () => {
+test('공개 화면은 수동 휴대폰 특가를 전용 섹션에 표시하고 기본 목록은 RSS만 조회한다', () => {
   assert.match(script, /manual-deal-badge[^\n]*이지폰 특가/);
   assert.match(styles, /\.manual-deal-badge\s*\{/);
-  assert.match(script, /fetchAllLiveDeals\(\{\s*query:\s*state\.query/);
-  assert.doesNotMatch(script, /fetchAllLiveDeals\(\{\s*source:\s*['"]ppomppu['"]/);
+  assert.match(script, /DealPage\.fetchLiveDealsPage\(\{\s*query:\s*state\.query,[\s\S]*?source:\s*['"]ppomppu['"]/);
+  assert.match(script, /source:\s*['"]manual['"][^\n]*featured:\s*true/);
+  assert.match(script, /selectPhoneDeals\(deals,\s*\{\s*limit:\s*state\.siteSettings\.home_manual_limit\s*\}\)/);
+  assert.match(script, /if \(state\.siteSettings\.home_manual_limit === 0\)/);
+  assert.match(script, /fetchLiveDealsPage\(\{\s*source:\s*['"]ppomppu['"],\s*page:\s*1,\s*size:\s*6,\s*sort:\s*['"]latest['"]\s*\}\)/);
   assert.match(script, /fetchPublicSiteSettings/);
-  assert.match(script, /mixHomeDeals/);
+  assert.doesNotMatch(script, /mixHomeDeals\(/);
   assert.match(script, /home_manual_limit/);
+});
+
+test('상품 목록은 전체 페이지를 선다운로드하지 않고 서버 필터와 증분 페이지를 사용한다', () => {
+  assert.match(html, /<script src="\/deal-page\.js" defer><\/script>[\s\S]*<script src="\/app\.js" defer><\/script>/);
+  assert.doesNotMatch(script, /fetchAllLiveDeals/);
+  assert.match(script, /DealPage\.fetchLiveDealsPage/);
+  assert.match(script, /category:\s*state\.category/);
+  assert.match(script, /sort:\s*state\.sort/);
+  assert.match(script, /append:\s*true/);
+  assert.match(script, /new AbortController\(\)/);
 });
 
 test('휴대폰 초특가 섹션은 검색 바로 뒤, 빠른 메뉴 앞에 있고 설정 제목과 공용 카드를 쓴다', () => {
@@ -92,4 +105,35 @@ test('휴대폰 초특가 섹션은 검색 바로 뒤, 빠른 메뉴 앞에 있�
   assert.match(script, /phone_section_title/);
   assert.match(script, /elements\.phoneDealGrid\.innerHTML\s*=\s*phoneDeals\.map\(productCard\)/);
   assert.match(script, /class="original-price"/);
+});
+
+test('검색 입력은 기존 검색 박스 전체를 label로 유지하고 시각적 문구 없이 접근 가능한 이름을 제공한다', () => {
+  assert.match(html, /<label class="hero-search" for="searchInput">[\s\S]*<input id="searchInput"[^>]*aria-label="핫딜 검색"[^>]*>[\s\S]*<\/label>/);
+  assert.doesNotMatch(html, /hero-search-label|>\s*핫딜 검색\s*</);
+  assert.doesNotMatch(styles, /\.hero-search-label\s*\{/);
+});
+
+test('모든 상품 카드는 URL 유무에 따라 안전한 링크 또는 비활성 요소를 사용한다', () => {
+  assert.match(html, /<script src="\/deal-card-link\.js" defer><\/script>\s*<script src="\/app\.js" defer><\/script>/);
+  for (const className of ['deal-card', 'popular-item', 'latest-item']) {
+    assert.match(script, new RegExp(`DealCardLink\\.renderCardContainer\\('${className}', deal\\.url,`));
+  }
+
+  assert.doesNotMatch(script, /<a class="(?:deal-card|popular-item|latest-item)"/);
+  assert.doesNotMatch(script, /data-deal-url|bindDealClicks|window\.open/);
+});
+
+test('검색·카테고리·정렬은 URL과 동기화되고 초기 로드와 popstate에서 복원한다', () => {
+  assert.match(html, /<script src="\/url-state\.js" defer><\/script>[\s\S]*<script src="\/app\.js" defer><\/script>/);
+  assert.match(script, /DealUrlState\.readDealState\(window\.location\.search\)/);
+  assert.match(script, /DealUrlState\.buildDealStateUrl\(window\.location/);
+  assert.match(script, /window\.history\.(?:pushState|replaceState)/);
+  assert.match(script, /window\.addEventListener\(['"]popstate['"]/);
+  assert.match(script, /elements\.searchInput\.value\s*=\s*nextState\.query/);
+  assert.match(script, /button\.dataset\.sort\s*===\s*nextState\.sort/);
+});
+
+test('공개 GET 404 미들웨어는 API 라우트 뒤에 연결된다', () => {
+  assert.match(server, /require\(['"]\.\/src\/public-not-found['"]\)/);
+  assert.match(server, /app\.use\(adminJsonErrorHandler\);\s*app\.use\(publicNotFound\);/);
 });

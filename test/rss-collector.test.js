@@ -42,6 +42,8 @@ test('뽐뿌 본문 밖 이미지나 허용되지 않은 외부 이미지는 사
   );
 });
 
+const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
+
 const RSS = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
@@ -112,6 +114,76 @@ test('괄호 안 상품가를 포인트 금액보다 우선하고 원 없는 배
   assert.deepEqual(deals.map((deal) => deal.priceAmount), [15200, 56660]);
 });
 
+test('한국식 점 구분 가격은 읽되 비정상 자릿수 구분을 0원으로 오인하지 않는다', () => {
+  const xml = `<rss><channel>
+    <item><title>[네이버] 금강 육개장 630g 5개 (16.000원/네멤무배)</title><link>https://feed.example/3</link><guid>p3</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>[CJ온스타일] 락포트 남성화 (79,0000원/무료)</title><link>https://feed.example/4</link><guid>p4</guid><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+  </channel></rss>`;
+
+  const deals = parseFeed(xml, { source: 'approved-feed', feedUrl: 'https://feed.example/rss.xml' });
+  assert.deepEqual(deals.map((deal) => deal.priceAmount), [16000, null]);
+});
+
+test('비정상 상품가 뒤 괄호의 부가금액을 상품가로 재매칭하지 않는다', () => {
+  const xml = `<rss><channel>
+    <item><title>상품 79,0000원 (배송비 3,000원)</title><link>https://feed.example/bad-parenthesized-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 79,0000원 (쿠폰 1,000원)</title><link>https://feed.example/bad-parenthesized-coupon</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 79,0000원 (할인액 2,000원)</title><link>https://feed.example/bad-parenthesized-discount</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 79,0000원 (0원 쿠폰)</title><link>https://feed.example/bad-parenthesized-coupon-after</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+  </channel></rss>`;
+
+  const deals = parseFeed(xml, { source: 'approved-feed', feedUrl: 'https://feed.example/rss.xml' });
+  assert.deepEqual(deals.map((deal) => deal.priceAmount), [null, null, null, null]);
+});
+
+test('비정상 상품가 뒤의 배송비를 상품가로 재매칭하지 않는다', () => {
+  const xml = `<rss><channel><item><title>상품 79,0000원 배송비 0원</title><link>https://feed.example/bad-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item></channel></rss>`;
+
+  const [deal] = parseFeed(xml, { source: 'approved-feed', feedUrl: 'https://feed.example/rss.xml' });
+  assert.equal(deal.priceAmount, null);
+});
+
+test('상품가 뒤 배송비 상태 표기는 정상 상품가를 무효화하지 않는다', () => {
+  const xml = `<rss><channel>
+    <item><title>상품 10,000원 배송비 무료</title><link>https://feed.example/free-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 10,000원 배송비 별도</title><link>https://feed.example/separate-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 10,000원 배송비 포함</title><link>https://feed.example/included-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 10,000원 배송비 착불</title><link>https://feed.example/cod-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 10,000원 배송비 조건부</title><link>https://feed.example/conditional-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 10,000원 배송료 문의</title><link>https://feed.example/ask-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 10,000원 배송비: 착불</title><link>https://feed.example/colon-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 10,000원 배송비(착불)</title><link>https://feed.example/parenthesized-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 10,000원 배송료: 문의</title><link>https://feed.example/colon-ask-delivery</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+  </channel></rss>`;
+
+  const deals = parseFeed(xml, { source: 'approved-feed', feedUrl: 'https://feed.example/rss.xml' });
+  assert.deepEqual(deals.map((deal) => deal.priceAmount), [10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000]);
+});
+
+test('제목의 비정상 상품가가 있으면 설명의 배송비로 fallback하지 않는다', () => {
+  const xml = `<rss><channel><item><title>상품 (79,0000원/무료)</title><link>https://feed.example/bad-fallback</link><description>배송비 0원</description><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item></channel></rss>`;
+
+  const [deal] = parseFeed(xml, { source: 'approved-feed', feedUrl: 'https://feed.example/rss.xml' });
+  assert.equal(deal.priceAmount, null);
+});
+
+test('쿠폰·할인액 대신 앞의 정상 상품가를 유지한다', () => {
+  const xml = `<rss><channel>
+    <item><title>상품 10,000원 쿠폰 -1,000원</title><link>https://feed.example/coupon</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+    <item><title>상품 20,000원 할인액 2,000원</title><link>https://feed.example/discount</link><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item>
+  </channel></rss>`;
+
+  const deals = parseFeed(xml, { source: 'approved-feed', feedUrl: 'https://feed.example/rss.xml' });
+  assert.deepEqual(deals.map((deal) => deal.priceAmount), [10000, 20000]);
+});
+
+test('제목에 가격이 없을 때 설명의 정상 상품가는 계속 사용한다', () => {
+  const xml = `<rss><channel><item><title>가격은 상세 설명 참조</title><link>https://feed.example/description-price</link><description>오늘 상품가 23,900원</description><pubDate>Tue, 08 Sep 2026 10:00:00 GMT</pubDate></item></channel></rss>`;
+
+  const [deal] = parseFeed(xml, { source: 'approved-feed', feedUrl: 'https://feed.example/rss.xml' });
+  assert.equal(deal.priceAmount, 23900);
+});
+
 test('제목 앞 대괄호에서 쇼핑몰명을 추출한다', () => {
   const xml = `<rss><channel><item><title>[G마켓] 키보드 19,900원</title><link>https://feed.example/2</link><pubDate>Tue, 08 Sep 2026 08:10:00 GMT</pubDate></item></channel></rss>`;
   const [deal] = parseFeed(xml, {
@@ -157,6 +229,7 @@ test('허용 목록 밖의 피드 호스트와 리다이렉트를 거부한다',
       feedUrl: 'https://evil.example/rss.xml',
       allowedHosts: ['feed.example'],
       store: { upsert: async () => {} },
+      lookup: publicLookup,
       fetchImpl: async () => {
         fetchCalls += 1;
         return { ok: true, status: 200, text: async () => RSS };
@@ -172,6 +245,7 @@ test('허용 목록 밖의 피드 호스트와 리다이렉트를 거부한다',
       feedUrl: 'https://feed.example/rss.xml',
       allowedHosts: ['feed.example'],
       store: { upsert: async () => {} },
+      lookup: publicLookup,
       fetchImpl: async () => ({
         ok: false,
         status: 302,
@@ -190,6 +264,7 @@ test('허용 크기를 넘는 RSS 응답을 파싱 전에 거부한다', async (
       allowedHosts: ['feed.example'],
       maxBytes: 1024,
       store: { upsert: async () => {} },
+      lookup: publicLookup,
       fetchImpl: async () => ({
         ok: true,
         status: 200,
@@ -210,6 +285,7 @@ test('비스트림 text fallback의 크기 초과도 피드와 페이지 본문�
       allowedHosts: ['feed.example'],
       maxBytes: 1024,
       store: { upsert: async () => ({ imageUrl: null }) },
+      lookup: publicLookup,
       fetchImpl: async () => ({
         ok: true,
         status: 200,
@@ -227,6 +303,7 @@ test('비스트림 text fallback의 크기 초과도 피드와 페이지 본문�
     fetchOpenGraphImage('https://feed.example/item', {
       allowedHosts: ['feed.example'],
       maxBytes: 1024,
+      lookup: publicLookup,
       fetchImpl: async () => ({
         ok: true,
         status: 200,
@@ -258,6 +335,7 @@ test('스트리밍 응답 초과 시 잠긴 스트림 오류 대신 크기 오�
       allowedHosts: ['feed.example'],
       maxBytes: 1024,
       store: { upsert: async () => {} },
+      lookup: publicLookup,
       fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, body }),
     }),
     /Feed response is too large/,
@@ -315,7 +393,8 @@ test('허용된 원문 호스트에서만 og:image를 제한적으로 조회한�
   const image = await fetchOpenGraphImage('https://feed.example/deals/1', {
     allowedHosts: ['feed.example'],
     allowedImageHosts: ['cdn.example'],
-    fetchImpl: async () => {
+    lookup: publicLookup,
+      fetchImpl: async () => {
       calls += 1;
       return {
         ok: true,
@@ -331,6 +410,7 @@ test('허용된 원문 호스트에서만 og:image를 제한적으로 조회한�
   await assert.rejects(
     fetchOpenGraphImage('https://evil.example/deals/1', {
       allowedHosts: ['feed.example'],
+      lookup: publicLookup,
       fetchImpl: async () => { throw new Error('must not fetch'); },
     }),
     /not allowed/,
@@ -342,7 +422,8 @@ test('원문 이미지 조회는 뽐뿌가 허용하는 브라우저 호환 요�
   const image = await fetchOpenGraphImage('https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=1', {
     allowedHosts: ['www.ppomppu.co.kr'],
     allowedImageHosts: ['ppomppu.co.kr'],
-    fetchImpl: async (_url, options) => {
+    lookup: publicLookup,
+      fetchImpl: async (_url, options) => {
       requestHeaders = options.headers;
       const userAgent = requestHeaders?.['User-Agent'] || '';
       if (!userAgent.startsWith('Mozilla/5.0')) {
@@ -376,6 +457,7 @@ test('og:image 페이지 리다이렉트와 응답 본문을 안전하게 처리
   await assert.rejects(
     fetchOpenGraphImage('https://feed.example/deals/1', {
       allowedHosts: ['feed.example'],
+      lookup: publicLookup,
       fetchImpl: async () => ({
         ok: false,
         status: 302,
@@ -403,7 +485,8 @@ test('피드 리다이렉트·HTTP 오류의 모든 분기에서 응답 본문�
         feedUrl: 'https://feed.example/rss',
         allowedHosts: ['feed.example'],
         store: { upsert: async () => ({ imageUrl: null }) },
-        fetchImpl: async () => ({
+        lookup: publicLookup,
+      fetchImpl: async () => ({
           ok: false,
           status: scenario.status,
           headers: { get: (name) => name.toLowerCase() === 'location' ? scenario.location : null },
@@ -427,6 +510,7 @@ test('og:image 페이지의 누락·과다 리다이렉트와 HTTP 오류도 본
     let cancels = 0;
     const operation = fetchOpenGraphImage('https://feed.example/item', {
       allowedHosts: ['feed.example'],
+      lookup: publicLookup,
       fetchImpl: async () => ({
         ok: false,
         status: scenario.status,
@@ -445,6 +529,7 @@ test('og:image HTML 크기와 전체 요청 시간을 제한한다', async () =>
     fetchOpenGraphImage('https://feed.example/deals/large', {
       allowedHosts: ['feed.example'],
       maxBytes: 1024,
+      lookup: publicLookup,
       fetchImpl: async () => ({
         ok: true,
         status: 200,
@@ -459,6 +544,7 @@ test('og:image HTML 크기와 전체 요청 시간을 제한한다', async () =>
     fetchOpenGraphImage('https://feed.example/deals/slow', {
       allowedHosts: ['feed.example'],
       timeoutMs: 10,
+      lookup: publicLookup,
       fetchImpl: async (_url, { signal }) => new Promise((resolve, reject) => {
         signal.addEventListener('abort', () => reject(signal.reason), { once: true });
       }),
@@ -471,7 +557,8 @@ test('비 HTML 페이지 응답은 본문을 취소하고 이미지로 사용하
   let cancelled = false;
   const image = await fetchOpenGraphImage('https://feed.example/deals/file', {
     allowedHosts: ['feed.example'],
-    fetchImpl: async () => ({
+    lookup: publicLookup,
+      fetchImpl: async () => ({
       ok: true,
       status: 200,
       headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'application/octet-stream' : null },
@@ -490,7 +577,8 @@ test('원문 이미지 조회 실패 원인을 민감정보 없이 구조화해 
   assert.equal(await fetchOpenGraphImage('https://feed.example/deals/403?token=secret', {
     allowedHosts: ['feed.example'],
     onDiagnostic,
-    fetchImpl: async () => ({
+    lookup: publicLookup,
+      fetchImpl: async () => ({
       ok: false,
       status: 403,
       headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/html' : null },
@@ -501,7 +589,8 @@ test('원문 이미지 조회 실패 원인을 민감정보 없이 구조화해 
   assert.equal(await fetchOpenGraphImage('https://feed.example/deals/no-image', {
     allowedHosts: ['feed.example'],
     onDiagnostic,
-    fetchImpl: async () => ({
+    lookup: publicLookup,
+      fetchImpl: async () => ({
       ok: true,
       status: 200,
       headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null },
@@ -513,7 +602,8 @@ test('원문 이미지 조회 실패 원인을 민감정보 없이 구조화해 
     allowedHosts: ['feed.example'],
     maxBytes: 1024,
     onDiagnostic,
-    fetchImpl: async () => ({
+    lookup: publicLookup,
+      fetchImpl: async () => ({
       ok: true,
       status: 200,
       headers: { get: (name) => {
@@ -529,7 +619,8 @@ test('원문 이미지 조회 실패 원인을 민감정보 없이 구조화해 
     allowedHosts: ['feed.example'],
     timeoutMs: 5,
     onDiagnostic,
-    fetchImpl: async (_url, { signal }) => new Promise((resolve, reject) => {
+    lookup: publicLookup,
+      fetchImpl: async (_url, { signal }) => new Promise((resolve, reject) => {
       signal.addEventListener('abort', () => reject(signal.reason), { once: true });
     }),
   }), /timeout/i);
@@ -537,7 +628,8 @@ test('원문 이미지 조회 실패 원인을 민감정보 없이 구조화해 
   await assert.rejects(fetchOpenGraphImage('https://feed.example/deals/redirect', {
     allowedHosts: ['feed.example'],
     onDiagnostic,
-    fetchImpl: async () => ({
+    lookup: publicLookup,
+      fetchImpl: async () => ({
       ok: false,
       status: 302,
       headers: { get: (name) => name.toLowerCase() === 'location' ? 'https://evil.example/private' : null },
@@ -572,7 +664,8 @@ test('원문 이미지 조회 실패 원인을 민감정보 없이 구조화해 
   assert.equal(await fetchOpenGraphImage('https://feed.example/deals/file', {
     allowedHosts: ['feed.example'],
     onDiagnostic,
-    fetchImpl: async () => ({
+    lookup: publicLookup,
+      fetchImpl: async () => ({
       ok: true,
       status: 200,
       headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'application/octet-stream' : null },
@@ -599,7 +692,8 @@ test('이미지 보조 수집 실패 로그는 최소 상품 식별자와 안전
     enrichImages: true,
     imageAttemptCache: new Map(),
     logger: { warn: (message, detail) => warnings.push({ message, detail }) },
-    fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => RSS }),
+    lookup: publicLookup,
+      fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => RSS }),
     pageFetchImpl: async () => ({
       ok: false,
       status: 403,
@@ -639,7 +733,8 @@ test('URL 형태 상품 식별자는 쿼리 비밀값 대신 비가역 참조값
     enrichImages: true,
     imageAttemptCache: new Map(),
     logger: { warn: (_message, detail) => warnings.push(detail) },
-    fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => secretFeed }),
+    lookup: publicLookup,
+      fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => secretFeed }),
     pageFetchImpl: async () => ({
       ok: false,
       status: 403,
@@ -662,7 +757,8 @@ test('URL 형태 상품 식별자는 쿼리 비밀값 대신 비가역 참조값
     enrichImages: true,
     imageAttemptCache: new Map(),
     logger: { warn: (_message, detail) => ppomppuWarnings.push(detail) },
-    fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => ppomppuFeed }),
+    lookup: publicLookup,
+      fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => ppomppuFeed }),
     pageFetchImpl: async () => ({
       ok: false,
       status: 403,
@@ -707,7 +803,8 @@ test('이미지 보조 수집은 동시성 상한을 지키고 실패 URL을 재
     imageConcurrency: 2,
     imageAttemptCache,
     imageRetryMs: 60_000,
-    fetchImpl: async () => ({
+    lookup: publicLookup,
+      fetchImpl: async () => ({
       ok: true, status: 200, headers: { get: () => null }, text: async () => feed,
     }),
     pageFetchImpl,
@@ -738,7 +835,8 @@ test('성공적인 수집 뒤 출처의 TTL 초과 상품을 종료 처리한다
     store,
     now: () => new Date('2026-09-10T00:00:00.000Z'),
     maxAgeMs: 72 * 60 * 60 * 1000,
-    fetchImpl: async () => ({ ok: true, status: 200, text: async () => RSS }),
+    lookup: publicLookup,
+      fetchImpl: async () => ({ ok: true, status: 200, text: async () => RSS }),
   });
   const active = await store.list({ source: 'approved-feed' });
 
@@ -766,6 +864,8 @@ test('RSS를 가져와 저장하고 재수집해도 중복을 만들지 않는�
     allowedHosts: ['feed.example'],
     store,
     fetchImpl,
+    lookup: publicLookup,
+    now: () => new Date('2026-09-10T00:00:00.000Z'),
   };
   const first = await runRssCollector(options);
   const second = await runRssCollector(options);
@@ -812,7 +912,8 @@ test('고신뢰도 네이버 매칭만 원격 이미지와 판매 링크로 저�
       markEndedBefore: async () => 0,
     },
     productMatcher,
-    fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => feed }),
+    lookup: publicLookup,
+      fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => feed }),
   });
 
   assert.equal(stored[0].imageProvider, 'naver-shopping');
@@ -850,6 +951,7 @@ test('RSS 판매처명이 객체 프로토타입 키여도 통계 객체를 오�
         enabled: true,
         match: async () => ({ status: 'unresolved', reason: 'no_qualified_candidate' }),
       },
+      lookup: publicLookup,
       fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, text: async () => feed }),
     });
 

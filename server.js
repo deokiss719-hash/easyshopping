@@ -19,15 +19,25 @@ const { buildContentSecurityPolicy } = require('./src/content-security-policy');
 const { NAVER_IMAGE_BASE_URLS } = require('./src/product-matching/naver-shopping');
 const { createAdminStore } = require('./src/admin/admin-store');
 const { createAdminAuth } = require('./src/admin/admin-auth');
-const { createAdminApiRouter, createPublicSettingsRouter, adminJsonErrorHandler } = require('./src/admin/admin-api');
+const {
+  createAdminApiRouter, createManualImageUrlValidator, createPublicSettingsRouter, adminJsonErrorHandler,
+} = require('./src/admin/admin-api');
 const { fetchUrlMetadata } = require('./src/url-metadata/url-metadata');
 const { createAdminUiRouter } = require('./src/admin/admin-ui');
 const { createManualDealImageRouter } = require('./src/manual-deal-images');
 const { readAdminRuntime, readCollectorRuntime, mountDatabaseApis } = require('./src/production-runtime');
+const { publicNotFound } = require('./src/public-not-found');
+const { createCollectionRunStore } = require('./src/collection-run-store');
+const { createOperationalHealth } = require('./src/operational-health');
+const { createHealthRouter } = require('./src/health-routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 let databaseMode = 'fixture';
+let operationalHealth = createOperationalHealth({
+  getCollectionStatus: async () => { throw new Error('database is not configured'); },
+  freshnessThresholdMs: 1,
+});
 // Render terminates requests at one controlled proxy hop. Direct deployments
 // must not let clients choose req.ip through X-Forwarded-For.
 app.set('trust proxy', process.env.RENDER === 'true' ? 1 : false);
@@ -98,9 +108,10 @@ function withComputedFields(deal) {
   };
 }
 
-app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, service: 'easyshopping', version: '0.4.0', database: databaseMode });
-});
+app.use('/api', createHealthRouter({
+  getDatabaseMode: () => databaseMode,
+  readiness: { handler: (request, response) => operationalHealth.handler(request, response) },
+}));
 
 app.get('/api/deals', (req, res) => {
   const category = String(req.query.category || '전체');
@@ -140,7 +151,12 @@ async function start() {
   let store = null;
   let adminAuth = null;
   const adminRuntime = readAdminRuntime(process.env);
-  const { source, feedUrl, intervalMs } = readCollectorRuntime(process.env);
+  const {
+    source,
+    feedUrl,
+    intervalMs,
+    freshnessThresholdMs,
+  } = readCollectorRuntime(process.env);
   const r2Config = readR2Config(process.env);
   const imageBaseUrls = [
     ...(r2Config.enabled ? [r2Config.publicBaseUrl] : []),
@@ -155,11 +171,20 @@ async function start() {
     next();
   });
   if (process.env.DATABASE_URL) {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      connectionTimeoutMillis: 2000,
+    });
     await migrate(pool);
     store = createDealStore(pool);
+    const collectionRunStore = createCollectionRunStore(pool, source);
+    operationalHealth = createOperationalHealth({
+      getCollectionStatus: (options) => collectionRunStore.getStatus(options),
+      freshnessThresholdMs,
+    });
     const adminStore = createAdminStore(pool);
     const imageStorage = createR2Storage({ config: r2Config });
+    const manualImageUrlValidator = createManualImageUrlValidator(imageStorage);
     adminAuth = await mountDatabaseApis({
       app,
       adminStore,
@@ -170,10 +195,14 @@ async function start() {
         auth,
         metadataFetcher: fetchUrlMetadata,
         imageStorage,
+        imageUrlValidator: manualImageUrlValidator,
         convertImage: convertToWebp,
       }),
       createPublicSettings: () => createPublicSettingsRouter(adminStore),
-      createManualImages: () => createManualDealImageRouter({ store: adminStore }),
+      createManualImages: () => createManualDealImageRouter({
+        store: adminStore,
+        imageUrlValidator: manualImageUrlValidator,
+      }),
     });
     const reclassified = await store.reclassify(classifyDeal);
     console.log(`기존 핫딜 카테고리 재분류 완료: ${reclassified}건 변경`);
@@ -231,6 +260,7 @@ async function start() {
         return result;
       },
       intervalMs,
+      runRecorder: collectionRunStore,
     });
   }
 
@@ -241,6 +271,7 @@ async function start() {
     imageBaseUrls,
   }));
   app.use(adminJsonErrorHandler);
+  app.use(publicNotFound);
   app.listen(PORT, () => {
     console.log(`이지쇼핑 실행 중: http://localhost:${PORT} (${databaseMode})`);
   });

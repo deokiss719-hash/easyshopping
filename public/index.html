@@ -55,7 +55,7 @@
       <div class="hero-search-wrap">
         <label class="hero-search" for="searchInput">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.15A7.5 7.5 0 1 1 4 11.5a7.5 7.5 0 0 1 15 0Z"/></svg>
-          <input id="searchInput" type="search" placeholder="어떤 핫딜을 찾고 있나요?" autocomplete="off" />
+          <input id="searchInput" type="search" maxlength="100" placeholder="어떤 핫딜을 찾고 있나요?" autocomplete="off" aria-label="핫딜 검색" />
           <kbd>⌘ K</kbd>
         </label>
         <div class="search-suggestions" aria-label="추천 검색어">
@@ -170,6 +170,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/deal-utils.js" defer></script>
+  <script src="/deal-page.js" defer></script>
+  <script src="/url-state.js" defer></script>
+  <script src="/deal-card-link.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

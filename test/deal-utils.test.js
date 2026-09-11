@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  safeImageUrl, normalizeDeal, filterAndSortDeals, fetchAllLiveDeals, mixHomeDeals, selectPhoneDeals, fetchPublicSiteSettings,
+  safeImageUrl, normalizeDeal, filterAndSortDeals, mixHomeDeals, selectPhoneDeals, fetchPublicSiteSettings,
 } = require('../public/deal-utils');
 
 const rawDeal = {
@@ -60,58 +60,6 @@ test('실데이터를 가짜 반응 수치 없이 카드 표시 모델로 변환
   assert.equal(normalizeDeal({ ...rawDeal, title: '등산 텐트', category: undefined }).category, '기타');
 });
 
-test('실데이터 API의 모든 페이지를 가져와 전체 필터·정렬 대상으로 사용한다', async () => {
-  const calls = [];
-  const deals = Array.from({ length: 101 }, (_, index) => ({ ...rawDeal, id: String(index + 1) }));
-  const fetchImpl = async (url) => {
-    calls.push(url);
-    const page = Number(new URL(url, 'https://example.test').searchParams.get('page'));
-    const slice = page === 1 ? deals.slice(0, 100) : deals.slice(100);
-    return {
-      ok: true,
-      json: async () => ({
-        deals: slice,
-        total: 101,
-        page,
-        size: 100,
-        imageBaseUrls: ['https://images.example.com/base'],
-      }),
-    };
-  };
-
-  const result = await fetchAllLiveDeals({ source: 'ppomppu', query: '아이폰', fetchImpl });
-  assert.equal(result.length, 101);
-  assert.deepEqual(result[0].imageBaseUrls, ['https://images.example.com/base']);
-  assert.equal(calls.length, 2);
-  assert.match(calls[0], /q=%EC%95%84%EC%9D%B4%ED%8F%B0/);
-  assert.match(calls[0], /source=ppomppu/);
-  assert.match(calls[1], /page=2/);
-});
-
-test('source를 요청하지 않으면 API에서 모든 live source를 가져온다', async () => {
-  const calls = [];
-  await fetchAllLiveDeals({
-    query: '',
-    fetchImpl: async (url) => {
-      calls.push(url);
-      return { ok: true, json: async () => ({ deals: [], total: 0 }) };
-    },
-  });
-
-  const params = new URL(calls[0], 'https://example.test').searchParams;
-  assert.equal(params.has('source'), false);
-  assert.equal(params.get('q'), '');
-  assert.equal(params.get('page'), '1');
-  assert.equal(params.get('size'), '100');
-});
-
-test('실데이터 API 응답 형식이 잘못되면 명시적으로 실패한다', async () => {
-  await assert.rejects(
-    fetchAllLiveDeals({ fetchImpl: async () => ({ ok: true, json: async () => ({ deals: null }) }) }),
-    /Invalid live deals response/,
-  );
-});
-
 test('카테고리 필터와 최신순·가격순이 실제 필드로 동작한다', () => {
   const deals = [
     normalizeDeal(rawDeal),
@@ -144,12 +92,12 @@ test('수동 특가 API 필드를 카드 모델에 안전하게 보존한다', (
   assert.equal(deal.priority, 20);
 });
 
-test('이미지는 허용된 HTTPS 원본과 정확한 same-origin 수동 이미지 경로만 허용한다', () => {
-  assert.equal(safeImageUrl('/api/manual-deal-images/123'), '/api/manual-deal-images/123');
+test('이미지는 허용된 HTTPS 원본과 정확한 canonical same-origin 수동 이미지 경로만 허용한다', () => {
+  assert.equal(safeImageUrl('/api/public/manual-deals/123/image'), '/api/public/manual-deals/123/image');
   for (const value of [
-    '/api/manual-deal-images/123/', '/api/manual-deal-images/abc',
-    '/api/manual-deal-images/1?url=https://evil.example', '//evil.example/api/manual-deal-images/1',
-    '/api/manual-deal-images/1#x', '/other/1',
+    '/api/public/manual-deals/123/image/', '/api/public/manual-deals/abc/image',
+    '/api/public/manual-deals/1/image?url=https://evil.example', '//evil.example/api/public/manual-deals/1/image',
+    '/api/public/manual-deals/1/image#x', '/api/manual-deal-images/1', '/other/1',
   ]) assert.equal(safeImageUrl(value), '', value);
   assert.equal(safeImageUrl('https://images.example/base/a.jpg', ['https://images.example/base']), 'https://images.example/base/a.jpg');
 });

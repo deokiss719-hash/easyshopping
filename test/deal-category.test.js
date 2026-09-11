@@ -64,6 +64,17 @@ test('실제 RSS 제목의 배송 문구를 과일 배로 오인하지 않고 �
   }
 });
 
+test('키위·몬스터크랩·LA갈비를 식품으로 분류한다', () => {
+  const foodTitles = [
+    '제스프리 골드키위 점보과 2.5kg',
+    '한성 몬스터크랩 72g 10개',
+    '미국산 초이스 LA갈비 2kg',
+  ];
+  for (const title of foodTitles) {
+    assert.equal(classifyDeal({ title }), '식품', title);
+  }
+});
+
 test('명확한 제목 분류는 설명의 부가 상품권 문구보다 우선한다', () => {
   assert.equal(classifyDeal({
     title: 'LG 트롬 세탁기건조기세트 트루스팀 23kg+20kg',

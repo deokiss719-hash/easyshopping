@@ -5,6 +5,11 @@ const { isCategory } = require('./deal-category');
 const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
 const MAX_PAGE = 10000;
 const MAX_PAGE_SIZE = 100;
+const MAX_QUERY_LENGTH = 100;
+const SORT_ORDERS = Object.freeze({
+  latest: 'd.published_at DESC NULLS LAST, d.first_seen_at DESC, d.id DESC',
+  'price-low': 'd.price_amount ASC NULLS LAST, d.published_at DESC NULLS LAST, d.id DESC',
+});
 const IMAGE_STATUSES = new Set(['missing_merchant_url', 'pending', 'ready', 'failed', 'unsupported_provider']);
 const IMAGE_BACKFILL_ADVISORY_LOCK_NAMESPACE = 1163086169;
 const IMAGE_BACKFILL_ADVISORY_LOCK_ID = 1835627636;
@@ -97,6 +102,7 @@ function mapDeal(row) {
   };
   if (row.manual_id != null) {
     deal.manualId = String(row.manual_id);
+    deal.hasManualImage = row.manual_has_image === true;
     deal.originalPriceAmount = row.manual_original_price_amount == null ? null : safeNumber(row.manual_original_price_amount, 'originalPriceAmount');
     deal.description = row.manual_description;
     deal.badge = row.manual_badge;
@@ -339,17 +345,27 @@ function createDealStore(pool) {
       return result.rowCount;
     },
 
-    async list({ q = '', source = '', page = 1, size = 20 } = {}) {
+    async list({ q = '', source = '', category = '', sort = 'latest', featured = false, page = 1, size = 20 } = {}) {
       const safePage = positiveInteger(page, 'page', 1, MAX_PAGE);
       const safeSize = positiveInteger(size, 'size', 20, MAX_PAGE_SIZE);
+      const normalizedQuery = String(q).trim();
+      const normalizedCategory = String(category).trim();
+      const normalizedSort = String(sort || 'latest').trim();
+      const isFeatured = featured === true || featured === 'true';
+      if (normalizedQuery.length > MAX_QUERY_LENGTH) throw new InvalidQueryError(`q must be at most ${MAX_QUERY_LENGTH} characters`);
+      if (normalizedCategory && !isCategory(normalizedCategory)) throw new InvalidQueryError('category is not supported');
+      if (!Object.hasOwn(SORT_ORDERS, normalizedSort)) throw new InvalidQueryError('sort is not supported');
+      if (featured !== false && featured !== '' && featured != null && featured !== true && featured !== 'true') {
+        throw new InvalidQueryError('featured must be true');
+      }
       const conditions = [
         'd.is_ended = FALSE',
         `(d.source <> 'manual' OR (m.deal_id IS NOT NULL AND m.is_published = TRUE))`,
       ];
       const values = [];
 
-      if (String(q).trim()) {
-        values.push(String(q).trim());
+      if (normalizedQuery) {
+        values.push(normalizedQuery);
         conditions.push(`(STRPOS(LOWER(d.title), LOWER($${values.length})) > 0
           OR STRPOS(LOWER(COALESCE(d.merchant, '')), LOWER($${values.length})) > 0)`);
       }
@@ -357,8 +373,16 @@ function createDealStore(pool) {
         values.push(String(source).trim());
         conditions.push(`d.source = $${values.length}`);
       }
+      if (normalizedCategory) {
+        values.push(normalizedCategory);
+        conditions.push(`d.category = $${values.length}`);
+      }
+      if (isFeatured) conditions.push(`d.source = 'manual' AND m.show_on_home = TRUE`);
 
       const where = `WHERE ${conditions.join(' AND ')}`;
+      const orderBy = isFeatured
+        ? 'm.priority DESC, d.published_at DESC NULLS LAST, d.id DESC'
+        : SORT_ORDERS[normalizedSort];
       const client = await pool.connect();
       try {
         await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
@@ -373,6 +397,7 @@ function createDealStore(pool) {
         const listResult = await client.query(
           `SELECT d.*,
              m.id AS manual_id,
+             (m.image_url IS NOT NULL) AS manual_has_image,
              m.original_price_amount AS manual_original_price_amount,
              m.description AS manual_description,
              m.badge AS manual_badge,
@@ -381,7 +406,7 @@ function createDealStore(pool) {
            FROM deals d
            LEFT JOIN manual_deals m ON d.source = 'manual' AND m.deal_id = d.id
            ${where}
-           ORDER BY d.published_at DESC NULLS LAST, d.first_seen_at DESC, d.id DESC
+           ORDER BY ${orderBy}
            LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
           listValues,
         );

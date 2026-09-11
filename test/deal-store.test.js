@@ -383,6 +383,29 @@ test('keyword search treats percent and underscore as literal characters', async
   await pool.end();
 });
 
+test('public listing applies category and price sorting on the server with null prices last', async () => {
+  const { pool, store } = await makeStore();
+  await store.upsert({ ...firstDeal, sourceItemId: 'expensive', category: '디지털/가전', priceAmount: 300000 });
+  await store.upsert({ ...firstDeal, sourceItemId: 'cheap', originalUrl: 'https://example.com/cheap', category: '디지털/가전', priceAmount: 10000 });
+  await store.upsert({ ...firstDeal, sourceItemId: 'unknown', originalUrl: 'https://example.com/unknown', category: '디지털/가전', priceAmount: null });
+  await store.upsert({ ...firstDeal, sourceItemId: 'food', originalUrl: 'https://example.com/food', category: '식품', priceAmount: 100 });
+
+  const result = await store.list({ category: '디지털/가전', sort: 'price-low', page: 1, size: 2 });
+  assert.equal(result.total, 3);
+  assert.deepEqual(result.items.map((deal) => deal.sourceItemId), ['cheap', 'expensive']);
+  const next = await store.list({ category: '디지털/가전', sort: 'price-low', page: 2, size: 2 });
+  assert.deepEqual(next.items.map((deal) => deal.sourceItemId), ['unknown']);
+  await pool.end();
+});
+
+test('public listing rejects unsupported filters, sorts, and oversized searches', async () => {
+  const { pool, store } = await makeStore();
+  await assert.rejects(() => store.list({ category: '없는 카테고리' }), /category/);
+  await assert.rejects(() => store.list({ sort: 'price; DROP TABLE deals' }), /sort/);
+  await assert.rejects(() => store.list({ q: '가'.repeat(101) }), /q/);
+  await pool.end();
+});
+
 test('이미지 backfill cooldown을 PostgreSQL 공유 상태에 저장하고 읽는다', async () => {
   const { pool, store } = await makeStore();
   assert.equal(await store.getImageBackfillCooldown(), null);

@@ -41,15 +41,24 @@ async function mountDatabaseApis({
     app.use('/api/admin', createAdminApi(auth));
   }
   app.use('/api/site-settings', createPublicSettings());
-  app.use('/api/manual-deal-images', createManualImages());
+  app.use('/api/public/manual-deals', createManualImages());
   return auth;
 }
 
 function readCollectorRuntime(env = process.env) {
+  const intervalMs = Number(env.RSS_POLL_INTERVAL_MS || 600000);
+  const freshnessThresholdMs = Number(env.RSS_FRESHNESS_THRESHOLD_MS || intervalMs * 3);
+  if (!Number.isSafeInteger(intervalMs) || intervalMs < 1) {
+    throw new Error('RSS_POLL_INTERVAL_MS must be a positive integer');
+  }
+  if (!Number.isSafeInteger(freshnessThresholdMs) || freshnessThresholdMs < 1) {
+    throw new Error('RSS_FRESHNESS_THRESHOLD_MS must be a positive integer');
+  }
   return {
     source: APPROVED_FEED_SOURCE,
     feedUrl: APPROVED_FEED_URL,
-    intervalMs: Number(env.RSS_POLL_INTERVAL_MS || 600000),
+    intervalMs,
+    freshnessThresholdMs,
   };
 }
 

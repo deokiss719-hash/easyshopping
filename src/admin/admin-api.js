@@ -27,7 +27,30 @@ function exactUploadedImageUrl(imageStorage, key, uploadedUrl) {
   }
 }
 
-function createAdminApiRouter({ store, auth, metadataFetcher, imageStorage, convertImage = convertToWebp } = {}) {
+function createManualImageUrlValidator(imageStorage) {
+  return (value) => {
+    if (value == null || value === '') return null;
+    if (!imageStorage?.enabled || typeof imageStorage.publicUrlForKey !== 'function') {
+      throw new TypeError('imageUrl requires configured image storage');
+    }
+    const match = String(value).match(/\/deals\/manual\/([a-f0-9]{64})\.webp$/);
+    const key = match ? `deals/manual/${match[1]}.webp` : null;
+    const validated = key && exactUploadedImageUrl(imageStorage, key, String(value));
+    if (!validated) throw new TypeError('imageUrl must be an app-owned manual image URL');
+    return validated;
+  };
+}
+
+function validatedManualInput(input, imageUrlValidator) {
+  const value = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  return { ...value, imageUrl: imageUrlValidator(value.imageUrl) };
+}
+
+function createAdminApiRouter({
+  store, auth, metadataFetcher, imageStorage,
+  imageUrlValidator = createManualImageUrlValidator(imageStorage),
+  convertImage = convertToWebp,
+} = {}) {
   if (!store || !auth?.requireAuth || !auth?.requireMutationProtection) throw new TypeError('admin store and auth are required');
   const router = express.Router();
   router.use(auth.requireAuth);
@@ -65,9 +88,11 @@ function createAdminApiRouter({ store, auth, metadataFetcher, imageStorage, conv
   }));
 
   router.get('/manual-deals', asyncRoute(async (_req, res) => res.json({ deals: await store.listManualDeals() })));
-  router.post('/manual-deals', auth.requireMutationProtection, asyncRoute(async (req, res) => res.status(201).json(await store.createManualDeal(req.body))));
+  router.post('/manual-deals', auth.requireMutationProtection, asyncRoute(async (req, res) => (
+    res.status(201).json(await store.createManualDeal(validatedManualInput(req.body, imageUrlValidator)))
+  )));
   const update = asyncRoute(async (req, res) => {
-    const deal = await store.updateManualDeal(req.params.id, req.body);
+    const deal = await store.updateManualDeal(req.params.id, validatedManualInput(req.body, imageUrlValidator));
     return deal ? res.json(deal) : res.status(404).json({ error: 'not_found' });
   });
   router.put('/manual-deals/:id', auth.requireMutationProtection, update);
@@ -107,4 +132,6 @@ function createPublicSettingsRouter(store) {
   return router;
 }
 
-module.exports = { createAdminApiRouter, createPublicSettingsRouter, adminJsonErrorHandler };
+module.exports = {
+  createAdminApiRouter, createManualImageUrlValidator, createPublicSettingsRouter, adminJsonErrorHandler,
+};

@@ -1,4 +1,5 @@
 const { fetchPpomppuBodyImage, safeImageUrl } = require('../rss-collector');
+const { requestPinnedHttps } = require('../pinned-https');
 
 const MAX_REDIRECTS = 3;
 const DEFAULT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -45,6 +46,27 @@ async function readLimitedBuffer(response, maxBytes) {
   if (Number.isFinite(contentLength) && contentLength > maxBytes) {
     await cancelBody(response);
     throw new RangeError('image response is too large');
+  }
+  if (response.body?.[Symbol.asyncIterator]) {
+    const iterator = response.body[Symbol.asyncIterator]();
+    const chunks = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await iterator.next();
+      if (done) break;
+      const chunk = Buffer.from(value);
+      total += chunk.length;
+      if (total > maxBytes) {
+        try {
+          await iterator.return?.();
+        } finally {
+          response.body.destroy?.();
+        }
+        throw new RangeError('image response is too large');
+      }
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks, total);
   }
   if (!response.body?.getReader) {
     const body = Buffer.from(await response.arrayBuffer());
@@ -140,14 +162,17 @@ function createPacedFetch({ fetchImpl, requestIntervalMs, timeoutMs, now, sleep 
 }
 
 function createPpomppuImageProvider({
-  fetchImpl = fetch,
+  fetchImpl,
+  lookup,
+  request,
   maxImageBytes = DEFAULT_MAX_IMAGE_BYTES,
   timeoutMs = 8000,
   requestIntervalMs = 0,
   now = Date.now,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 } = {}) {
-  if (typeof fetchImpl !== 'function') throw new TypeError('fetchImpl is required');
+  if (fetchImpl != null && typeof fetchImpl !== 'function') throw new TypeError('fetchImpl must be a function');
+  if (request != null && typeof request !== 'function') throw new TypeError('request must be a function');
   if (!Number.isSafeInteger(maxImageBytes) || maxImageBytes < 1024) throw new TypeError('maxImageBytes is invalid');
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100) throw new TypeError('timeoutMs is invalid');
   if (!Number.isSafeInteger(requestIntervalMs) || requestIntervalMs < 0 || requestIntervalMs > 60_000) {
@@ -155,7 +180,15 @@ function createPpomppuImageProvider({
   }
   if (typeof now !== 'function') throw new TypeError('now must be a function');
   if (typeof sleep !== 'function') throw new TypeError('sleep must be a function');
-  const pacedFetch = createPacedFetch({ fetchImpl, requestIntervalMs, timeoutMs, now, sleep });
+  const transport = request || (fetchImpl
+    ? (url, _selected, options) => fetchImpl(url, options)
+    : undefined);
+  const pinnedFetch = (url, options) => requestPinnedHttps(url, {
+    ...options, lookup, request: transport,
+  });
+  const pacedFetch = createPacedFetch({
+    fetchImpl: pinnedFetch, requestIntervalMs, timeoutMs, now, sleep,
+  });
 
   return Object.freeze({
     name: 'ppomppu-source-post',

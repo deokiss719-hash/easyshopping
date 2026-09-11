@@ -2,10 +2,11 @@ const express = require('express');
 const { InvalidQueryError } = require('./deal-store');
 
 function toApiDeal(deal) {
-  const manualImageUrl = deal.source === 'manual'
-    && /^\d+$/.test(String(deal.manualId || ''))
-    && deal.sourceImageUrl
-    ? `/api/manual-deal-images/${deal.manualId}`
+  const isManual = deal.source === 'manual';
+  const manualImageUrl = isManual
+    ? (/^\d+$/.test(String(deal.manualId || '')) && deal.hasManualImage === true
+      ? `/api/public/manual-deals/${deal.manualId}/image`
+      : null)
     : deal.imageUrl;
   return {
     id: deal.id,
@@ -22,13 +23,15 @@ function toApiDeal(deal) {
     imageStatus: deal.imageStatus || (manualImageUrl ? 'ready' : 'missing_merchant_url'),
     originalPrice: deal.originalPriceAmount ?? null,
     description: deal.description ?? null,
-    isManual: deal.source === 'manual',
+    isManual,
     showOnHome: deal.showOnHome ?? false,
     priority: deal.priority ?? 0,
     url: deal.originalUrl,
     isEnded: deal.isEnded,
   };
 }
+
+const PUBLIC_SOURCES = new Set(['ppomppu', 'manual']);
 
 function createLiveDealsRouter(store, { imageBaseUrls = [] } = {}) {
   const router = express.Router();
@@ -45,9 +48,16 @@ function createLiveDealsRouter(store, { imageBaseUrls = [] } = {}) {
     }
 
     try {
+      const requestedSource = String(req.query.source || 'ppomppu').trim();
+      if (requestedSource && !PUBLIC_SOURCES.has(requestedSource)) {
+        return res.status(400).json({ code: 'INVALID_QUERY', message: 'source is not supported' });
+      }
       const result = await store.list({
         q: req.query.q,
-        source: req.query.source,
+        source: requestedSource,
+        category: req.query.category,
+        sort: req.query.sort,
+        featured: req.query.featured,
         page: req.query.page,
         size: req.query.size,
       });
@@ -57,6 +67,8 @@ function createLiveDealsRouter(store, { imageBaseUrls = [] } = {}) {
         total: result.total,
         page: result.page,
         size: result.size,
+        totalPages: Math.ceil(result.total / result.size),
+        hasNextPage: result.page * result.size < result.total,
         imageBaseUrls: trustedImageBaseUrls,
         deals: result.items.map(toApiDeal),
       });
