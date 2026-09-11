@@ -394,11 +394,14 @@ test('실패 캐시는 재시도 시각 전 provider 재호출을 막고 backfil
       assert.equal(limit, 2);
       return [{ id: '1' }, { id: '2' }];
     } },
-    pipeline: { enabled: true, process: async (deal) => { processed.push(deal.id); return { status: 'ready' }; } },
+    pipeline: { enabled: true, process: async (deal, options) => { processed.push([deal.id, options]); return { status: 'ready' }; } },
     limit: 2,
     concurrency: 1,
   });
-  assert.deepEqual(processed, ['1', '2']);
+  assert.deepEqual(processed, [
+    ['1', { backfill: true }],
+    ['2', { backfill: true }],
+  ]);
   assert.deepEqual(result, { status: 'completed', selected: 2, ready: 2, failed: 0, skipped: 0 });
 });
 

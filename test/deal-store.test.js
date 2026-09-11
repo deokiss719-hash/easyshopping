@@ -202,14 +202,22 @@ test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매�
     imageUrl: null,
     merchantUrl: 'https://shop.example/products/1',
     imageStatus: 'pending',
+    publishedAt: '2026-09-08T23:30:00.000Z',
   });
-  const sourceOnly = await store.upsert({ ...firstDeal, sourceItemId: 'source-only', imageUrl: null, merchantUrl: null });
+  const sourceOnly = await store.upsert({
+    ...firstDeal,
+    sourceItemId: 'source-only',
+    imageUrl: null,
+    merchantUrl: null,
+    publishedAt: '2026-09-08T23:30:00.000Z',
+  });
   await store.upsert({
     ...firstDeal,
     source: 'other-feed',
     sourceItemId: 'other-source',
     originalUrl: 'https://example.com/deals/other-source',
     imageUrl: null,
+    publishedAt: '2026-09-08T23:30:00.000Z',
   });
 
   let candidates = await store.listImageBackfillCandidates({ limit: 10, now: '2026-09-09T00:00:00.000Z', source: 'approved-feed' });
@@ -253,6 +261,52 @@ test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매�
   await pool.end();
 });
 
+test('이미지 backfill은 KST 오늘 등록되고 한 시간 이내인 글만 후보로 선택한다', async () => {
+  const { pool, store } = await makeStore();
+  const now = '2026-09-11T17:00:00.000Z'; // 2026-09-12 02:00 KST
+  const rows = [
+    ['within-hour', '2026-09-11T16:30:00.000Z'],
+    ['exactly-hour', '2026-09-11T16:00:00.000Z'],
+    ['over-hour', '2026-09-11T15:59:59.000Z'],
+  ];
+  for (const [sourceItemId, publishedAt] of rows) {
+    await store.upsert({
+      ...firstDeal,
+      sourceItemId,
+      originalUrl: `https://example.com/deals/${sourceItemId}`,
+      imageUrl: null,
+      publishedAt,
+    });
+  }
+
+  const candidates = await store.listImageBackfillCandidates({ limit: 10, now, source: 'approved-feed' });
+  assert.deepEqual(candidates.map((deal) => deal.sourceItemId), ['within-hour', 'exactly-hour']);
+  await pool.end();
+});
+
+test('이미지 backfill은 자정 직후 한 시간 이내라도 KST 전날 글을 제외한다', async () => {
+  const { pool, store } = await makeStore();
+  const now = '2026-09-11T15:30:00.000Z'; // 2026-09-12 00:30 KST
+  await store.upsert({
+    ...firstDeal,
+    sourceItemId: 'today-kst',
+    originalUrl: 'https://example.com/deals/today-kst',
+    imageUrl: null,
+    publishedAt: '2026-09-11T15:10:00.000Z',
+  });
+  await store.upsert({
+    ...firstDeal,
+    sourceItemId: 'yesterday-kst',
+    originalUrl: 'https://example.com/deals/yesterday-kst',
+    imageUrl: null,
+    publishedAt: '2026-09-11T14:59:00.000Z',
+  });
+
+  const candidates = await store.listImageBackfillCandidates({ limit: 10, now, source: 'approved-feed' });
+  assert.deepEqual(candidates.map((deal) => deal.sourceItemId), ['today-kst']);
+  await pool.end();
+});
+
 test('backfill의 늦은 성공·실패 업데이트는 이미 준비된 이미지를 덮어쓰지 않는다', async () => {
   const { pool, store } = await makeStore();
   const deal = await store.upsert({
@@ -286,6 +340,38 @@ test('backfill의 늦은 성공·실패 업데이트는 이미 준비된 이미�
   assert.equal(stored.imageUrl, trustedImageUrl);
   assert.equal(stored.imageProvider, 'trusted-provider');
   assert.equal(stored.imageFailureCode, null);
+  await pool.end();
+});
+
+test('이미지 backfill 저장 시점에 한 시간 또는 KST 오늘 범위를 벗어나면 업데이트하지 않는다', async () => {
+  const { pool, store } = await makeStore();
+  const withinWindow = await store.upsert({
+    ...firstDeal,
+    sourceItemId: 'write-boundary',
+    imageUrl: null,
+    imageStatus: 'pending',
+    publishedAt: '2026-09-11T16:00:00.000Z',
+  });
+  const tooOld = await store.upsert({
+    ...firstDeal,
+    sourceItemId: 'write-too-old',
+    originalUrl: 'https://example.com/deals/write-too-old',
+    imageUrl: null,
+    imageStatus: 'pending',
+    publishedAt: '2026-09-11T15:59:59.999Z',
+  });
+
+  const boundaryResult = await store.updateImageState(withinWindow.id, {
+    imageStatus: 'ready',
+    imageUrl: 'https://images.example.com/deals/feed/boundary.webp',
+  }, { onlyIfImageMissing: true, backfillNow: new Date('2026-09-11T17:00:00.000Z') });
+  const rejectedResult = await store.updateImageState(tooOld.id, {
+    imageStatus: 'ready',
+    imageUrl: 'https://images.example.com/deals/feed/too-old.webp',
+  }, { onlyIfImageMissing: true, backfillNow: new Date('2026-09-11T17:00:00.000Z') });
+
+  assert.equal(boundaryResult.imageStatus, 'ready');
+  assert.equal(rejectedResult, null);
   await pool.end();
 });
 
@@ -350,20 +436,29 @@ test('이미 유효한 카테고리는 시작 시 재분류로 덮어쓰지 않�
   await pool.end();
 });
 
-test('marks only stale deals from the selected source as ended', async () => {
+test('deletes only deals older than 72 hours from the selected source', async () => {
   const { pool, store } = await makeStore();
   await store.upsert({ ...firstDeal, sourceItemId: 'old', publishedAt: '2026-09-01T00:00:00.000Z' });
-  await store.upsert({ ...firstDeal, sourceItemId: 'fresh', originalUrl: 'https://example.com/deals/fresh', publishedAt: '2026-09-08T00:00:00.000Z' });
+  await store.upsert({ ...firstDeal, sourceItemId: 'boundary', originalUrl: 'https://example.com/deals/boundary', publishedAt: '2026-09-05T00:00:00.000Z' });
+  await store.upsert({ ...firstDeal, source: 'other-feed', sourceItemId: 'other-old', originalUrl: 'https://example.com/deals/other-old', publishedAt: '2026-09-01T00:00:00.000Z' });
 
-  const ended = await store.markEndedBefore('approved-feed', '2026-09-05T00:00:00.000Z');
-  const active = await store.list({ source: 'approved-feed' });
-  const old = await pool.query("SELECT is_ended, ended_at FROM deals WHERE source_item_id = 'old'");
+  const deleted = await store.deleteBefore('approved-feed', '2026-09-05T00:00:00.000Z');
+  const remaining = await pool.query('SELECT source, source_item_id FROM deals ORDER BY source, source_item_id');
 
-  assert.equal(ended, 1);
-  assert.equal(active.total, 1);
-  assert.equal(active.items[0].sourceItemId, 'fresh');
-  assert.equal(old.rows[0].is_ended, true);
-  assert.ok(old.rows[0].ended_at);
+  assert.equal(deleted, 1);
+  assert.deepEqual(remaining.rows, [
+    { source: 'approved-feed', source_item_id: 'boundary' },
+    { source: 'other-feed', source_item_id: 'other-old' },
+  ]);
+  await pool.end();
+});
+
+test('72시간 자동 삭제는 수동 등록 상품 소스를 거부한다', async () => {
+  const { pool, store } = await makeStore();
+  await assert.rejects(
+    () => store.deleteBefore('manual', new Date('2026-09-12T00:00:00.000Z')),
+    /manual deals cannot be deleted by retention/,
+  );
   await pool.end();
 });
 

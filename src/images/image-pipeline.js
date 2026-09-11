@@ -88,13 +88,18 @@ function createImagePipeline({
   convert = convertToWebp,
   failureCache = new ImageFailureCache(),
   logger = console,
+  now = () => new Date(),
 } = {}) {
   if (!providerRegistry || typeof providerRegistry.find !== 'function') throw new TypeError('providerRegistry is required');
   if (!storage || typeof storage.enabled !== 'boolean') throw new TypeError('storage is required');
 
   return Object.freeze({
     enabled: storage.enabled,
-    async process(deal) {
+    async process(deal, { backfill = false } = {}) {
+      const imageUpdateOptions = () => ({
+        onlyIfImageMissing: true,
+        ...(backfill ? { backfillNow: new Date(now()) } : {}),
+      });
       const originalUrl = deal?.originalUrl || null;
       const merchantUrl = deal?.merchantUrl || null;
       if (!originalUrl && !merchantUrl) return { status: 'missing_merchant_url' };
@@ -110,7 +115,7 @@ function createImagePipeline({
           imageStatus: 'unsupported_provider',
           imageFailureCode: 'unsupported_provider',
           imageRetryAt,
-        }, { onlyIfImageMissing: true });
+        }, imageUpdateOptions());
         if (updated === null) {
           failureCache.clear(key);
           return { status: 'stale' };
@@ -156,7 +161,7 @@ function createImagePipeline({
           imageProvider: provider.name,
           imageFailureCode: null,
           imageRetryAt: null,
-        }, { onlyIfImageMissing: true });
+        }, imageUpdateOptions());
         if (updated === null) {
           failureCache.clear(key);
           return { status: 'stale', provider: provider.name };
@@ -172,7 +177,7 @@ function createImagePipeline({
             imageStatus: 'failed',
             imageFailureCode: code,
             imageRetryAt,
-          }, { onlyIfImageMissing: true });
+          }, imageUpdateOptions());
         } catch (persistenceError) {
           persistenceError.detectedFailureCode = code;
           throw persistenceError;
@@ -234,7 +239,7 @@ async function runImageBackfill({
   if (delayMs > 0 || stopCodes.size > 0) {
     for (let index = 0; index < deals.length; index += 1) {
       if (index > 0 && delayMs > 0) await sleep(delayMs);
-      const result = await pipeline.process(deals[index]);
+      const result = await pipeline.process(deals[index], { backfill: true });
       if (result.status === 'ready') stats.ready += 1;
       else if (result.status === 'failed') stats.failed += 1;
       else stats.skipped += 1;
@@ -249,7 +254,7 @@ async function runImageBackfill({
   }
 
   await runWorkers(deals, concurrency, async (deal) => {
-    const result = await pipeline.process(deal);
+    const result = await pipeline.process(deal, { backfill: true });
     if (result.status === 'ready') stats.ready += 1;
     else if (result.status === 'failed') stats.failed += 1;
     else stats.skipped += 1;

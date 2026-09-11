@@ -665,6 +665,13 @@ async function runRssCollector({
     throw new TypeError('enabled productMatcher must implement match');
   }
 
+  let deleted = 0;
+  if (typeof store.deleteBefore === 'function') {
+    const currentTime = new Date(now());
+    if (Number.isNaN(currentTime.getTime())) throw new TypeError('now must return a valid date');
+    deleted = await store.deleteBefore(source, new Date(currentTime.getTime() - maxAgeMs));
+  }
+
   const { response, finalUrl } = await requestFeed(feedUrl, {
     allowedHosts, fetchImpl, lookup, request,
   });
@@ -795,16 +802,10 @@ async function runRssCollector({
     cacheFailedImageAttempt(imageAttemptCache, deal.originalUrl, attemptedAt);
   });
 
-  let ended = 0;
-  if (typeof store.markEndedBefore === 'function') {
-    const currentTime = new Date(now());
-    if (Number.isNaN(currentTime.getTime())) throw new TypeError('now must return a valid date');
-    ended = await store.markEndedBefore(source, new Date(currentTime.getTime() - maxAgeMs));
-  }
   return {
     fetched: deals.length,
     stored: processedDeals.length,
-    ended,
+    deleted,
     ...(matching ? { matching } : {}),
   };
 }

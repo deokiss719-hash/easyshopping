@@ -830,7 +830,7 @@ test('이미지 보조 수집은 동시성 상한을 지키고 실패 URL을 재
   assert.equal(imageAttemptCache.size, 4);
 });
 
-test('성공적인 수집 뒤 출처의 TTL 초과 상품을 종료 처리한다', async () => {
+test('성공적인 수집 뒤 출처의 72시간 초과 상품을 자동 삭제한다', async () => {
   const { pool, store } = await makeStore();
   await store.upsert({
     source: 'approved-feed',
@@ -851,10 +851,38 @@ test('성공적인 수집 뒤 출처의 TTL 초과 상품을 종료 처리한다
       fetchImpl: async () => ({ ok: true, status: 200, text: async () => RSS }),
   });
   const active = await store.list({ source: 'approved-feed' });
+  const old = await pool.query("SELECT id FROM deals WHERE source_item_id = 'old-deal'");
 
-  assert.equal(result.ended, 1);
+  assert.equal(result.deleted, 1);
   assert.equal(active.total, 1);
   assert.equal(active.items[0].sourceItemId, 'deal-101');
+  assert.equal(old.rowCount, 0);
+  await pool.end();
+});
+
+test('RSS 요청이 실패해도 출처의 72시간 초과 상품을 먼저 자동 삭제한다', async () => {
+  const { pool, store } = await makeStore();
+  await store.upsert({
+    source: 'approved-feed',
+    sourceItemId: 'expired-before-outage',
+    title: '오래된 상품',
+    originalUrl: 'https://feed.example/deals/expired-before-outage',
+    publishedAt: '2026-09-08T23:59:59.999Z',
+  });
+
+  await assert.rejects(() => runRssCollector({
+    source: 'approved-feed',
+    feedUrl: 'https://feed.example/rss.xml',
+    allowedHosts: ['feed.example'],
+    store,
+    now: () => new Date('2026-09-12T00:00:00.000Z'),
+    maxAgeMs: 72 * 60 * 60 * 1000,
+    lookup: publicLookup,
+    fetchImpl: async () => { throw new Error('upstream unavailable'); },
+  }));
+
+  const old = await pool.query("SELECT id FROM deals WHERE source_item_id = 'expired-before-outage'");
+  assert.equal(old.rowCount, 0);
   await pool.end();
 });
 
@@ -883,8 +911,8 @@ test('RSS를 가져와 저장하고 재수집해도 중복을 만들지 않는�
   const second = await runRssCollector(options);
   const listed = await store.list({ includeEnded: true });
 
-  assert.deepEqual(first, { fetched: 1, stored: 1, ended: 0 });
-  assert.deepEqual(second, { fetched: 1, stored: 1, ended: 0 });
+  assert.deepEqual(first, { fetched: 1, stored: 1, deleted: 0 });
+  assert.deepEqual(second, { fetched: 1, stored: 1, deleted: 0 });
   assert.equal(requests, 2);
   assert.equal(listed.total, 1);
   await pool.end();

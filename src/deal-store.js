@@ -76,6 +76,18 @@ function positiveInteger(value, name, fallback, maximum) {
   return Math.min(parsed, maximum);
 }
 
+function koreaDayStart(value) {
+  const currentTime = new Date(value);
+  if (Number.isNaN(currentTime.getTime())) throw new TypeError('now must be a valid date');
+  const kstOffsetMs = 9 * 60 * 60 * 1000;
+  const shifted = new Date(currentTime.getTime() + kstOffsetMs);
+  return new Date(Date.UTC(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth(),
+    shifted.getUTCDate(),
+  ) - kstOffsetMs);
+}
+
 function mapDeal(row) {
   const deal = {
     id: String(row.id),
@@ -283,7 +295,7 @@ function createDealStore(pool) {
       }
     },
 
-    async updateImageState(id, update = {}, { onlyIfImageMissing = false } = {}) {
+    async updateImageState(id, update = {}, { onlyIfImageMissing = false, backfillNow = null } = {}) {
       if (!/^\d+$/.test(String(id || ''))) throw new TypeError('deal id is invalid');
       if (!IMAGE_STATUSES.has(update.imageStatus)) throw new TypeError('imageStatus is not supported');
       const fields = {
@@ -297,10 +309,19 @@ function createDealStore(pool) {
       const entries = Object.entries(fields).filter(([name]) => Object.hasOwn(update, name));
       const values = entries.map(([name]) => update[name] ?? null);
       values.push(String(id));
+      const idParameter = values.length;
       const assignments = entries.map(([, column], index) => `${column} = $${index + 1}`);
-      const condition = onlyIfImageMissing ? ' AND image_url IS NULL' : '';
+      let condition = onlyIfImageMissing ? ' AND image_url IS NULL' : '';
+      if (backfillNow != null) {
+        const currentTime = new Date(backfillNow);
+        if (Number.isNaN(currentTime.getTime())) throw new TypeError('backfillNow must be a valid date');
+        values.push(koreaDayStart(currentTime), new Date(currentTime.getTime() - 60 * 60 * 1000), currentTime);
+        condition += ` AND published_at >= $${values.length - 2}
+          AND published_at >= $${values.length - 1}
+          AND published_at <= $${values.length}`;
+      }
       const result = await pool.query(
-        `UPDATE deals SET ${assignments.join(', ')} WHERE id = $${values.length}${condition} RETURNING *`,
+        `UPDATE deals SET ${assignments.join(', ')} WHERE id = $${idParameter}${condition} RETURNING *`,
         values,
       );
       return result.rows[0] ? mapDeal(result.rows[0]) : null;
@@ -310,6 +331,8 @@ function createDealStore(pool) {
       const safeLimit = positiveInteger(limit, 'limit', 20, 100);
       const currentTime = new Date(now);
       if (Number.isNaN(currentTime.getTime())) throw new TypeError('now must be a valid date');
+      const todayStart = koreaDayStart(currentTime);
+      const oneHourAgo = new Date(currentTime.getTime() - 60 * 60 * 1000);
       const normalizedSource = source == null ? null : String(source).trim();
       if (normalizedSource != null && !/^[a-z0-9_-]{1,64}$/i.test(normalizedSource)) {
         throw new TypeError('source is invalid');
@@ -321,24 +344,25 @@ function createDealStore(pool) {
            AND image_status IN ('missing_merchant_url', 'pending', 'failed', 'unsupported_provider')
            AND (image_retry_at IS NULL OR image_retry_at <= $1)
            AND ($2::text IS NULL OR source = $2)
+           AND published_at >= $4
+           AND published_at >= $5
+           AND published_at <= $1
          ORDER BY published_at DESC NULLS LAST, id DESC
          LIMIT $3`,
-        [currentTime.toISOString(), normalizedSource, safeLimit],
+        [currentTime.toISOString(), normalizedSource, safeLimit, todayStart.toISOString(), oneHourAgo.toISOString()],
       );
       return result.rows.map(mapDeal);
     },
 
-    async markEndedBefore(source, cutoff) {
+    async deleteBefore(source, cutoff) {
       const normalizedSource = String(source || '').trim();
+      if (!/^[a-z0-9_-]{1,64}$/i.test(normalizedSource)) throw new TypeError('source is invalid');
+      if (normalizedSource === 'manual') throw new TypeError('manual deals cannot be deleted by retention');
       const cutoffDate = new Date(cutoff);
-      if (!normalizedSource || Number.isNaN(cutoffDate.getTime())) {
-        throw new TypeError('source and valid cutoff are required');
-      }
+      if (Number.isNaN(cutoffDate.getTime())) throw new TypeError('valid cutoff is required');
       const result = await pool.query(
-        `UPDATE deals
-         SET is_ended = TRUE, ended_at = CURRENT_TIMESTAMP
+        `DELETE FROM deals
          WHERE source = $1
-           AND is_ended = FALSE
            AND published_at < $2`,
         [normalizedSource, cutoffDate.toISOString()],
       );
