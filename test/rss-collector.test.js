@@ -830,7 +830,7 @@ test('이미지 보조 수집은 동시성 상한을 지키고 실패 URL을 재
   assert.equal(imageAttemptCache.size, 4);
 });
 
-test('성공적인 수집 뒤 출처의 72시간 초과 상품을 자동 삭제한다', async () => {
+test('성공적인 수집 뒤 출처의 72시간 이상 상품을 자동 삭제한다', async () => {
   const { pool, store } = await makeStore();
   await store.upsert({
     source: 'approved-feed',
@@ -860,7 +860,7 @@ test('성공적인 수집 뒤 출처의 72시간 초과 상품을 자동 삭제�
   await pool.end();
 });
 
-test('RSS 요청이 실패해도 출처의 72시간 초과 상품을 먼저 자동 삭제한다', async () => {
+test('RSS 요청이 실패해도 출처의 72시간 이상 상품을 먼저 자동 삭제한다', async () => {
   const { pool, store } = await makeStore();
   await store.upsert({
     source: 'approved-feed',

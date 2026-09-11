@@ -436,7 +436,7 @@ test('이미 유효한 카테고리는 시작 시 재분류로 덮어쓰지 않�
   await pool.end();
 });
 
-test('deletes only deals older than 72 hours from the selected source', async () => {
+test('deletes deals at or older than 72 hours only from the selected source', async () => {
   const { pool, store } = await makeStore();
   await store.upsert({ ...firstDeal, sourceItemId: 'old', publishedAt: '2026-09-01T00:00:00.000Z' });
   await store.upsert({ ...firstDeal, sourceItemId: 'boundary', originalUrl: 'https://example.com/deals/boundary', publishedAt: '2026-09-05T00:00:00.000Z' });
@@ -445,9 +445,8 @@ test('deletes only deals older than 72 hours from the selected source', async ()
   const deleted = await store.deleteBefore('approved-feed', '2026-09-05T00:00:00.000Z');
   const remaining = await pool.query('SELECT source, source_item_id FROM deals ORDER BY source, source_item_id');
 
-  assert.equal(deleted, 1);
+  assert.equal(deleted, 2);
   assert.deepEqual(remaining.rows, [
-    { source: 'approved-feed', source_item_id: 'boundary' },
     { source: 'other-feed', source_item_id: 'other-old' },
   ]);
   await pool.end();

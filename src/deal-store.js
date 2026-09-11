@@ -363,7 +363,7 @@ function createDealStore(pool) {
       const result = await pool.query(
         `DELETE FROM deals
          WHERE source = $1
-           AND published_at < $2`,
+           AND published_at <= $2::timestamptz`,
         [normalizedSource, cutoffDate.toISOString()],
       );
       return result.rowCount;
