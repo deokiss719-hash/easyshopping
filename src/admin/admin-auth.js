@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const trafficCookie = require('./admin-traffic-cookie');
 
 const COOKIE_NAME = 'admin_session';
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
@@ -106,7 +107,11 @@ function createAdminAuth({
       await store.createSession({ userId: user.id, tokenHash: sha256(sessionToken), csrfHash: sha256(csrfToken), expiresAt: expiresAt.toISOString() });
       await store.recordLogin(user.id);
       res.set('Cache-Control', 'no-store');
-      res.set('Set-Cookie', cookie(sessionToken));
+      res.append('Set-Cookie', cookie(sessionToken));
+      res.append('Set-Cookie', trafficCookie.serialize(
+        trafficCookie.createValue(secret, expiresAt),
+        { production, maxAgeMs: sessionTtlMs },
+      ));
       return res.json({ username: user.username, csrfToken, expiresAt: expiresAt.toISOString() });
     } catch (error) { return next(error); }
   });
@@ -131,7 +136,12 @@ function createAdminAuth({
 
   router.get('/session', requireAuth, (req, res) => res.json({ username: req.admin.username, csrfToken: req.admin.csrfToken }));
   router.post('/logout', requireAuth, requireMutationProtection, async (req, res, next) => {
-    try { await store.deleteSession(req.admin.sessionTokenHash); res.set('Set-Cookie', cookie('', 0)); return res.sendStatus(204); } catch (error) { return next(error); }
+    try {
+      await store.deleteSession(req.admin.sessionTokenHash);
+      res.append('Set-Cookie', cookie('', 0));
+      res.append('Set-Cookie', trafficCookie.serialize('', { production, maxAgeMs: 0 }));
+      return res.sendStatus(204);
+    } catch (error) { return next(error); }
   });
 
   return { router, requireAuth, requireMutationProtection };

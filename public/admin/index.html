@@ -24,7 +24,14 @@
     </aside>
     <main class="admin-main">
       <section id="dashboard" class="view active" aria-labelledby="dashboard-title">
-        <div class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1 id="dashboard-title">대시보드</h1><p>수동 휴대폰 핫딜 현황을 확인하세요.</p></div><button class="button primary" type="button" data-open-deals>핫딜 등록</button></div>
+        <div class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1 id="dashboard-title">대시보드</h1><p>오늘 트래픽과 수동 휴대폰 핫딜 현황을 확인하세요.</p></div><button class="button primary" type="button" data-open-deals>핫딜 등록</button></div>
+        <section class="panel traffic-panel" aria-labelledby="traffic-title">
+          <div class="panel-title"><div><h2 id="traffic-title">오늘 트래픽</h2><p id="analytics-day" class="panel-subtitle">한국시간 기준</p></div><button id="refresh-traffic" class="text-button" type="button">새로고침</button></div>
+          <div id="analytics-message" class="message notice" role="status" aria-live="polite"></div>
+          <div class="stat-grid traffic-stats"><article><span>오늘 방문자</span><strong id="stat-visitors-today">-</strong></article><article><span>페이지 조회수</span><strong id="stat-pageviews-today">-</strong></article></div>
+          <div class="traffic-sources"><h3>유입 경로 · 사이트</h3><div id="referrer-breakdown" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
+          <div class="traffic-sources"><h3>검색어 · 유입 URL <small>(최대 100개)</small></h3><div id="referrer-details" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
+        </section>
         <div class="stat-grid"><article><span>전체 핫딜</span><strong id="stat-total">-</strong></article><article><span>게시 중</span><strong id="stat-published">-</strong></article><article><span>메인 노출</span><strong id="stat-home">-</strong></article></div>
         <div class="panel"><div class="panel-title"><h2>최근 휴대폰 핫딜</h2><button class="text-button" type="button" data-open-deals>전체 보기</button></div><div id="recent-deals" class="compact-list"></div></div>
       </section>

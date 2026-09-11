@@ -132,6 +132,74 @@
     renderDeals();
   }
 
+  const trafficSourceLabels = Object.freeze({
+    direct: '직접 방문',
+    internal: '사이트 내부',
+    search: '검색',
+    social: 'SNS',
+    referral: '외부 사이트',
+  });
+
+  function renderTrafficRows(list, rows, emptyCopy, showDetails = false) {
+    list.replaceChildren();
+    if (!rows.length) {
+      list.append(textNode('p', emptyCopy, 'empty-copy'));
+      return;
+    }
+    rows.forEach((row) => {
+      const item = document.createElement('div');
+      item.className = 'referrer-item';
+      const copy = document.createElement('div');
+      copy.append(textNode('strong', trafficSourceLabels[row.source] || '기타'));
+      copy.append(textNode('span', row.domain || '주소 직접 입력·즐겨찾기'));
+      if (showDetails && row.searchTerm) copy.append(textNode('span', `검색어: ${row.searchTerm}`, 'referrer-detail'));
+      if (showDetails && row.referrerUrl) {
+        try {
+          const url = new URL(row.referrerUrl);
+          if (['https:', 'http:'].includes(url.protocol)) {
+            const link = textNode('a', row.referrerUrl, 'referrer-link');
+            link.href = row.referrerUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            copy.append(link);
+          }
+        } catch { /* Invalid analytics URLs are not rendered as links. */ }
+      }
+      item.append(copy, textNode('b', `${Number(row.visitors || 0).toLocaleString('ko-KR')}명`));
+      list.append(item);
+    });
+  }
+
+  function renderTraffic(data) {
+    byId('stat-visitors-today').textContent = Number(data.uniqueVisitors || 0).toLocaleString('ko-KR');
+    byId('stat-pageviews-today').textContent = Number(data.pageViews || 0).toLocaleString('ko-KR');
+    byId('analytics-day').textContent = `${String(data.day || '')} · 한국시간 기준`;
+    renderTrafficRows(
+      byId('referrer-breakdown'),
+      Array.isArray(data.referrers) ? data.referrers : [],
+      '아직 오늘 유입 기록이 없습니다.',
+    );
+    renderTrafficRows(
+      byId('referrer-details'),
+      Array.isArray(data.referrerDetails) ? data.referrerDetails : [],
+      '아직 검색어나 유입 URL 기록이 없습니다.',
+      true,
+    );
+  }
+
+  async function loadTraffic() {
+    const button = byId('refresh-traffic');
+    if (button) button.disabled = true;
+    showMessage('analytics-message', '');
+    try {
+      renderTraffic(await api('/api/admin/analytics/today'));
+    } catch (error) {
+      showMessage('analytics-message', errorMessage(error, '트래픽을 불러오지 못했습니다.'), 'error');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
   function setValue(id, value) {
     const element = byId(id);
     if (element) element.value = value == null ? '' : String(value);
@@ -400,6 +468,7 @@
     byId('metadata-url').addEventListener('input', () => { state.fetchedMetadataUrl = ''; });
     byId('metadata-url').addEventListener('change', () => { if (byId('metadata-url').checkValidity()) fetchMetadata({ quiet: true }); });
     byId('settings-form')?.addEventListener('submit', saveSettings);
+    byId('refresh-traffic')?.addEventListener('click', loadTraffic);
     byId('logout').addEventListener('click', logout);
     byId('menu-toggle').addEventListener('click', () => {
       const open = !byId('sidebar').classList.contains('open');
@@ -420,7 +489,7 @@
       const session = await api('/api/admin/auth/session');
       state.csrfToken = session.csrfToken;
       byId('admin-user').textContent = session.username || '';
-      await Promise.all([loadDeals(), loadSettings()]);
+      await Promise.all([loadDeals(), loadSettings(), loadTraffic()]);
     } catch (error) {
       showMessage('status-message', errorMessage(error, '관리자 데이터를 불러오지 못했습니다.'), 'error');
     }

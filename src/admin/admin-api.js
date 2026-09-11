@@ -1,6 +1,7 @@
 const express = require('express');
 const { randomBytes } = require('node:crypto');
 const { convertToWebp, MAX_SOURCE_BYTES } = require('../images/webp');
+const { koreaDay } = require('../traffic-analytics');
 
 const ADMIN_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 
@@ -47,9 +48,10 @@ function validatedManualInput(input, imageUrlValidator) {
 }
 
 function createAdminApiRouter({
-  store, auth, metadataFetcher, imageStorage,
+  store, auth, metadataFetcher, imageStorage, analyticsStore,
   imageUrlValidator = createManualImageUrlValidator(imageStorage),
   convertImage = convertToWebp,
+  now = () => new Date(),
 } = {}) {
   if (!store || !auth?.requireAuth || !auth?.requireMutationProtection) throw new TypeError('admin store and auth are required');
   const router = express.Router();
@@ -88,6 +90,10 @@ function createAdminApiRouter({
   }));
 
   router.get('/manual-deals', asyncRoute(async (_req, res) => res.json({ deals: await store.listManualDeals() })));
+  router.get('/analytics/today', asyncRoute(async (_req, res) => {
+    if (!analyticsStore?.getDay) return res.status(503).json({ error: 'analytics_unavailable' });
+    return res.json(await analyticsStore.getDay(koreaDay(now())));
+  }));
   router.post('/manual-deals', auth.requireMutationProtection, asyncRoute(async (req, res) => (
     res.status(201).json(await store.createManualDeal(validatedManualInput(req.body, imageUrlValidator)))
   )));

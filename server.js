@@ -30,6 +30,8 @@ const { publicNotFound } = require('./src/public-not-found');
 const { createCollectionRunStore } = require('./src/collection-run-store');
 const { createOperationalHealth } = require('./src/operational-health');
 const { createHealthRouter } = require('./src/health-routes');
+const { createTrafficAnalytics, koreaDay } = require('./src/traffic-analytics');
+const { createTrafficAnalyticsStore } = require('./src/traffic-analytics-store');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,6 +40,7 @@ let operationalHealth = createOperationalHealth({
   getCollectionStatus: async () => { throw new Error('database is not configured'); },
   freshnessThresholdMs: 1,
 });
+let trafficAnalytics = (_req, _res, next) => next();
 // Render terminates requests at one controlled proxy hop. Direct deployments
 // must not let clients choose req.ip through X-Forwarded-For.
 app.set('trust proxy', process.env.RENDER === 'true' ? 1 : false);
@@ -183,6 +186,12 @@ async function start() {
       freshnessThresholdMs,
     });
     const adminStore = createAdminStore(pool);
+    const analyticsStore = createTrafficAnalyticsStore(pool);
+    const purgeTrafficDetails = () => analyticsStore.purgeBefore(koreaDay(new Date()))
+      .catch(() => console.warn('traffic analytics retention cleanup failed'));
+    void purgeTrafficDetails();
+    const trafficRetentionTimer = setInterval(purgeTrafficDetails, 60 * 60 * 1000);
+    trafficRetentionTimer.unref();
     const imageStorage = createR2Storage({ config: r2Config });
     const manualImageUrlValidator = createManualImageUrlValidator(imageStorage);
     adminAuth = await mountDatabaseApis({
@@ -197,6 +206,7 @@ async function start() {
         imageStorage,
         imageUrlValidator: manualImageUrlValidator,
         convertImage: convertToWebp,
+        analyticsStore,
       }),
       createPublicSettings: () => createPublicSettingsRouter(adminStore),
       createManualImages: () => createManualDealImageRouter({
@@ -204,6 +214,13 @@ async function start() {
         imageUrlValidator: manualImageUrlValidator,
       }),
     });
+    if (adminRuntime.sessionSecret) {
+      trafficAnalytics = createTrafficAnalytics({
+        store: analyticsStore,
+        secret: adminRuntime.sessionSecret,
+        production: process.env.NODE_ENV === 'production',
+      });
+    }
     const reclassified = await store.reclassify(classifyDeal);
     console.log(`기존 핫딜 카테고리 재분류 완료: ${reclassified}건 변경`);
     databaseMode = 'postgresql';
@@ -265,6 +282,7 @@ async function start() {
   }
 
   app.use('/admin', createAdminUiRouter({ auth: adminAuth }));
+  app.use(trafficAnalytics);
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.use('/api/live-deals', createLiveDealsRouter(store, {

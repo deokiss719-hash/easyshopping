@@ -29,7 +29,7 @@ const deal = {
 test('migration is idempotent and creates all admin tables', async () => {
   const { pool } = await setup();
   await migrate(pool);
-  for (const table of ['admin_users', 'admin_sessions', 'manual_deals', 'site_settings']) {
+  for (const table of ['admin_users', 'admin_sessions', 'manual_deals', 'site_settings', 'traffic_daily', 'traffic_daily_visitors', 'traffic_daily_referrers']) {
     const result = await pool.query(`SELECT * FROM ${table} LIMIT 1`);
     assert.equal(result.rowCount, 0);
   }

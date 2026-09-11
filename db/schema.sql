@@ -118,3 +118,36 @@ CREATE TABLE IF NOT EXISTS site_settings (
   value JSONB NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS traffic_daily (
+  day DATE PRIMARY KEY,
+  page_views BIGINT NOT NULL DEFAULT 0 CHECK (page_views >= 0),
+  detail_records INTEGER NOT NULL DEFAULT 0 CHECK (detail_records >= 0)
+);
+
+ALTER TABLE traffic_daily ADD COLUMN IF NOT EXISTS detail_records INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS traffic_daily_visitors (
+  day DATE NOT NULL REFERENCES traffic_daily(day) ON DELETE CASCADE,
+  visitor_hash VARCHAR(64) NOT NULL,
+  insert_marker CHAR(32) NOT NULL,
+  source TEXT NOT NULL DEFAULT 'direct' CHECK (source IN ('direct', 'internal', 'search', 'social', 'referral')),
+  domain VARCHAR(253) NOT NULL DEFAULT '',
+  search_term VARCHAR(200) NOT NULL DEFAULT '',
+  referrer_url VARCHAR(2048) NOT NULL DEFAULT '',
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (day, visitor_hash)
+);
+ALTER TABLE traffic_daily_visitors ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'direct';
+ALTER TABLE traffic_daily_visitors ADD COLUMN IF NOT EXISTS domain VARCHAR(253) NOT NULL DEFAULT '';
+ALTER TABLE traffic_daily_visitors ADD COLUMN IF NOT EXISTS search_term VARCHAR(200) NOT NULL DEFAULT '';
+ALTER TABLE traffic_daily_visitors ADD COLUMN IF NOT EXISTS referrer_url VARCHAR(2048) NOT NULL DEFAULT '';
+ALTER TABLE traffic_daily_visitors ADD COLUMN IF NOT EXISTS insert_marker CHAR(32) NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS traffic_daily_referrers (
+  day DATE NOT NULL REFERENCES traffic_daily(day) ON DELETE CASCADE,
+  source TEXT NOT NULL CHECK (source IN ('direct', 'internal', 'search', 'social', 'referral')),
+  domain VARCHAR(253) NOT NULL DEFAULT '',
+  visitors BIGINT NOT NULL DEFAULT 0 CHECK (visitors >= 0),
+  PRIMARY KEY (day, source, domain)
+);
