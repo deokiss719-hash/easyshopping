@@ -16,6 +16,21 @@ test('공개 화면은 이지핫딜 브랜드명을 표시한다', () => {
   assert.doesNotMatch(html, /이지쇼핑/);
 });
 
+test('검색봇에 대표 URL, 사이트맵, 이지핫딜 구조화 데이터를 제공한다', () => {
+  const robots = fs.readFileSync(path.join(publicDir, 'robots.txt'), 'utf8');
+  const sitemap = fs.readFileSync(path.join(publicDir, 'sitemap.xml'), 'utf8');
+
+  assert.match(html, /<link rel="canonical" href="https:\/\/easyshoopping\.com\/"\s*\/?>/);
+  assert.match(html, /<script type="application\/ld\+json">/);
+  assert.match(html, /"@type":\s*"WebSite"/);
+  assert.match(html, /"@type":\s*"Organization"/);
+  assert.match(html, /"name":\s*"이지핫딜"/);
+  assert.match(robots, /^User-agent: \*$/m);
+  assert.match(robots, /^Disallow: \/admin\/$/m);
+  assert.match(robots, /^Sitemap: https:\/\/easyshoopping\.com\/sitemap\.xml$/m);
+  assert.match(sitemap, /<loc>https:\/\/easyshoopping\.com\/<\/loc>/);
+});
+
 test('로그인과 MY UI 및 관련 동작 코드가 제거되어 있다', () => {
   assert.doesNotMatch(html, /로그인|>MY<|my-button/);
   assert.doesNotMatch(script, /로그인|MY|my-button/);
