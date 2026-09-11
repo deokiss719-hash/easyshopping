@@ -42,6 +42,18 @@ test('뽐뿌 본문 밖 이미지나 허용되지 않은 외부 이미지는 사
   );
 });
 
+test('뽐뿌 본문 안 data:image만 추출 후보로 유지한다', () => {
+  const dataImage = `data:image/png;base64,${Buffer.from('inline').toString('base64')}`;
+  assert.equal(
+    extractPpomppuBodyImage(`<td class="board-contents"><img src="${dataImage}"></td>`, 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123'),
+    dataImage,
+  );
+  assert.equal(
+    extractPpomppuBodyImage(`<img src="${dataImage}"><td class="board-contents"></td>`, 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123'),
+    null,
+  );
+});
+
 const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
 
 const RSS = `<?xml version="1.0" encoding="UTF-8"?>

@@ -74,7 +74,7 @@ function safeSourceImageUrl(value) {
 function failureCode(error) {
   if (error?.code === 'unsafe_source_image_url') return 'unsafe_source_image_url';
   if (error?.code === 'image_too_small') return 'image_too_small';
-  if (error?.code === 'body_image_missing') return 'body_image_missing';
+  if (/^body_(?:content_missing|image_(?:missing|unsupported_type|invalid_data|too_large|unsafe_source))$/.test(String(error?.code || ''))) return error.code;
   if (/^(?:page|image)_(?:http_\d{3}|[a-z0-9_]{1,48})$/.test(String(error?.code || ''))) return error.code;
   if (error instanceof RangeError) return 'image_too_large';
   if (/unsupported|content.?type/i.test(String(error?.message || ''))) return 'unsupported_image';
@@ -130,13 +130,21 @@ function createImagePipeline({
           throw new Error('unsupported image content type');
         }
         const sourceImageUrl = safeSourceImageUrl(candidate.sourceImageUrl);
-        if (!sourceImageUrl || !provider.isAllowedImageUrl(new URL(sourceImageUrl))) {
-          throw Object.assign(new Error('provider returned an unapproved source image URL'), { code: 'unsafe_source_image_url' });
+        const inlineDigest = createHash('sha256').update(candidate.body).digest('hex');
+        const expectedInlineKey = `inline-sha256:${inlineDigest}`;
+        const hasValidRemoteSource = sourceImageUrl
+          && !candidate.sourceImageKey
+          && provider.isAllowedImageUrl(new URL(sourceImageUrl));
+        const hasValidInlineSource = candidate.sourceImageUrl == null
+          && candidate.sourceImageKey === expectedInlineKey;
+        if (!hasValidRemoteSource && !hasValidInlineSource) {
+          throw Object.assign(new Error('provider returned an unapproved source image identity'), { code: 'unsafe_source_image_url' });
         }
+        const sourceIdentity = sourceImageUrl || expectedInlineKey;
 
         const body = await convert(candidate.body);
         const objectHash = createHash('sha256')
-          .update(`${deal.source}:${deal.sourceItemId}:${sourceImageUrl}`)
+          .update(`${deal.source}:${deal.sourceItemId}:${sourceIdentity}`)
           .digest('hex');
         const sourceSegment = String(deal.source || 'unknown').toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 64) || 'unknown';
         const objectKey = `deals/${sourceSegment}/${objectHash}.webp`;

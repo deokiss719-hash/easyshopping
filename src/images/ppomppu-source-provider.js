@@ -1,3 +1,4 @@
+const { createHash } = require('node:crypto');
 const { fetchPpomppuBodyImage, safeImageUrl } = require('../rss-collector');
 const { requestPinnedHttps } = require('../pinned-https');
 
@@ -5,6 +6,73 @@ const MAX_REDIRECTS = 3;
 const DEFAULT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_HOSTS = Object.freeze(['ppomppu.co.kr']);
 const ALLOWED_PAGE_HOSTS = Object.freeze(['www.ppomppu.co.kr', 'ppomppu.co.kr']);
+const ALLOWED_INLINE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+]);
+
+function inlineImageError(code, message) {
+  return Object.assign(new Error(message), { code });
+}
+
+function detectedImageMime(body) {
+  if (body.length >= 3 && body[0] === 0xff && body[1] === 0xd8 && body[2] === 0xff) return 'image/jpeg';
+  if (body.length >= 8 && body.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))) return 'image/png';
+  if (body.length >= 6 && /^(?:GIF87a|GIF89a)$/.test(body.subarray(0, 6).toString('ascii'))) return 'image/gif';
+  if (body.length >= 12 && body.subarray(0, 4).toString('ascii') === 'RIFF'
+    && body.subarray(8, 12).toString('ascii') === 'WEBP') return 'image/webp';
+  if (body.length >= 16 && body.subarray(4, 8).toString('ascii') === 'ftyp') {
+    const brandBytes = body.subarray(8, Math.min(body.length, 64));
+    for (let offset = 0; offset + 4 <= brandBytes.length; offset += 4) {
+      if (/^(?:avif|avis)$/.test(brandBytes.subarray(offset, offset + 4).toString('ascii'))) return 'image/avif';
+    }
+  }
+  return null;
+}
+
+function decodeInlineImageData(value, maxBytes = DEFAULT_MAX_IMAGE_BYTES) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) throw new TypeError('maxBytes is invalid');
+  const data = String(value || '');
+  const comma = data.indexOf(',');
+  if (comma < 0) throw inlineImageError('body_image_invalid_data', '인라인 이미지 데이터가 올바르지 않습니다');
+
+  const header = data.slice(0, comma);
+  const contentType = header.match(/^data:(image\/[a-z0-9.+-]+);base64$/i)?.[1]?.toLowerCase();
+  if (!contentType || !ALLOWED_INLINE_MIME_TYPES.has(contentType)) {
+    throw inlineImageError('body_image_unsupported_type', '지원하지 않는 인라인 이미지 형식입니다');
+  }
+
+  const encoded = data.slice(comma + 1);
+  const maxEncodedBytes = Math.ceil(maxBytes / 3) * 4;
+  if (encoded.length > maxEncodedBytes) {
+    throw inlineImageError('body_image_too_large', '인라인 이미지가 너무 큽니다');
+  }
+  if (!encoded || encoded.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+    throw inlineImageError('body_image_invalid_data', '인라인 이미지 base64가 올바르지 않습니다');
+  }
+  const padding = encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0;
+  const decodedLength = (encoded.length / 4) * 3 - padding;
+  if (!Number.isSafeInteger(decodedLength) || decodedLength < 1 || decodedLength > maxBytes) {
+    throw inlineImageError('body_image_too_large', '인라인 이미지가 너무 큽니다');
+  }
+
+  const body = Buffer.from(encoded, 'base64');
+  if (body.length !== decodedLength || body.length > maxBytes || body.toString('base64') !== encoded) {
+    throw inlineImageError('body_image_invalid_data', '인라인 이미지 base64가 올바르지 않습니다');
+  }
+  if (detectedImageMime(body) !== contentType) {
+    throw inlineImageError('body_image_invalid_data', '인라인 이미지의 실제 형식이 MIME과 일치하지 않습니다');
+  }
+  return {
+    body,
+    contentType,
+    sourceImageUrl: null,
+    sourceImageKey: `inline-sha256:${createHash('sha256').update(body).digest('hex')}`,
+  };
+}
 
 function isPpomppuHost(hostname) {
   const host = String(hostname || '').toLowerCase().replace(/\.$/, '');
@@ -216,7 +284,7 @@ function createPpomppuImageProvider({
           pageDiagnostic = diagnostic;
         },
       });
-      if (!discoveredImage || !isAllowedImageUrl(new URL(discoveredImage))) {
+      if (!discoveredImage) {
         let code = 'body_image_missing';
         if (pageDiagnostic?.reason === 'http_status' && Number.isInteger(pageDiagnostic.httpStatus)) {
           code = `page_http_${pageDiagnostic.httpStatus}`;
@@ -224,6 +292,10 @@ function createPpomppuImageProvider({
           code = `page_${String(pageDiagnostic.reason).replace(/[^a-z0-9_]/gi, '_').toLowerCase()}`;
         }
         throw Object.assign(new Error('뽐뿌 본문 상품 이미지가 없습니다'), { code });
+      }
+      if (/^data:/i.test(discoveredImage)) return decodeInlineImageData(discoveredImage, maxImageBytes);
+      if (!isAllowedImageUrl(new URL(discoveredImage))) {
+        throw Object.assign(new Error('허용되지 않은 뽐뿌 이미지 URL입니다'), { code: 'body_image_unsafe_source' });
       }
       return fetchImage(discoveredImage, {
         fetchImpl: pacedFetch,
@@ -235,4 +307,9 @@ function createPpomppuImageProvider({
   });
 }
 
-module.exports = { createPpomppuImageProvider, isAllowedPostUrl, isAllowedImageUrl };
+module.exports = {
+  createPpomppuImageProvider,
+  decodeInlineImageData,
+  isAllowedPostUrl,
+  isAllowedImageUrl,
+};

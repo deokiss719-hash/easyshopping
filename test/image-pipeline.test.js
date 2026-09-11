@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { createHash } = require('node:crypto');
 
 const { createProviderRegistry } = require('../src/images/provider-registry');
 const {
@@ -305,6 +306,47 @@ test('본문 이미지가 없으면 상세 실패 코드를 보존한다', async
   assert.equal(result.status, 'failed');
   assert.equal(result.code, 'body_image_missing');
   assert.equal(updates[0][1].imageFailureCode, 'body_image_missing');
+});
+
+test('검증된 인라인 이미지 키는 외부 원본 URL을 저장하지 않고 R2 객체 식별에만 사용한다', async () => {
+  const inlineBody = Buffer.from('verified-inline-png');
+  const digest = createHash('sha256').update(inlineBody).digest('hex');
+  const updates = [];
+  const uploads = [];
+  const provider = {
+    name: 'inline-provider',
+    merchantHosts: ['ppomppu.co.kr'],
+    canHandle: () => true,
+    isAllowedImageUrl: () => false,
+    fetchImageCandidate: async () => ({
+      body: inlineBody,
+      contentType: 'image/png',
+      sourceImageUrl: null,
+      sourceImageKey: `inline-sha256:${digest}`,
+    }),
+  };
+  const pipeline = createImagePipeline({
+    providerRegistry: createProviderRegistry([provider]),
+    storage: {
+      enabled: true,
+      uploadWebp: async (input) => {
+        uploads.push(input);
+        return `https://images.example/${input.key}`;
+      },
+    },
+    store: { updateImageState: async (...args) => { updates.push(args); } },
+    convert: async () => Buffer.from('webp'),
+    logger: { warn: () => {} },
+  });
+
+  const result = await pipeline.process({
+    id: '1', source: 'ppomppu', sourceItemId: '123',
+    originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123',
+  });
+
+  assert.equal(result.status, 'ready');
+  assert.equal(updates[0][1].sourceImageUrl, null);
+  assert.match(uploads[0].key, /^deals\/ppomppu\/[a-f0-9]{64}\.webp$/);
 });
 
 test('원본 이미지 URL이 변경되면 R2 캐시 키도 변경한다', async () => {

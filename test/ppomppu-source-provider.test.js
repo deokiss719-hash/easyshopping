@@ -1,9 +1,107 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { createHash } = require('node:crypto');
 
 const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];
 
-const { createPpomppuImageProvider } = require('../src/images/ppomppu-source-provider');
+const {
+  createPpomppuImageProvider,
+  decodeInlineImageData,
+} = require('../src/images/ppomppu-source-provider');
+
+const PNG_SIGNATURE = Buffer.from('89504e470d0a1a0a', 'hex');
+const inlinePng = (body = PNG_SIGNATURE) => `data:image/png;base64,${body.toString('base64')}`;
+
+test('뽐뿌 본문 안의 안전한 data:image PNG를 네트워크 재요청 없이 전달한다', async () => {
+  const body = await require('sharp')({
+    create: { width: 80, height: 80, channels: 3, background: '#ffffff' },
+  }).png().toBuffer();
+  let calls = 0;
+  const provider = createPpomppuImageProvider({
+    requestIntervalMs: 0,
+    lookup: publicLookup,
+    fetchImpl: async () => {
+      calls += 1;
+      return new Response(`<td class="board-contents"><img src="${inlinePng(body)}"></td>`, {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      });
+    },
+  });
+
+  const candidate = await provider.fetchImageCandidate({
+    deal: { originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123' },
+  });
+
+  assert.equal(calls, 1);
+  assert.deepEqual(candidate.body, body);
+  assert.equal(candidate.contentType, 'image/png');
+  assert.equal(candidate.sourceImageUrl, null);
+  assert.equal(candidate.sourceImageKey, `inline-sha256:${createHash('sha256').update(body).digest('hex')}`);
+});
+
+test('data:image는 strict base64, MIME allowlist, 디코딩 전후 크기, 실제 형식을 fail-closed 검증한다', async () => {
+  const cases = [
+    { value: 'data:image/png;base64,%%%not-base64%%%', code: 'body_image_invalid_data' },
+    { value: `data:image/svg+xml;base64,${Buffer.from('<svg/>').toString('base64')}`, code: 'body_image_unsupported_type' },
+    { value: `data:image/png;base64,${Buffer.from('not-a-png').toString('base64')}`, code: 'body_image_invalid_data' },
+    { value: inlinePng(Buffer.concat([PNG_SIGNATURE, Buffer.alloc(1024)])), code: 'body_image_too_large', maxImageBytes: 1024 },
+  ];
+
+  for (const fixture of cases) {
+    const provider = createPpomppuImageProvider({
+      requestIntervalMs: 0,
+      maxImageBytes: fixture.maxImageBytes || 10 * 1024 * 1024,
+      lookup: publicLookup,
+      fetchImpl: async () => new Response(
+        `<td class="board-contents"><img src="${fixture.value}"></td>`,
+        { status: 200, headers: { 'content-type': 'text/html' } },
+      ),
+    });
+    await assert.rejects(
+      () => provider.fetchImageCandidate({
+        deal: { originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123' },
+      }),
+      (error) => error?.code === fixture.code,
+      fixture.code,
+    );
+  }
+});
+
+test('기본 10MiB 제한보다 디코딩 결과가 큰 data:image는 디코딩 전에 거부한다', () => {
+  const oversized = Buffer.alloc((10 * 1024 * 1024) + 1).toString('base64');
+  assert.throws(
+    () => decodeInlineImageData(`data:image/png;base64,${oversized}`),
+    (error) => error?.code === 'body_image_too_large',
+  );
+});
+
+test('본문 밖 data:image는 제외하고 본문 컨테이너 없음과 안전하지 않은 호스트를 구분한다', async () => {
+  const fixtures = [
+    { html: `<img src="${inlinePng()}"><table><tr><td class="board-contents"><p>본문</p></td></tr></table>`, code: 'body_image_missing' },
+    { html: '<div class="deleted">삭제된 게시물</div>', code: 'body_content_missing' },
+    { html: '<td class="board-contents"><img src="https://img.ppomppu1.co.kr/zboard/data3/product.jpg"></td>', code: 'body_image_unsafe_source' },
+  ];
+  for (const fixture of fixtures) {
+    let calls = 0;
+    const provider = createPpomppuImageProvider({
+      requestIntervalMs: 0,
+      lookup: publicLookup,
+      fetchImpl: async () => {
+        calls += 1;
+        return new Response(fixture.html, { status: 200, headers: { 'content-type': 'text/html' } });
+      },
+    });
+    await assert.rejects(
+      () => provider.fetchImageCandidate({
+        deal: { originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123' },
+      }),
+      (error) => error?.code === fixture.code,
+      fixture.code,
+    );
+    assert.equal(calls, 1);
+  }
+});
 
 test('뽐뿌 원문 provider는 본문 첫 사용자 이미지를 내려받아 배치 파이프라인에 전달한다', async () => {
   const calls = [];
@@ -53,7 +151,7 @@ test('뽐뿌 원문 provider는 본문 밖 이미지와 허용 호스트 밖 이
 
   await assert.rejects(
     () => provider.fetchImageCandidate({ deal: { originalUrl: 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=123' } }),
-    (error) => error?.code === 'body_image_missing',
+    (error) => error?.code === 'body_image_unsafe_source',
   );
   assert.equal(calls, 1);
 });

@@ -395,11 +395,19 @@ function isPpomppuUiImage(element, imageUrl) {
   return uiName || siteAsset || tiny;
 }
 
-function extractPpomppuBodyImage(html, pageUrl, allowedImageHosts = DEFAULT_IMAGE_HOSTS) {
+function bodyImageError(code, message) {
+  return Object.assign(new Error(message), { code });
+}
+
+function extractPpomppuBodyImageCandidate(html, pageUrl, allowedImageHosts, strict) {
   const $ = cheerio.load(String(html || ''), null, false);
   const content = $('td.board-contents').first();
-  if (!content.length) return null;
+  if (!content.length) {
+    if (strict) throw bodyImageError('body_content_missing', '뽐뿌 작성자 본문 영역이 없습니다');
+    return null;
+  }
 
+  let unsafeCandidateFound = false;
   for (const node of content.find('img').toArray()) {
     const image = $(node);
     const candidates = [
@@ -409,14 +417,31 @@ function extractPpomppuBodyImage(html, pageUrl, allowedImageHosts = DEFAULT_IMAG
       image.attr('src'),
     ];
     for (const candidate of candidates) {
+      const rawCandidate = String(candidate || '').trim();
+      if (!rawCandidate) continue;
+      if (/^data:/i.test(rawCandidate)) return rawCandidate;
       const safeUrl = safeImageUrl(candidate, pageUrl, allowedImageHosts);
-      if (!safeUrl) continue;
+      if (!safeUrl) {
+        unsafeCandidateFound = true;
+        continue;
+      }
       const parsed = new URL(safeUrl);
       if (isPpomppuUiImage(image, parsed)) continue;
       return safeUrl;
     }
   }
+  if (strict && unsafeCandidateFound) {
+    throw bodyImageError('body_image_unsafe_source', '뽐뿌 본문 이미지의 출처가 안전하지 않습니다');
+  }
   return null;
+}
+
+function extractPpomppuBodyImage(html, pageUrl, allowedImageHosts = DEFAULT_IMAGE_HOSTS) {
+  return extractPpomppuBodyImageCandidate(html, pageUrl, allowedImageHosts, false);
+}
+
+function extractPpomppuBodyImageStrict(html, pageUrl, allowedImageHosts = DEFAULT_IMAGE_HOSTS) {
+  return extractPpomppuBodyImageCandidate(html, pageUrl, allowedImageHosts, true);
 }
 
 async function fetchOpenGraphImage(pageUrl, {
@@ -551,7 +576,7 @@ function fetchPpomppuBodyImage(pageUrl, options = {}) {
       && /^\d{1,20}$/.test(expectedNumber || '')
       && url.searchParams.get('no') === expectedNumber,
     requireContentType: true,
-    extractImage: extractPpomppuBodyImage,
+    extractImage: extractPpomppuBodyImageStrict,
     missingReason: 'body_image_missing',
     missingField: 'bodyImageMissing',
   });
