@@ -1,5 +1,11 @@
 function buildContentSecurityPolicy(r2Config = { enabled: false }, naverShoppingConfig = { enabled: false }) {
-  const imageSources = ["'self'", 'https://ppomppu.co.kr', 'https://*.ppomppu.co.kr', 'https://*.coupangcdn.com'];
+  const imageSources = [
+    "'self'",
+    'https://ppomppu.co.kr',
+    'https://*.ppomppu.co.kr',
+    'https://*.coupangcdn.com',
+    'https://www.facebook.com',
+  ];
   if (r2Config.enabled && r2Config.publicBaseUrl) {
     imageSources.push(new URL(r2Config.publicBaseUrl).origin);
   }
@@ -14,8 +20,8 @@ function buildContentSecurityPolicy(r2Config = { enabled: false }, naverShopping
     `img-src ${imageSources.join(' ')}`,
     "style-src 'self' https://cdn.jsdelivr.net",
     "font-src 'self' https://cdn.jsdelivr.net",
-    "script-src 'self'",
-    "connect-src 'self'",
+    "script-src 'self' https://connect.facebook.net",
+    "connect-src 'self' https://www.facebook.com",
     "base-uri 'self'",
     "object-src 'none'",
   ].join('; ');
