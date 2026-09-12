@@ -149,7 +149,7 @@ test('검색 입력은 기존 검색 박스 전체를 label로 유지하고 시�
 });
 
 test('모든 상품 카드는 URL 유무에 따라 안전한 링크 또는 비활성 요소를 사용한다', () => {
-  assert.match(html, /<script src="\/deal-card-link\.js" defer><\/script>\s*<script src="\/app\.js" defer><\/script>/);
+  assert.match(html, /<script src="\/deal-card-link\.js" defer><\/script>[\s\S]*<script src="\/app\.js" defer><\/script>/);
   for (const className of ['deal-card', 'popular-item', 'latest-item']) {
     assert.match(script, new RegExp(`DealCardLink\\.renderCardContainer\\('${className}', deal\\.url,`));
   }

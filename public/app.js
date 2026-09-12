@@ -293,6 +293,7 @@ function syncDealUrl(mode = 'push') {
 
 function applyUrlState(nextState) {
   state.query = nextState.query;
+  if (!state.query) window.MetaEvents?.resetSearch();
   state.category = nextState.category;
   state.sort = nextState.sort;
   elements.searchInput.value = nextState.query;
@@ -319,6 +320,7 @@ function setCategory(category, { scroll = true, updateUrl = true } = {}) {
 
 function runSearch(value, { scroll = true, updateUrl = true } = {}) {
   state.query = value.trim().slice(0, 100);
+  window.MetaEvents?.trackSearch(state.query);
   if (updateUrl) syncDealUrl('replace');
   loadDeals({ scroll });
 }
@@ -378,6 +380,7 @@ elements.loadMore.addEventListener('click', () => {
 document.querySelector('#resetSearch').addEventListener('click', () => {
   elements.searchInput.value = '';
   state.query = '';
+  window.MetaEvents?.resetSearch();
   setCategory('전체', { scroll: false });
 });
 
