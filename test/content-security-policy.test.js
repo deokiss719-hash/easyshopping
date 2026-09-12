@@ -50,8 +50,15 @@ test('CSP는 쿠팡 상품 CDN 이미지만 허용하고 API, 스크립트, 프�
   assert.doesNotMatch(policy, /connect-src[^;]*coupang/i);
 });
 
-test('CSP는 FMKorea의 정확한 이미지 origin만 추가한다', () => {
-  const policy = buildContentSecurityPolicy({ enabled: false });
-  assert.match(policy, /img-src[^;]*https:\/\/image\.fmkorea\.com/);
+test('CSP는 FMKorea 이미지와 리다이렉트 CDN의 정확한 origin만 추가한다', () => {
+  const policy = buildContentSecurityPolicy({ enabled: false }, { enabled: false });
+  assert.equal(policy,
+    "default-src 'self'; "
+    + "img-src 'self' https://ppomppu.co.kr https://*.ppomppu.co.kr https://image.fmkorea.com https://ext.fmkorea.com https://*.coupangcdn.com https://www.facebook.com; "
+    + "style-src 'self' https://cdn.jsdelivr.net; "
+    + "font-src 'self' https://cdn.jsdelivr.net; "
+    + "script-src 'self' https://connect.facebook.net; "
+    + "connect-src 'self' https://www.facebook.com; "
+    + "base-uri 'self'; object-src 'none'");
   assert.doesNotMatch(policy, /\*\.fmkorea\.com/);
 });
