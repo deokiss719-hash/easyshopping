@@ -116,6 +116,25 @@ test('live deals API rejects unsupported category, sort, source, and oversized q
   await pool.end();
 });
 
+test('쿠팡 source는 런타임에서 명시적으로 허용했을 때만 공개한다', async () => {
+  let received;
+  await withServer({
+    async list(query) {
+      received = query;
+      return { items: [], total: 0, page: 1, size: 8 };
+    },
+  }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/live-deals?source=coupang`);
+    assert.equal(response.status, 200);
+    assert.equal(received.source, 'coupang');
+  }, { allowedSources: ['ppomppu', 'manual', 'coupang'] });
+
+  await withServer({ async list() { throw new Error('must not query'); } }, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/live-deals?source=coupang`);
+    assert.equal(response.status, 400);
+  });
+});
+
 test('live deals API keeps internal range errors private and returns 500', async () => {
   const brokenStore = {
     async list() {

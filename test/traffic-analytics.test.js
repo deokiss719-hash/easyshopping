@@ -137,7 +137,7 @@ test('middleware counts same daily browser once and stores sanitized search refe
 test('middleware excludes signed admin sessions and isolates analytics failures from public responses', async (t) => {
   let calls = 0;
   const secret = 'x'.repeat(32);
-  const adminValue = adminTrafficCookie.createValue(secret, new Date('2026-09-12T00:00:00Z'));
+  const adminValue = adminTrafficCookie.createValue(secret, new Date('2099-09-12T00:00:00Z'));
   const analytics = createTrafficAnalytics({
     store: { async recordPageView() { calls += 1; throw new Error('database contains private details'); } },
     secret,

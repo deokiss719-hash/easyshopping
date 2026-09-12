@@ -11,7 +11,8 @@ test('CSP는 검증된 R2 public URL의 정확한 origin만 이미지 출처로 
     publicBaseUrl: 'https://images.example.com/base',
   });
 
-  assert.match(policy, /img-src 'self' https:\/\/ppomppu\.co\.kr https:\/\/\*\.ppomppu\.co\.kr https:\/\/images\.example\.com/);
+  assert.match(policy, /img-src 'self' https:\/\/ppomppu\.co\.kr https:\/\/\*\.ppomppu\.co\.kr/);
+  assert.match(policy, /img-src[^;]*https:\/\/images\.example\.com/);
   assert.doesNotMatch(policy, /img-src[^;]*https:\s/);
   assert.doesNotMatch(policy, /\/base/);
 });
@@ -39,4 +40,12 @@ test('네이버 자격증명이 비활성화돼도 저장된 네이버 이미지
     { enabled: false, imageBaseUrls: ['https://shopping-phinf.pstatic.net/'] },
   );
   assert.match(policy, /img-src[^;]*https:\/\/shopping-phinf\.pstatic\.net/);
+});
+
+test('CSP는 쿠팡 상품 CDN 이미지만 허용하고 API, 스크립트, 프레임은 허용하지 않는다', () => {
+  const policy = buildContentSecurityPolicy({ enabled: false }, { enabled: false });
+  assert.match(policy, /img-src[^;]*https:\/\/\*\.coupangcdn\.com/);
+  assert.doesNotMatch(policy, /script-src[^;]*coupang/i);
+  assert.doesNotMatch(policy, /frame-src[^;]*coupang/i);
+  assert.doesNotMatch(policy, /connect-src[^;]*coupang/i);
 });

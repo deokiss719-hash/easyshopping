@@ -8,6 +8,7 @@ function startPollingCollector({
   logger = console,
   runRecorder = null,
   recorderTimeoutMs = 2000,
+  label = '핫딜 RSS',
 }) {
   if (typeof collect !== 'function') throw new TypeError('collect function is required');
   if (!Number.isSafeInteger(intervalMs) || intervalMs < 60000) {
@@ -42,11 +43,11 @@ function startPollingCollector({
     try {
       const result = await collect();
       if (runId != null) await record('succeed', runId, result);
-      logger.info('핫딜 RSS 수집 완료', result);
+      logger.info(`${label} 수집 완료`, result);
       return result;
     } catch {
       if (runId != null) await record('fail', runId);
-      logger.error('핫딜 RSS 수집 실패', { reason: 'collector_failed' });
+      logger.error(`${label} 수집 실패`, { reason: 'collector_failed' });
       return null;
     } finally {
       running = false;

@@ -32,6 +32,7 @@ const { createOperationalHealth } = require('./src/operational-health');
 const { createHealthRouter } = require('./src/health-routes');
 const { createTrafficAnalytics, koreaDay } = require('./src/traffic-analytics');
 const { createTrafficAnalyticsStore } = require('./src/traffic-analytics-store');
+const { readCoupangRuntime, runCoupangCollector } = require('./src/coupang-products');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -160,6 +161,7 @@ async function start() {
     intervalMs,
     freshnessThresholdMs,
   } = readCollectorRuntime(process.env);
+  const coupangRuntime = readCoupangRuntime(process.env);
   const r2Config = readR2Config(process.env);
   const imageBaseUrls = [
     ...(r2Config.enabled ? [r2Config.publicBaseUrl] : []),
@@ -279,6 +281,16 @@ async function start() {
       intervalMs,
       runRecorder: collectionRunStore,
     });
+    if (coupangRuntime.enabled) {
+      startPollingCollector({
+        collect: () => runCoupangCollector({ runtime: coupangRuntime, store }),
+        intervalMs: coupangRuntime.intervalMs,
+        label: '쿠팡파트너스 상품',
+      });
+      console.log('쿠팡파트너스 공식 API 자동 수집 활성화');
+    } else if (coupangRuntime.requested) {
+      console.warn(`쿠팡파트너스 자동 수집 비활성화: ${coupangRuntime.missing.join(', ')} 환경변수 필요`);
+    }
   }
 
   app.use('/admin', createAdminUiRouter({ auth: adminAuth }));
@@ -287,6 +299,7 @@ async function start() {
 
   app.use('/api/live-deals', createLiveDealsRouter(store, {
     imageBaseUrls,
+    allowedSources: ['ppomppu', 'manual', ...(coupangRuntime.enabled ? ['coupang'] : [])],
   }));
   app.use(adminJsonErrorHandler);
   app.use(publicNotFound);

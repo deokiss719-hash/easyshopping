@@ -23,3 +23,12 @@ for (const className of ['deal-card', 'popular-item', 'latest-item']) {
     }
   });
 }
+
+test('쿠팡 카드만 sponsored 링크 속성을 명시할 수 있다', () => {
+  const html = renderCardContainer('deal-card', 'https://link.coupang.com/re/affiliate', '상품', {
+    rel: 'sponsored noopener noreferrer',
+  });
+  assert.match(html, /rel="sponsored noopener noreferrer"/);
+  const injected = renderCardContainer('deal-card', 'https://example.com/', '상품', { rel: 'opener evil' });
+  assert.match(injected, /rel="noopener noreferrer"/);
+});

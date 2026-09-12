@@ -1,5 +1,5 @@
 function buildContentSecurityPolicy(r2Config = { enabled: false }, naverShoppingConfig = { enabled: false }) {
-  const imageSources = ["'self'", 'https://ppomppu.co.kr', 'https://*.ppomppu.co.kr'];
+  const imageSources = ["'self'", 'https://ppomppu.co.kr', 'https://*.ppomppu.co.kr', 'https://*.coupangcdn.com'];
   if (r2Config.enabled && r2Config.publicBaseUrl) {
     imageSources.push(new URL(r2Config.publicBaseUrl).origin);
   }

@@ -31,10 +31,9 @@ function toApiDeal(deal) {
   };
 }
 
-const PUBLIC_SOURCES = new Set(['ppomppu', 'manual']);
-
-function createLiveDealsRouter(store, { imageBaseUrls = [] } = {}) {
+function createLiveDealsRouter(store, { imageBaseUrls = [], allowedSources = ['ppomppu', 'manual'] } = {}) {
   const router = express.Router();
+  const publicSources = new Set(allowedSources);
   const trustedImageBaseUrls = Object.freeze(
     imageBaseUrls.filter((value) => typeof value === 'string' && value.startsWith('https://')),
   );
@@ -49,7 +48,7 @@ function createLiveDealsRouter(store, { imageBaseUrls = [] } = {}) {
 
     try {
       const requestedSource = String(req.query.source || 'ppomppu').trim();
-      if (requestedSource && !PUBLIC_SOURCES.has(requestedSource)) {
+      if (requestedSource && !publicSources.has(requestedSource)) {
         return res.status(400).json({ code: 'INVALID_QUERY', message: 'source is not supported' });
       }
       const result = await store.list({

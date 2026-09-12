@@ -178,17 +178,19 @@ function createAdminStore(pool) {
     async listPublicManualDeals({ homeOnly = false, limit = 100 } = {}) {
       const safeLimit = Math.max(1, Math.min(100, Number.isInteger(limit) ? limit : 100));
       const result = await pool.query(
-        `SELECT d.*,m.original_price_amount,m.description,m.badge,m.show_on_home,m.priority,m.id AS manual_id
+        `SELECT d.*,m.original_price_amount AS manual_original_price_amount,
+           m.description AS manual_description,m.badge AS manual_badge,
+           m.show_on_home AS manual_show_on_home,m.priority AS manual_priority,m.id AS manual_id
          FROM deals d JOIN manual_deals m ON m.deal_id=d.id
          WHERE d.source='manual' AND d.is_ended=FALSE AND m.is_published=TRUE AND ($1::boolean=FALSE OR m.show_on_home=TRUE)
          ORDER BY m.priority DESC,m.updated_at DESC LIMIT $2`, [homeOnly, safeLimit],
       );
       return result.rows.map((row) => ({
         id: String(row.id), manualId: String(row.manual_id), source: row.source, title: row.title,
-        priceAmount: safeNumber(row.price_amount), originalPriceAmount: safeNumber(row.original_price_amount),
+        priceAmount: safeNumber(row.price_amount), originalPriceAmount: safeNumber(row.manual_original_price_amount),
         merchant: row.merchant, originalUrl: row.original_url, imageUrl: row.image_url,
-        category: row.category, description: row.description, badge: row.badge,
-        showOnHome: row.show_on_home, priority: row.priority, publishedAt: row.published_at,
+        category: row.category, description: row.manual_description, badge: row.manual_badge,
+        showOnHome: row.manual_show_on_home, priority: row.manual_priority, publishedAt: row.published_at,
       }));
     },
     async getPublishedManualImage(id) {

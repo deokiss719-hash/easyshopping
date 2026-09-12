@@ -13,6 +13,8 @@ const SORT_ORDERS = Object.freeze({
 const IMAGE_STATUSES = new Set(['missing_merchant_url', 'pending', 'ready', 'failed', 'unsupported_provider']);
 const IMAGE_BACKFILL_ADVISORY_LOCK_NAMESPACE = 1163086169;
 const IMAGE_BACKFILL_ADVISORY_LOCK_ID = 1835627636;
+const COUPANG_COLLECTION_ADVISORY_LOCK_NAMESPACE = 1129270864;
+const COUPANG_COLLECTION_ADVISORY_LOCK_ID = 1347374160;
 const migratedPools = new WeakSet();
 
 class InvalidQueryError extends TypeError {}
@@ -106,6 +108,8 @@ function mapDeal(row) {
     imageFailureCode: row.image_failure_code,
     imageRetryAt: row.image_retry_at,
     category: row.category,
+    badge: row.badge,
+    description: row.description,
     publishedAt: row.published_at,
     firstSeenAt: row.first_seen_at,
     lastSeenAt: row.last_seen_at,
@@ -196,6 +200,46 @@ function createDealStore(pool) {
       }
     },
 
+    async withCoupangCollectionLease(worker) {
+      if (typeof worker !== 'function') throw new TypeError('worker is required');
+      const client = await pool.connect();
+      let acquired = false;
+      let workerError = null;
+      try {
+        const result = await client.query(
+          `SELECT pg_try_advisory_lock(${COUPANG_COLLECTION_ADVISORY_LOCK_NAMESPACE}, ${COUPANG_COLLECTION_ADVISORY_LOCK_ID}) AS acquired`,
+        );
+        acquired = result.rows[0]?.acquired === true;
+        if (!acquired) return null;
+        try {
+          return await worker();
+        } catch (error) {
+          workerError = error;
+          throw error;
+        }
+      } finally {
+        let unlockError = null;
+        try {
+          if (acquired) {
+            const unlockResult = await client.query(
+              `SELECT pg_advisory_unlock(${COUPANG_COLLECTION_ADVISORY_LOCK_NAMESPACE}, ${COUPANG_COLLECTION_ADVISORY_LOCK_ID}) AS unlocked`,
+            );
+            if (unlockResult.rows[0]?.unlocked !== true) {
+              throw new Error('Coupang collection advisory unlock failed');
+            }
+          }
+        } catch (error) {
+          unlockError = error;
+        } finally {
+          client.release(unlockError ? true : undefined);
+        }
+        if (unlockError) {
+          if (workerError) workerError.advisoryUnlockError = unlockError;
+          else throw unlockError;
+        }
+      }
+    },
+
     async upsert(input) {
       const deal = normalizeDeal(input);
       const values = [
@@ -265,6 +309,71 @@ function createDealStore(pool) {
         values,
       );
       return mapDeal(result.rows[0]);
+    },
+
+    async syncCoupangSnapshot(inputs) {
+      if (!Array.isArray(inputs) || inputs.length === 0) {
+        throw new TypeError('Coupang snapshot must contain at least one product');
+      }
+      const deals = inputs.map(normalizeDeal);
+      if (deals.some((deal) => deal.source !== 'coupang')) {
+        throw new TypeError('Coupang snapshot may only contain coupang products');
+      }
+      const ids = deals.map((deal) => deal.sourceItemId);
+      if (new Set(ids).size !== ids.length) throw new TypeError('Coupang snapshot contains duplicate product IDs');
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('SELECT pg_advisory_xact_lock(1129270343, 1886218864)');
+        for (const deal of deals) {
+          await client.query(
+            `INSERT INTO deals (
+              source, source_item_id, title, price_text, price_amount, merchant, original_url,
+              source_image_url, image_url, image_status, image_provider, published_at, category,
+              badge, description
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+            ON CONFLICT (source, source_item_id) DO UPDATE SET
+              title = EXCLUDED.title,
+              price_text = EXCLUDED.price_text,
+              price_amount = EXCLUDED.price_amount,
+              merchant = EXCLUDED.merchant,
+              original_url = EXCLUDED.original_url,
+              source_image_url = EXCLUDED.source_image_url,
+              image_url = EXCLUDED.image_url,
+              image_status = EXCLUDED.image_status,
+              image_provider = EXCLUDED.image_provider,
+              category = EXCLUDED.category,
+              badge = EXCLUDED.badge,
+              description = EXCLUDED.description,
+              last_seen_at = CURRENT_TIMESTAMP,
+              is_ended = FALSE,
+              ended_at = NULL`,
+            [
+              deal.source, deal.sourceItemId, deal.title, deal.priceText ?? null,
+              deal.priceAmount ?? null, deal.merchant ?? null, deal.originalUrl,
+              deal.sourceImageUrl ?? null, deal.imageUrl ?? null, deal.imageStatus ?? 'ready',
+              deal.imageProvider ?? 'coupang-api', deal.publishedAt ?? null,
+              deal.category ?? '기타', deal.badge ?? '쿠팡추천', deal.description ?? null,
+            ],
+          );
+        }
+        const idParameters = ids.map((_, index) => `$${index + 2}`).join(',');
+        const ended = await client.query(
+          `UPDATE deals
+           SET is_ended = TRUE, ended_at = CURRENT_TIMESTAMP
+           WHERE source = $1 AND is_ended = FALSE
+             AND source_item_id NOT IN (${idParameters})`,
+          ['coupang', ...ids],
+        );
+        await client.query('COMMIT');
+        return { upserted: deals.length, ended: ended.rowCount };
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
     },
 
     async reclassify(classifier) {

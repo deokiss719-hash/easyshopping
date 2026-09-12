@@ -21,11 +21,12 @@
     }
   }
 
-  function renderCardContainer(className, value, content) {
+  function renderCardContainer(className, value, content, { rel = 'noopener noreferrer' } = {}) {
     const safeClassName = escapeAttribute(className);
     const url = safeExternalUrl(value);
     if (!url) return `<article class="${safeClassName}" aria-disabled="true">${content}</article>`;
-    return `<a class="${safeClassName}" href="${escapeAttribute(url)}" target="_blank" rel="noopener noreferrer">${content}</a>`;
+    const safeRel = rel === 'sponsored noopener noreferrer' ? rel : 'noopener noreferrer';
+    return `<a class="${safeClassName}" href="${escapeAttribute(url)}" target="_blank" rel="${safeRel}">${content}</a>`;
   }
 
   return { renderCardContainer };

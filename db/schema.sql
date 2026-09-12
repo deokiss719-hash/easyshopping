@@ -21,11 +21,15 @@ CREATE TABLE IF NOT EXISTS deals (
   is_ended BOOLEAN NOT NULL DEFAULT FALSE,
   raw_hash TEXT,
   category TEXT NOT NULL DEFAULT '기타',
+  badge TEXT,
+  description TEXT,
   UNIQUE (source, source_item_id)
 );
 
 ALTER TABLE deals
   ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '기타';
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS badge TEXT;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE deals ADD COLUMN IF NOT EXISTS merchant_url TEXT;
 ALTER TABLE deals ADD COLUMN IF NOT EXISTS source_image_url TEXT;
 ALTER TABLE deals ADD COLUMN IF NOT EXISTS image_status TEXT NOT NULL DEFAULT 'pending';

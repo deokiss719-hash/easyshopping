@@ -37,6 +37,43 @@ test('migration creates a usable deals table', async () => {
   await pool.end();
 });
 
+test('기존 deals 데이터는 badge와 description 마이그레이션 후에도 보존된다', async () => {
+  const memoryDb = newDb();
+  const { Pool } = memoryDb.adapters.createPg();
+  const pool = new Pool();
+  await pool.query(`CREATE TABLE deals (
+    id BIGSERIAL PRIMARY KEY, source TEXT NOT NULL, source_item_id TEXT NOT NULL,
+    title TEXT NOT NULL, price_text TEXT, price_amount BIGINT, merchant TEXT,
+    original_url TEXT NOT NULL, image_url TEXT, published_at TIMESTAMPTZ,
+    collected_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMPTZ, is_ended BOOLEAN NOT NULL DEFAULT FALSE,
+    raw_hash TEXT, UNIQUE (source, source_item_id)
+  )`);
+  await pool.query(
+    `INSERT INTO deals (source, source_item_id, title, original_url)
+     VALUES ('ppomppu', 'legacy-1', '기존 RSS 상품', 'https://www.ppomppu.co.kr/zboard/view.php?id=ppomppu&no=1')`,
+  );
+  const schemaSql = await require('node:fs/promises').readFile(
+    require('node:path').join(__dirname, '..', 'db', 'schema.sql'),
+    'utf8',
+  );
+  const compatibilityStatements = schemaSql
+    .split(';')
+    .map((statement) => statement.trim())
+    .filter((statement) => /^ALTER TABLE deals\s+ADD COLUMN IF NOT EXISTS\s+(category|badge|description)\b/i.test(statement));
+  assert.equal(compatibilityStatements.length, 3);
+  for (const statement of compatibilityStatements) await pool.query(statement);
+  const result = await pool.query(
+    `SELECT source_item_id, title, badge, description FROM deals WHERE source_item_id = 'legacy-1'`,
+  );
+  assert.equal(result.rowCount, 1);
+  assert.equal(result.rows[0].title, '기존 RSS 상품');
+  assert.equal(result.rows[0].badge, null);
+  assert.equal(result.rows[0].description, null);
+  await pool.end();
+});
+
 test('upsert inserts a deal and exposes it through the listing API', async () => {
   const { pool, store } = await makeStore();
   await store.upsert(firstDeal);
@@ -573,6 +610,39 @@ test('이미지 backfill advisory lease 경합 패자는 작업을 실행하지 
   };
   const store = createDealStore({ connect: async () => client });
   const value = await store.withImageBackfillLease(async () => { worked = true; });
+  assert.equal(value, null);
+  assert.equal(worked, false);
+  assert.equal(released, true);
+});
+
+test('쿠팡 수집 advisory lease는 전체 worker 동안 전용 연결을 유지하고 해제한다', async () => {
+  const events = [];
+  const client = {
+    async query(sql) {
+      if (/pg_try_advisory_lock/.test(sql)) { events.push('lock'); return { rows: [{ acquired: true }] }; }
+      if (/pg_advisory_unlock/.test(sql)) { events.push('unlock'); return { rows: [{ unlocked: true }] }; }
+      throw new Error(`unexpected query: ${sql}`);
+    },
+    release() { events.push('release'); },
+  };
+  const store = createDealStore({ connect: async () => client });
+  const value = await store.withCoupangCollectionLease(async () => {
+    events.push('worker');
+    return 'collected';
+  });
+  assert.equal(value, 'collected');
+  assert.deepEqual(events, ['lock', 'worker', 'unlock', 'release']);
+});
+
+test('쿠팡 수집 advisory lease 경합 패자는 worker를 실행하지 않는다', async () => {
+  let worked = false;
+  let released = false;
+  const client = {
+    query: async () => ({ rows: [{ acquired: false }] }),
+    release() { released = true; },
+  };
+  const store = createDealStore({ connect: async () => client });
+  const value = await store.withCoupangCollectionLease(async () => { worked = true; });
   assert.equal(value, null);
   assert.equal(worked, false);
   assert.equal(released, true);

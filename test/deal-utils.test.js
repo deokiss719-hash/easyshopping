@@ -102,6 +102,13 @@ test('이미지는 허용된 HTTPS 원본과 정확한 canonical same-origin 수
   assert.equal(safeImageUrl('https://images.example/base/a.jpg', ['https://images.example/base']), 'https://images.example/base/a.jpg');
 });
 
+test('쿠팡 이미지는 공식 HTTPS CDN 하위 도메인만 허용한다', () => {
+  assert.equal(safeImageUrl('https://thumbnail.coupangcdn.com/a.jpg'), 'https://thumbnail.coupangcdn.com/a.jpg');
+  assert.equal(safeImageUrl('https://coupangcdn.com/a.jpg'), '');
+  assert.equal(safeImageUrl('https://coupangcdn.com.evil.example/a.jpg'), '');
+  assert.equal(safeImageUrl('http://thumbnail.coupangcdn.com/a.jpg'), '');
+});
+
 test('메인 수동 특가는 우선순위로 제한하고 RSS 첫 네 개 뒤부터 일정하게 섞는다', () => {
   const rss = Array.from({ length: 10 }, (_, index) => ({ id: `r${index + 1}`, isManual: false }));
   const manual = [
