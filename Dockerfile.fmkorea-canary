@@ -1,0 +1,14 @@
+FROM mcr.microsoft.com/playwright:v1.55.1-noble
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+COPY src/fmkorea-collector.js ./src/fmkorea-collector.js
+COPY src/deal-category.js ./src/deal-category.js
+COPY scripts/fmkorea-render-canary-service.js ./scripts/fmkorea-render-canary-service.js
+
+CMD ["node", "scripts/fmkorea-render-canary-service.js"]
