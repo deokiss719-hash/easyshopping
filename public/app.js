@@ -1,3 +1,138 @@
+const TossRecommendations = (() => {
+  const sources = Object.freeze({
+    'integrated-best': '통합 베스트',
+    'today-special': '하루특가',
+  });
+  const wonFormatter = new Intl.NumberFormat('ko-KR');
+  const timestampPattern = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))$/;
+
+  function escapeMarkup(value) {
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function safeTossSharelinkUrl(value) {
+    if (typeof value !== 'string' || /[\\\u0000-\u0020\u007f]/.test(value)) return '';
+    try {
+      const url = new URL(value);
+      const authorityStart = value.indexOf('//') + 2;
+      const authorityEnd = value.indexOf('/', authorityStart);
+      const authority = authorityEnd < 0 ? value.slice(authorityStart) : value.slice(authorityStart, authorityEnd);
+      if (url.protocol !== 'https:' || url.hostname !== 'toss.im'
+        || url.username || url.password || url.port || url.search || url.hash
+        || authorityStart < 2 || authority.toLowerCase() !== 'toss.im'
+        || !/^\/_m\/[A-Za-z0-9_-]+$/.test(url.pathname)) return '';
+      return url.href;
+    } catch {
+      return '';
+    }
+  }
+
+  function strictTimestamp(value) {
+    if (typeof value !== 'string') return null;
+    const match = timestampPattern.exec(value);
+    if (!match) return null;
+    const [, yearText, monthText, dayText, hourText, minuteText, secondText, offsetHourText, offsetMinuteText] = match;
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+    if (!daysInMonth || day < 1 || day > daysInMonth
+      || Number(hourText) > 23 || Number(minuteText) > 59 || Number(secondText) > 59
+      || (offsetHourText != null && (Number(offsetHourText) > 23 || Number(offsetMinuteText) > 59))) return null;
+    const timestamp = Date.parse(value);
+    return Number.isFinite(timestamp) ? timestamp : null;
+  }
+
+  function normalizeRecommendation(item, nowTime) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+    const validProductId = (typeof item.productId === 'number'
+      && Number.isSafeInteger(item.productId) && item.productId > 0)
+      || (typeof item.productId === 'string' && /^[1-9]\d{0,30}$/.test(item.productId));
+    const title = typeof item.title === 'string' ? item.title.trim() : '';
+    const sourceLabel = Object.hasOwn(sources, item.source) ? sources[item.source] : '';
+    const sharelinkUrl = safeTossSharelinkUrl(item.sharelinkUrl);
+    const validPrice = item.price === null
+      || (Number.isSafeInteger(item.price) && item.price >= 0);
+    const validRank = Number.isSafeInteger(item.rank) && item.rank >= 1 && item.rank <= 10;
+    let endTime = null;
+    if (item.endAt !== null) endTime = strictTimestamp(item.endAt);
+    if (!validProductId || !title || title.length > 500 || !sourceLabel || !sharelinkUrl || !validPrice || !validRank
+      || (item.endAt !== null && endTime === null) || (endTime !== null && endTime <= nowTime)) return null;
+    return { title, sourceLabel, price: item.price, sharelinkUrl };
+  }
+
+  function recommendationCard(item) {
+    const price = item.price === null ? '가격 확인' : `${wonFormatter.format(item.price)}원`;
+    return `<article class="deal-card toss-text-card">
+      <div class="card-body">
+        <span class="badge badge-recommend toss-source-badge">${escapeMarkup(item.sourceLabel)}</span>
+        <h3 class="card-title">${escapeMarkup(item.title)}</h3>
+        <div class="price-row"><strong class="current-price">${price}</strong></div>
+        <a class="affiliate-cta toss-text-cta" href="${escapeMarkup(item.sharelinkUrl)}" target="_blank" rel="sponsored noopener noreferrer" aria-label="${escapeMarkup(`${item.title} 토스쇼핑에서 보기 (새 창)`)}">토스쇼핑에서 보기 <span aria-hidden="true">→</span></a>
+      </div>
+    </article>`;
+  }
+
+  function renderRecommendations(items, { section, grid, now = new Date() } = {}) {
+    if (!section || !grid) {
+      if (grid) grid.innerHTML = '';
+      if (section) section.hidden = true;
+      return [];
+    }
+    const nowTime = new Date(now).getTime();
+    const valid = [];
+    if (Array.isArray(items) && Number.isFinite(nowTime)) {
+      for (const item of items) {
+        const normalized = normalizeRecommendation(item, nowTime);
+        if (normalized) valid.push(normalized);
+        if (valid.length === 10) break;
+      }
+    }
+    grid.innerHTML = valid.map(recommendationCard).join('');
+    section.hidden = valid.length === 0;
+    return valid;
+  }
+
+  async function loadRecommendations({
+    fetchImpl = fetch, section, grid, now = () => new Date(),
+    logError = (message) => console.error(message),
+  } = {}) {
+    if (!section || !grid) return renderRecommendations([], { section, grid });
+    const clear = () => renderRecommendations([], { section, grid, now: now() });
+    try {
+      const response = await fetchImpl('/api/toss-recommendations');
+      if (!response?.ok) throw new Error('request failed');
+      const payload = await response.json();
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)
+        || typeof payload.enabled !== 'boolean' || !Array.isArray(payload.recommendations)
+        || payload.recommendations.length > 10) {
+        throw new TypeError('invalid response');
+      }
+      if (payload.enabled !== true || payload.recommendations.length === 0) return clear();
+      return renderRecommendations(payload.recommendations, { section, grid, now: now() });
+    } catch {
+      logError('토스쇼핑 추천 상품을 불러오지 못했습니다.');
+      return clear();
+    }
+  }
+
+  return {
+    safeTossSharelinkUrl,
+    renderRecommendations,
+    loadRecommendations,
+    loadTossRecommendations: loadRecommendations,
+  };
+})();
+
+if (typeof module === 'object' && module.exports) {
+  module.exports = TossRecommendations;
+} else {
 const state = {
   category: '전체',
   sort: 'latest',
@@ -5,6 +140,7 @@ const state = {
   deals: [],
   homeDeals: [],
   coupangDeals: [],
+  tossRecommendations: [],
   page: 0,
   total: 0,
   hasNextPage: false,
@@ -17,6 +153,8 @@ const elements = {
   phoneDealTitle: document.querySelector('#phone-deal-title'),
   phoneDealGrid: document.querySelector('#phoneDealGrid'),
   coupangProductGrid: document.querySelector('#coupangProductGrid'),
+  tossRecommendations: document.querySelector('#tossRecommendations'),
+  tossRecommendationGrid: document.querySelector('#tossRecommendationGrid'),
   dealGrid: document.querySelector('#dealGrid'),
   popularList: document.querySelector('#popularList'),
   latestList: document.querySelector('#latestList'),
@@ -171,6 +309,14 @@ async function loadCoupangDeals() {
     state.coupangDeals = [];
     renderCoupangDeals([]);
   }
+}
+
+async function loadTossRecommendations() {
+  state.tossRecommendations = await TossRecommendations.loadRecommendations({
+    section: elements.tossRecommendations,
+    grid: elements.tossRecommendationGrid,
+  });
+  return state.tossRecommendations;
 }
 
 async function loadDeals({ scroll = false, append = false } = {}) {
@@ -403,5 +549,7 @@ Promise.all([
   loadPopular(),
   loadLatest(),
   loadCoupangDeals(),
+  loadTossRecommendations(),
   loadSiteSettings().then(() => Promise.all([loadHomeDeals(), loadDeals()])),
 ]);
+}

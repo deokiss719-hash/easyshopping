@@ -174,6 +174,12 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 }
 .affiliate-disclosure { grid-column: 1 / -1; color: var(--text-secondary); font-size: 13px; font-weight: 600; line-height: 1.55; }
 .affiliate-product-grid { grid-column: 1 / -1; width: 100%; }
+.toss-affiliate-card { grid-template-columns: minmax(0,1fr); }
+.toss-text-card { cursor: default; }
+.toss-text-card .card-body { min-height: 210px; display: flex; align-items: flex-start; flex-direction: column; }
+.toss-source-badge { position: static; }
+.toss-text-card .card-title { width: 100%; height: auto; min-height: 44px; }
+.toss-text-cta { width: 100%; margin-top: auto; cursor: pointer; }
 .card-benefit { min-height: 18px; margin: 8px 0 0; color: var(--primary); font-size: 11px; font-weight: 750; }
 
 .category-section { padding: 68px 0; }
@@ -317,6 +323,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   .affiliate-card { grid-template-columns: 1fr; padding: 20px 0; border-right: 0; border-left: 0; border-radius: 0; }
   .affiliate-copy, .affiliate-disclosure { padding-inline: 20px; }
   .affiliate-cta { margin: 0 20px; }
+  .toss-recommendation-grid { padding-inline: 20px; }
+  .toss-text-cta { margin: auto 0 0; }
   .affiliate-disclosure { grid-column: 1; }
   .category-section { padding: 54px 0; }
   .category-list { margin-right: -20px; padding: 2px 20px 12px 0; display: flex; overflow-x: auto; scrollbar-width: none; }

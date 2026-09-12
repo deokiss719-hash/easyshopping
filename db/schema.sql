@@ -53,6 +53,21 @@ CREATE INDEX IF NOT EXISTS deals_active_idx ON deals (is_ended, published_at DES
 CREATE INDEX IF NOT EXISTS deals_source_image_backfill_idx ON deals (image_status, image_retry_at)
   WHERE image_url IS NULL AND is_ended = FALSE;
 
+CREATE TABLE IF NOT EXISTS toss_recommendations (
+  product_id VARCHAR(31) PRIMARY KEY CHECK (product_id <> ''),
+  source_kind TEXT NOT NULL CHECK (source_kind IN ('integrated-best', 'today-special')),
+  title VARCHAR(500) NOT NULL CHECK (title <> ''),
+  price_amount BIGINT CHECK (price_amount IS NULL OR price_amount >= 0),
+  sharelink_url TEXT NOT NULL CHECK (SUBSTRING(sharelink_url FROM 1 FOR 19) = 'https://toss.im/_m/'),
+  source_rank INTEGER NOT NULL CHECK (source_rank BETWEEN 1 AND 10),
+  end_at TIMESTAMPTZ,
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE
+);
+CREATE INDEX IF NOT EXISTS toss_recommendations_active_rank_idx
+  ON toss_recommendations (is_active, source_rank, source_kind, product_id);
+
 CREATE TABLE IF NOT EXISTS collection_runs (
   id BIGSERIAL PRIMARY KEY,
   source TEXT NOT NULL,

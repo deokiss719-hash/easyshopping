@@ -33,6 +33,8 @@ const { createHealthRouter } = require('./src/health-routes');
 const { createTrafficAnalytics, koreaDay } = require('./src/traffic-analytics');
 const { createTrafficAnalyticsStore } = require('./src/traffic-analytics-store');
 const { readCoupangRuntime, runCoupangCollector } = require('./src/coupang-products');
+const { readTossSharelinkRuntime, runTossSharelinkCollector } = require('./src/toss-sharelink');
+const { createTossRecommendationsRouter } = require('./src/toss-recommendations-api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -162,6 +164,10 @@ async function start() {
     freshnessThresholdMs,
   } = readCollectorRuntime(process.env);
   const coupangRuntime = readCoupangRuntime(process.env);
+  const tossRuntime = readTossSharelinkRuntime(process.env);
+  if (tossRuntime.requested && !tossRuntime.enabled) {
+    console.warn(`토스쇼핑 쉐어링크 자동 수집 비활성화: ${tossRuntime.missing.join(', ')} 환경변수 필요`);
+  }
   const r2Config = readR2Config(process.env);
   const imageBaseUrls = [
     ...(r2Config.enabled ? [r2Config.publicBaseUrl] : []),
@@ -291,6 +297,14 @@ async function start() {
     } else if (coupangRuntime.requested) {
       console.warn(`쿠팡파트너스 자동 수집 비활성화: ${coupangRuntime.missing.join(', ')} 환경변수 필요`);
     }
+    if (tossRuntime.enabled) {
+      startPollingCollector({
+        collect: () => runTossSharelinkCollector({ runtime: tossRuntime, store }),
+        intervalMs: tossRuntime.intervalMs,
+        label: '토스쇼핑 쉐어링크 추천',
+      });
+      console.log('토스쇼핑 쉐어링크 공식 API 자동 수집 활성화');
+    }
   }
 
   app.use('/admin', createAdminUiRouter({ auth: adminAuth }));
@@ -301,6 +315,7 @@ async function start() {
     imageBaseUrls,
     allowedSources: ['ppomppu', 'manual', ...(coupangRuntime.enabled ? ['coupang'] : [])],
   }));
+  app.use('/api/toss-recommendations', createTossRecommendationsRouter({ runtime: tossRuntime, store }));
   app.use(adminJsonErrorHandler);
   app.use(publicNotFound);
   app.listen(PORT, () => {

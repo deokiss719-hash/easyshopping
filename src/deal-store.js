@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { isCategory } = require('./deal-category');
+const { normalizeSharelinkUrl, TOSS_SOURCES } = require('./toss-sharelink');
 
 const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
 const MAX_PAGE = 10000;
@@ -15,6 +16,8 @@ const IMAGE_BACKFILL_ADVISORY_LOCK_NAMESPACE = 1163086169;
 const IMAGE_BACKFILL_ADVISORY_LOCK_ID = 1835627636;
 const COUPANG_COLLECTION_ADVISORY_LOCK_NAMESPACE = 1129270864;
 const COUPANG_COLLECTION_ADVISORY_LOCK_ID = 1347374160;
+const TOSS_COLLECTION_ADVISORY_LOCK_NAMESPACE = 1414484819;
+const TOSS_COLLECTION_ADVISORY_LOCK_ID = 1397247052;
 const migratedPools = new WeakSet();
 
 class InvalidQueryError extends TypeError {}
@@ -128,6 +131,79 @@ function mapDeal(row) {
   return deal;
 }
 
+function parseStrictIsoTimestamp(value) {
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))$/.exec(value);
+  if (!match) return null;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, offsetHourText, offsetMinuteText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  if (!daysInMonth || day < 1 || day > daysInMonth
+    || Number(hourText) > 23 || Number(minuteText) > 59 || Number(secondText) > 59
+    || (offsetHourText != null && (Number(offsetHourText) > 23 || Number(offsetMinuteText) > 59))) {
+    return null;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function normalizeTossRecommendation(input) {
+  let productId;
+  if (typeof input?.productId === 'number') {
+    if (!Number.isSafeInteger(input.productId) || input.productId < 1) {
+      throw new TypeError('Toss productId is invalid');
+    }
+    productId = String(input.productId);
+  } else {
+    productId = input?.productId;
+  }
+  if (typeof productId !== 'string' || !/^[1-9]\d{0,30}$/.test(productId)) {
+    throw new TypeError('Toss productId is invalid');
+  }
+  if (!TOSS_SOURCES.includes(input.source)) throw new TypeError('Toss recommendation source is invalid');
+  const title = typeof input.title === 'string' ? input.title.trim() : '';
+  if (!title || title.length > 500) throw new TypeError('Toss recommendation title is invalid');
+  if (input.priceAmount !== null
+    && (!Number.isSafeInteger(input.priceAmount) || input.priceAmount < 0)) {
+    throw new TypeError('Toss recommendation priceAmount must be a safe non-negative integer or null');
+  }
+  if (!Number.isSafeInteger(input.rank) || input.rank < 1 || input.rank > 10) {
+    throw new TypeError('Toss recommendation rank must be an integer from 1 to 10');
+  }
+  let endAt = null;
+  if (input.endAt !== null) {
+    const timestamp = parseStrictIsoTimestamp(input.endAt);
+    if (timestamp == null) throw new TypeError('Toss recommendation endAt is invalid');
+    endAt = new Date(timestamp);
+  }
+  return {
+    productId,
+    source: input.source,
+    title,
+    priceAmount: input.priceAmount ?? null,
+    sharelinkUrl: normalizeSharelinkUrl(input.sharelinkUrl),
+    rank: input.rank,
+    endAt,
+  };
+}
+
+function mapTossRecommendation(row) {
+  return {
+    productId: row.product_id,
+    source: row.source_kind,
+    title: row.title,
+    priceAmount: row.price_amount == null ? null : safeNumber(row.price_amount, 'priceAmount'),
+    sharelinkUrl: row.sharelink_url,
+    rank: row.source_rank,
+    endAt: row.end_at,
+    firstSeenAt: row.first_seen_at,
+    lastSeenAt: row.last_seen_at,
+  };
+}
+
 function createDealStore(pool) {
   return {
     async getImageBackfillCooldown() {
@@ -226,6 +302,46 @@ function createDealStore(pool) {
             );
             if (unlockResult.rows[0]?.unlocked !== true) {
               throw new Error('Coupang collection advisory unlock failed');
+            }
+          }
+        } catch (error) {
+          unlockError = error;
+        } finally {
+          client.release(unlockError ? true : undefined);
+        }
+        if (unlockError) {
+          if (workerError) workerError.advisoryUnlockError = unlockError;
+          else throw unlockError;
+        }
+      }
+    },
+
+    async withTossSharelinkCollectionLease(worker) {
+      if (typeof worker !== 'function') throw new TypeError('worker is required');
+      const client = await pool.connect();
+      let acquired = false;
+      let workerError = null;
+      try {
+        const result = await client.query(
+          `SELECT pg_try_advisory_lock(${TOSS_COLLECTION_ADVISORY_LOCK_NAMESPACE}, ${TOSS_COLLECTION_ADVISORY_LOCK_ID}) AS acquired`,
+        );
+        acquired = result.rows[0]?.acquired === true;
+        if (!acquired) return null;
+        try {
+          return await worker();
+        } catch (error) {
+          workerError = error;
+          throw error;
+        }
+      } finally {
+        let unlockError = null;
+        try {
+          if (acquired) {
+            const unlockResult = await client.query(
+              `SELECT pg_advisory_unlock(${TOSS_COLLECTION_ADVISORY_LOCK_NAMESPACE}, ${TOSS_COLLECTION_ADVISORY_LOCK_ID}) AS unlocked`,
+            );
+            if (unlockResult.rows[0]?.unlocked !== true) {
+              throw new Error('Toss Sharelink collection advisory unlock failed');
             }
           }
         } catch (error) {
@@ -374,6 +490,74 @@ function createDealStore(pool) {
       } finally {
         client.release();
       }
+    },
+
+    async syncTossSharelinkSnapshot(inputs) {
+      if (!Array.isArray(inputs) || inputs.length === 0) {
+        throw new TypeError('Toss snapshot must contain at least one recommendation');
+      }
+      if (inputs.length > 10) throw new TypeError('Toss snapshot may contain at most 10 recommendations');
+      const recommendations = inputs.map(normalizeTossRecommendation);
+      const productIds = recommendations.map((item) => item.productId);
+      if (new Set(productIds).size !== productIds.length) {
+        throw new TypeError('Toss snapshot contains duplicate product IDs');
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        for (const item of recommendations) {
+          await client.query(
+            `INSERT INTO toss_recommendations (
+              product_id, source_kind, title, price_amount, sharelink_url, source_rank, end_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+            ON CONFLICT (product_id) DO UPDATE SET
+              source_kind = EXCLUDED.source_kind,
+              title = EXCLUDED.title,
+              price_amount = EXCLUDED.price_amount,
+              sharelink_url = EXCLUDED.sharelink_url,
+              source_rank = EXCLUDED.source_rank,
+              end_at = EXCLUDED.end_at,
+              last_seen_at = CURRENT_TIMESTAMP,
+              is_active = TRUE`,
+            [
+              item.productId, item.source, item.title, item.priceAmount, item.sharelinkUrl,
+              item.rank, item.endAt == null ? null : item.endAt.toISOString(),
+            ],
+          );
+        }
+        const placeholders = productIds.map((_, index) => `$${index + 1}`).join(',');
+        const ended = await client.query(
+          `UPDATE toss_recommendations
+           SET is_active = FALSE
+           WHERE is_active = TRUE AND product_id NOT IN (${placeholders})`,
+          productIds,
+        );
+        await client.query('COMMIT');
+        return { upserted: recommendations.length, ended: ended.rowCount };
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    },
+
+    async listTossRecommendations({ now = new Date() } = {}) {
+      const currentTime = new Date(now);
+      if (Number.isNaN(currentTime.getTime())) throw new TypeError('now must be a valid date');
+      const result = await pool.query(
+        `SELECT product_id, source_kind, title, price_amount, sharelink_url, source_rank,
+                end_at, first_seen_at, last_seen_at
+         FROM toss_recommendations
+         WHERE is_active = TRUE AND (end_at IS NULL OR end_at > $1)
+         ORDER BY source_rank ASC,
+           CASE source_kind WHEN 'integrated-best' THEN 0 ELSE 1 END ASC,
+           product_id ASC
+         LIMIT 10`,
+        [currentTime.toISOString()],
+      );
+      return result.rows.map(mapTossRecommendation);
     },
 
     async reclassify(classifier) {
