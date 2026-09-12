@@ -358,8 +358,6 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   .product-placeholder { width: 78%; height: 55%; border-radius: 18px; font-size: 15px; }
   .card-body { padding: 12px; }
   .badge { top: 9px; left: 9px; }
-  .card-store { display: block; }
-  .card-store span { display: none; }
   .card-title { height: 40px; margin: 8px 0 10px; font-size: 13px; line-height: 1.5; }
   .price-row { gap: 4px; }
   .discount { font-size: 16px; }

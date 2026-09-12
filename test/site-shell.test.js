@@ -61,6 +61,10 @@ test('MY 제거 후 모바일 메뉴는 기존 네 항목을 균등 배치한다
   assert.match(styles, /\.bottom-nav\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*1fr\)/);
 });
 
+test('모바일 상품 카드에서도 커뮤니티 출처를 표시한다', () => {
+  assert.doesNotMatch(styles, /\.card-store span\s*\{\s*display:\s*none;\s*\}/);
+});
+
 test('운영 RSS 수집은 원문 og:image 보조 요청을 비활성화한다', () => {
   assert.match(server, /enrichImages:\s*false/);
   assert.doesNotMatch(server, /enrichImages:\s*true/);
