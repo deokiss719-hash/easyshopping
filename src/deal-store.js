@@ -15,6 +15,8 @@ const IMAGE_BACKFILL_ADVISORY_LOCK_NAMESPACE = 1163086169;
 const IMAGE_BACKFILL_ADVISORY_LOCK_ID = 1835627636;
 const COUPANG_COLLECTION_ADVISORY_LOCK_NAMESPACE = 1129270864;
 const COUPANG_COLLECTION_ADVISORY_LOCK_ID = 1347374160;
+const FMKOREA_COLLECTION_ADVISORY_LOCK_NAMESPACE = 1179478866;
+const FMKOREA_COLLECTION_ADVISORY_LOCK_ID = 1213158226;
 const migratedPools = new WeakSet();
 
 class InvalidQueryError extends TypeError {}
@@ -48,6 +50,9 @@ function normalizeDeal(deal) {
     && (!Number.isSafeInteger(normalized.priceAmount) || normalized.priceAmount < 0)
   ) {
     throw new TypeError('priceAmount must be a safe non-negative integer');
+  }
+  if (normalized.authoritativePrice != null && typeof normalized.authoritativePrice !== 'boolean') {
+    throw new TypeError('authoritativePrice must be a boolean');
   }
   if (normalized.category != null && !isCategory(normalized.category)) {
     throw new TypeError('category is not supported');
@@ -240,6 +245,46 @@ function createDealStore(pool) {
       }
     },
 
+    async withFmkoreaCollectionLease(worker) {
+      if (typeof worker !== 'function') throw new TypeError('worker is required');
+      const client = await pool.connect();
+      let acquired = false;
+      let workerError = null;
+      try {
+        const result = await client.query(
+          `SELECT pg_try_advisory_lock(${FMKOREA_COLLECTION_ADVISORY_LOCK_NAMESPACE}, ${FMKOREA_COLLECTION_ADVISORY_LOCK_ID}) AS acquired`,
+        );
+        acquired = result.rows[0]?.acquired === true;
+        if (!acquired) return null;
+        try {
+          return await worker();
+        } catch (error) {
+          workerError = error;
+          throw error;
+        }
+      } finally {
+        let unlockError = null;
+        try {
+          if (acquired) {
+            const unlockResult = await client.query(
+              `SELECT pg_advisory_unlock(${FMKOREA_COLLECTION_ADVISORY_LOCK_NAMESPACE}, ${FMKOREA_COLLECTION_ADVISORY_LOCK_ID}) AS unlocked`,
+            );
+            if (unlockResult.rows[0]?.unlocked !== true) {
+              throw new Error('FMKorea collection advisory unlock failed');
+            }
+          }
+        } catch (error) {
+          unlockError = error;
+        } finally {
+          client.release(unlockError ? true : undefined);
+        }
+        if (unlockError) {
+          if (workerError) workerError.advisoryUnlockError = unlockError;
+          else throw unlockError;
+        }
+      }
+    },
+
     async upsert(input) {
       const deal = normalizeDeal(input);
       const values = [
@@ -260,6 +305,7 @@ function createDealStore(pool) {
         deal.publishedAt ?? null,
         deal.rawHash ?? null,
         deal.category ?? null,
+        deal.authoritativePrice ?? false,
       ];
 
       const result = await pool.query(
@@ -271,7 +317,7 @@ function createDealStore(pool) {
         ON CONFLICT (source, source_item_id) DO UPDATE SET
           title = EXCLUDED.title,
           price_text = COALESCE(EXCLUDED.price_text, deals.price_text),
-          price_amount = COALESCE(EXCLUDED.price_amount, deals.price_amount),
+          price_amount = CASE WHEN $18 THEN EXCLUDED.price_amount ELSE COALESCE(EXCLUDED.price_amount, deals.price_amount) END,
           merchant = COALESCE(EXCLUDED.merchant, deals.merchant),
           original_url = EXCLUDED.original_url,
           merchant_url = COALESCE(deals.merchant_url, EXCLUDED.merchant_url),
@@ -484,7 +530,20 @@ function createDealStore(pool) {
       const normalizedQuery = String(q).trim();
       const normalizedCategory = String(category).trim();
       const normalizedSort = String(sort || 'latest').trim();
+      const normalizedSources = Array.isArray(source)
+        ? [...new Set(source.map((value) => String(value == null ? '' : value).trim()))]
+        : null;
       const isFeatured = featured === true || featured === 'true';
+      if (
+        normalizedSources
+        && (
+          normalizedSources.length === 0
+          || normalizedSources.length > 20
+          || normalizedSources.some((value) => !/^[a-z0-9_-]{1,64}$/i.test(value))
+        )
+      ) {
+        throw new InvalidQueryError('source is invalid');
+      }
       if (normalizedQuery.length > MAX_QUERY_LENGTH) throw new InvalidQueryError(`q must be at most ${MAX_QUERY_LENGTH} characters`);
       if (normalizedCategory && !isCategory(normalizedCategory)) throw new InvalidQueryError('category is not supported');
       if (!Object.hasOwn(SORT_ORDERS, normalizedSort)) throw new InvalidQueryError('sort is not supported');
@@ -502,7 +561,13 @@ function createDealStore(pool) {
         conditions.push(`(STRPOS(LOWER(d.title), LOWER($${values.length})) > 0
           OR STRPOS(LOWER(COALESCE(d.merchant, '')), LOWER($${values.length})) > 0)`);
       }
-      if (String(source).trim()) {
+      if (normalizedSources) {
+        const placeholders = normalizedSources.map((normalizedSource) => {
+          values.push(normalizedSource);
+          return `$${values.length}`;
+        });
+        conditions.push(`d.source IN (${placeholders.join(', ')})`);
+      } else if (String(source).trim()) {
         values.push(String(source).trim());
         conditions.push(`d.source = $${values.length}`);
       }

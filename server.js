@@ -33,6 +33,11 @@ const { createHealthRouter } = require('./src/health-routes');
 const { createTrafficAnalytics, koreaDay } = require('./src/traffic-analytics');
 const { createTrafficAnalyticsStore } = require('./src/traffic-analytics-store');
 const { readCoupangRuntime, runCoupangCollector } = require('./src/coupang-products');
+const {
+  readFmkoreaRuntime,
+  runFmkoreaCollector,
+  startFmkoreaScheduler,
+} = require('./src/fmkorea-collector');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -161,6 +166,7 @@ async function start() {
     intervalMs,
     freshnessThresholdMs,
   } = readCollectorRuntime(process.env);
+  const fmkoreaRuntime = readFmkoreaRuntime(process.env);
   const coupangRuntime = readCoupangRuntime(process.env);
   const r2Config = readR2Config(process.env);
   const imageBaseUrls = [
@@ -281,6 +287,18 @@ async function start() {
       intervalMs,
       runRecorder: collectionRunStore,
     });
+    if (fmkoreaRuntime.enabled) {
+      const fmkoreaRunStore = createCollectionRunStore(pool, 'fmkorea');
+      startFmkoreaScheduler({
+        collect: () => runFmkoreaCollector({
+          store,
+          timeoutMs: fmkoreaRuntime.timeoutMs,
+        }),
+        intervalMs: fmkoreaRuntime.intervalMs,
+        runRecorder: fmkoreaRunStore,
+      });
+      console.log('FMKorea 핫딜 첫 페이지 자동 수집 활성화');
+    }
     if (coupangRuntime.enabled) {
       startPollingCollector({
         collect: () => runCoupangCollector({ runtime: coupangRuntime, store }),
@@ -299,7 +317,7 @@ async function start() {
 
   app.use('/api/live-deals', createLiveDealsRouter(store, {
     imageBaseUrls,
-    allowedSources: ['ppomppu', 'manual', ...(coupangRuntime.enabled ? ['coupang'] : [])],
+    allowedSources: ['ppomppu', 'fmkorea', 'community', 'manual', ...(coupangRuntime.enabled ? ['coupang'] : [])],
   }));
   app.use(adminJsonErrorHandler);
   app.use(publicNotFound);

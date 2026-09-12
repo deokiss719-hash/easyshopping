@@ -109,6 +109,13 @@ test('쿠팡 이미지는 공식 HTTPS CDN 하위 도메인만 허용한다', ()
   assert.equal(safeImageUrl('http://thumbnail.coupangcdn.com/a.jpg'), '');
 });
 
+test('FMKorea 이미지는 정확한 image.fmkorea.com HTTPS origin만 허용한다', () => {
+  assert.equal(safeImageUrl('https://image.fmkorea.com/files/a.jpg'), 'https://image.fmkorea.com/files/a.jpg');
+  assert.equal(safeImageUrl('https://cdn.image.fmkorea.com/a.jpg'), '');
+  assert.equal(safeImageUrl('https://image.fmkorea.com.evil.example/a.jpg'), '');
+  assert.equal(safeImageUrl('http://image.fmkorea.com/a.jpg'), '');
+});
+
 test('메인 수동 특가는 우선순위로 제한하고 RSS 첫 네 개 뒤부터 일정하게 섞는다', () => {
   const rss = Array.from({ length: 10 }, (_, index) => ({ id: `r${index + 1}`, isManual: false }));
   const manual = [

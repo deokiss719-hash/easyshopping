@@ -49,3 +49,9 @@ test('CSP는 쿠팡 상품 CDN 이미지만 허용하고 API, 스크립트, 프�
   assert.doesNotMatch(policy, /frame-src[^;]*coupang/i);
   assert.doesNotMatch(policy, /connect-src[^;]*coupang/i);
 });
+
+test('CSP는 FMKorea의 정확한 이미지 origin만 추가한다', () => {
+  const policy = buildContentSecurityPolicy({ enabled: false });
+  assert.match(policy, /img-src[^;]*https:\/\/image\.fmkorea\.com/);
+  assert.doesNotMatch(policy, /\*\.fmkorea\.com/);
+});

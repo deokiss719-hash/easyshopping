@@ -66,6 +66,14 @@ test('운영 RSS 수집은 원문 og:image 보조 요청을 비활성화한다',
   assert.doesNotMatch(server, /enrichImages:\s*true/);
 });
 
+test('FMKorea 수집기는 명시적으로 활성화된 경우에만 RSS readiness와 독립적으로 시작한다', () => {
+  assert.match(server, /const fmkoreaRuntime = readFmkoreaRuntime\(process\.env\)/);
+  assert.match(server, /if \(fmkoreaRuntime\.enabled\) \{[\s\S]*?startFmkoreaScheduler\(/);
+  assert.match(server, /createCollectionRunStore\(pool, ['"]fmkorea['"]\)/);
+  assert.match(server, /runFmkoreaCollector\(\{[\s\S]*?timeoutMs:\s*fmkoreaRuntime\.timeoutMs/);
+  assert.doesNotMatch(server, /freshnessThresholdMs:\s*fmkoreaRuntime/);
+});
+
 test('운영 RSS 수집은 뽐뿌 작성자 본문 이미지를 R2에 저속·차단 감지 방식으로 저장한다', () => {
   assert.match(server, /createPpomppuImageProvider/);
   assert.match(server, /productMatcher:\s*null/);
@@ -95,25 +103,28 @@ test('Render 등 차단된 실행 환경에서는 RSS 수집을 유지한 채 �
   assert.match(server, /if \(imagePipeline\.enabled && imageBackfillEnabled\)/);
 });
 
-test('메인·실시간·최신 상품 영역은 실제 이미지와 기존 fallback을 함께 지원한다', () => {
-  assert.match(script, /class="product-image[^"']*deal-image[^>]*loading="eager"/);
-  assert.match(script, /class="popular-image[^"']*deal-image[^>]*loading="eager"/);
-  assert.match(script, /class="latest-image[^"']*deal-image[^>]*loading="eager"/);
+test('메인·실시간·최신 상품 영역은 이미지를 지연 로딩하고 실패 시 기존 fallback을 표시한다', () => {
+  assert.match(script, /class="product-image[^"']*deal-image[^>]*loading="lazy"[^>]*referrerpolicy="no-referrer"/);
+  assert.match(script, /class="popular-image[^"']*deal-image[^>]*loading="lazy"[^>]*referrerpolicy="no-referrer"/);
+  assert.match(script, /class="latest-image[^"']*deal-image[^>]*loading="lazy"[^>]*referrerpolicy="no-referrer"/);
+  assert.doesNotMatch(script, /class="(?:product|popular|latest)-image[^>]*loading="eager"/);
   assert.match(script, /class="latest-icon"/);
   assert.match(script, /querySelectorAll\('\.deal-image'\)/);
+  assert.match(script, /image\.addEventListener\('error',\s*\(\) => image\.remove\(\),\s*\{ once: true \}\)/);
   assert.match(styles, /\.product-image[^}]*object-fit:\s*cover/);
   assert.match(styles, /\.popular-image[^}]*object-fit:\s*cover/);
   assert.match(styles, /\.latest-image[^}]*object-fit:\s*cover/);
 });
 
-test('공개 화면은 수동 휴대폰 특가를 전용 섹션에 표시하고 기본 목록은 RSS만 조회한다', () => {
+test('공개 화면은 수동 휴대폰 특가를 전용 섹션에 표시하고 기본 목록은 커뮤니티만 조회한다', () => {
   assert.match(script, /manual-deal-badge[^\n]*이지폰 특가/);
   assert.match(styles, /\.manual-deal-badge\s*\{/);
-  assert.match(script, /DealPage\.fetchLiveDealsPage\(\{\s*query:\s*state\.query,[\s\S]*?source:\s*['"]ppomppu['"]/);
+  assert.match(script, /DealPage\.fetchLiveDealsPage\(\{\s*query:\s*state\.query,[\s\S]*?source:\s*['"]community['"]/);
+  assert.match(script, /fetchLiveDealsPage\(\{\s*source:\s*['"]community['"],\s*page:\s*1,\s*size:\s*5\s*\}\)/);
   assert.match(script, /source:\s*['"]manual['"][^\n]*featured:\s*true/);
   assert.match(script, /selectPhoneDeals\(deals,\s*\{\s*limit:\s*state\.siteSettings\.home_manual_limit\s*\}\)/);
   assert.match(script, /if \(state\.siteSettings\.home_manual_limit === 0\)/);
-  assert.match(script, /fetchLiveDealsPage\(\{\s*source:\s*['"]ppomppu['"],\s*page:\s*1,\s*size:\s*6,\s*sort:\s*['"]latest['"]\s*\}\)/);
+  assert.match(script, /fetchLiveDealsPage\(\{\s*source:\s*['"]community['"],\s*page:\s*1,\s*size:\s*6,\s*sort:\s*['"]latest['"]\s*\}\)/);
   assert.match(script, /fetchPublicSiteSettings/);
   assert.doesNotMatch(script, /mixHomeDeals\(/);
   assert.match(script, /home_manual_limit/);

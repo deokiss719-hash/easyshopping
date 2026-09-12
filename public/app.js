@@ -71,7 +71,7 @@ function showToast(message) {
 
 function productCard(deal) {
   const image = deal.imageUrl
-    ? `<img class="product-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" />`
+    ? `<img class="product-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
     : '';
   const manualBadge = deal.isManual
     ? '<span class="manual-deal-badge">이지폰 특가</span>'
@@ -97,7 +97,7 @@ function productCard(deal) {
 
 function popularItem(deal, index) {
   const visual = deal.imageUrl
-    ? `<span class="popular-visual"><span class="rank-heat">실시간</span><img class="popular-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" /></span>`
+    ? `<span class="popular-visual"><span class="rank-heat">실시간</span><img class="popular-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" /></span>`
     : '<span class="rank-heat">실시간</span>';
   return DealCardLink.renderCardContainer('popular-item', deal.url, `
       <div class="rank-line"><span class="rank-number">${index + 1}</span>${visual}</div>
@@ -107,7 +107,7 @@ function popularItem(deal, index) {
 
 function latestItem(deal) {
   const image = deal.imageUrl
-    ? `<img class="latest-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="eager" decoding="async" referrerpolicy="no-referrer" />`
+    ? `<img class="latest-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
     : '';
   return DealCardLink.renderCardContainer('latest-item', deal.url, `
       <span class="latest-media" aria-hidden="true"><span class="latest-icon">${categoryEmoji(deal.category)}</span>${image}</span>
@@ -186,7 +186,7 @@ async function loadDeals({ scroll = false, append = false } = {}) {
       query: state.query,
       category: state.category,
       sort: state.sort,
-      source: 'ppomppu',
+      source: 'community',
       page: requestedPage,
       size: 8,
       signal: controller.signal,
@@ -253,7 +253,7 @@ async function loadHomeDeals() {
 
 async function loadPopular() {
   try {
-    const result = await DealPage.fetchLiveDealsPage({ source: 'ppomppu', page: 1, size: 5 });
+    const result = await DealPage.fetchLiveDealsPage({ source: 'community', page: 1, size: 5 });
     const deals = result.deals.map((deal) => DealUtils.normalizeDeal(deal));
     elements.popularList.classList.remove('skeleton-list');
     elements.popularList.innerHTML = deals.map(popularItem).join('');
@@ -275,7 +275,7 @@ function renderLatest(deals) {
 
 async function loadLatest() {
   try {
-    const result = await DealPage.fetchLiveDealsPage({ source: 'ppomppu', page: 1, size: 6, sort: 'latest' });
+    const result = await DealPage.fetchLiveDealsPage({ source: 'community', page: 1, size: 6, sort: 'latest' });
     renderLatest(result.deals.map((deal) => DealUtils.normalizeDeal(deal)));
   } catch (error) {
     console.error('최신 핫딜을 불러오지 못했습니다.', error);

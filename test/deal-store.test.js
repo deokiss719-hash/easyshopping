@@ -159,6 +159,18 @@ test('listing supports keyword search, source filtering, and bounded pagination'
   await pool.end();
 });
 
+test('listing source 배열은 community 소스만 정확히 count/filter/sort/paginate한다', async () => {
+  const { pool, store } = await makeStore();
+  await store.upsert({ ...firstDeal, source: 'ppomppu', sourceItemId: 'p1', publishedAt: '2026-09-12T10:00:00Z' });
+  await store.upsert({ ...firstDeal, source: 'fmkorea', sourceItemId: 'f1', publishedAt: '2026-09-12T11:00:00Z' });
+  await store.upsert({ ...firstDeal, source: 'coupang', sourceItemId: 'c1', publishedAt: '2026-09-12T12:00:00Z' });
+  const result = await store.list({ source: ['ppomppu', 'fmkorea'], page: 2, size: 1 });
+  assert.equal(result.total, 2);
+  assert.deepEqual(result.items.map((deal) => deal.source), ['ppomppu']);
+  await assert.rejects(() => store.list({ source: ['ppomppu', 'bad source'] }), /source is invalid/);
+  await pool.end();
+});
+
 test('upsert rejects records without a stable identity or original link', async () => {
   const { pool, store } = await makeStore();
   await assert.rejects(
@@ -196,6 +208,43 @@ test('partial upsert preserves optional values that are temporarily missing', as
   assert.equal(result.items[0].priceAmount, 199000);
   assert.equal(result.items[0].merchant, '테스트몰');
   assert.equal(result.items[0].imageUrl, firstDeal.imageUrl);
+  await pool.end();
+});
+
+test('FMKorea의 명시적 비지원 가격은 기존 숫자 가격을 제거한다', async () => {
+  const { pool, store } = await makeStore();
+  const deal = {
+    source: 'fmkorea',
+    sourceItemId: 'price-format-change',
+    title: 'FMKorea 가격 형식 변경',
+    originalUrl: 'https://www.fmkorea.com/123456789',
+    priceText: '1,000원',
+    priceAmount: 1000,
+    authoritativePrice: true,
+  };
+  await store.upsert(deal);
+  await store.upsert({
+    ...deal,
+    priceText: 'US$ 12.99',
+    priceAmount: null,
+  });
+
+  const stored = (await store.list({ source: 'fmkorea' })).items[0];
+  assert.equal(stored.priceText, 'US$ 12.99');
+  assert.equal(stored.priceAmount, null);
+  await pool.end();
+});
+
+test('upsert는 authoritativePrice의 boolean 타입을 검증한다', async () => {
+  const { pool, store } = await makeStore();
+  await assert.rejects(
+    () => store.upsert({
+      ...firstDeal,
+      source: 'fmkorea',
+      authoritativePrice: 'true',
+    }),
+    /authoritativePrice must be a boolean/,
+  );
   await pool.end();
 });
 
@@ -646,4 +695,52 @@ test('쿠팡 수집 advisory lease 경합 패자는 worker를 실행하지 않�
   assert.equal(value, null);
   assert.equal(worked, false);
   assert.equal(released, true);
+});
+
+test('FMKorea 수집 advisory lease는 전체 worker 동안 전용 연결을 유지하고 해제한다', async () => {
+  const events = [];
+  const client = {
+    async query(sql) {
+      if (/pg_try_advisory_lock/.test(sql)) { events.push('lock'); return { rows: [{ acquired: true }] }; }
+      if (/pg_advisory_unlock/.test(sql)) { events.push('unlock'); return { rows: [{ unlocked: true }] }; }
+      throw new Error(`unexpected query: ${sql}`);
+    },
+    release() { events.push('release'); },
+  };
+  const store = createDealStore({ connect: async () => client });
+  const value = await store.withFmkoreaCollectionLease(async () => {
+    events.push('worker');
+    return 'collected';
+  });
+  assert.equal(value, 'collected');
+  assert.deepEqual(events, ['lock', 'worker', 'unlock', 'release']);
+});
+
+test('FMKorea 수집 advisory lease 경합 패자는 worker를 실행하지 않고 연결을 반환한다', async () => {
+  let worked = false;
+  let released = false;
+  const client = {
+    query: async () => ({ rows: [{ acquired: false }] }),
+    release() { released = true; },
+  };
+  const store = createDealStore({ connect: async () => client });
+  const value = await store.withFmkoreaCollectionLease(async () => { worked = true; });
+  assert.equal(value, null);
+  assert.equal(worked, false);
+  assert.equal(released, true);
+});
+
+test('FMKorea advisory unlock 실패 시 잠금 보유 연결을 폐기한다', async () => {
+  let releaseArgument;
+  const client = {
+    async query(sql) {
+      if (/pg_try_advisory_lock/.test(sql)) return { rows: [{ acquired: true }] };
+      if (/pg_advisory_unlock/.test(sql)) return { rows: [{ unlocked: false }] };
+      throw new Error(`unexpected query: ${sql}`);
+    },
+    release(value) { releaseArgument = value; },
+  };
+  const store = createDealStore({ connect: async () => client });
+  await assert.rejects(() => store.withFmkoreaCollectionLease(async () => 'collected'), /unlock/i);
+  assert.equal(releaseArgument, true);
 });

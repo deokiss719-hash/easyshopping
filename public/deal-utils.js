@@ -37,6 +37,7 @@
       if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return '';
       const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
       const legacyAllowed = host === 'ppomppu.co.kr' || host.endsWith('.ppomppu.co.kr');
+      const fmkoreaAllowed = url.origin === 'https://image.fmkorea.com';
       const coupangAllowed = host.endsWith('.coupangcdn.com');
       const configuredAllowed = Array.isArray(allowedBaseUrls) && allowedBaseUrls.some((value) => {
         try {
@@ -48,7 +49,7 @@
           return false;
         }
       });
-      if (!legacyAllowed && !coupangAllowed && !configuredAllowed) return '';
+      if (!legacyAllowed && !fmkoreaAllowed && !coupangAllowed && !configuredAllowed) return '';
       if (host === 'localhost' || host.endsWith('.localhost') || host.includes(':')) return '';
       const octets = host.split('.').map(Number);
       if (octets.length === 4 && octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {

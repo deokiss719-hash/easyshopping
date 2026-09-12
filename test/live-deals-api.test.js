@@ -150,3 +150,14 @@ test('live deals API keeps internal range errors private and returns 500', async
     assert.doesNotMatch(body.message, /999999999999999999/);
   });
 });
+
+test('community alias는 ppomppu와 fmkorea만 함께 조회하고 기본 source는 ppomppu로 유지한다', async () => {
+  const calls = [];
+  const store = { async list(query) { calls.push(query); return { items: [], total: 0, page: 1, size: 20 }; } };
+  await withServer(store, async (baseUrl) => {
+    assert.equal((await fetch(`${baseUrl}/api/live-deals?source=fmkorea`)).status, 200);
+    assert.equal((await fetch(`${baseUrl}/api/live-deals?source=community`)).status, 200);
+    assert.equal((await fetch(`${baseUrl}/api/live-deals`)).status, 200);
+  });
+  assert.deepEqual(calls.map((call) => call.source), ['fmkorea', ['ppomppu', 'fmkorea'], 'ppomppu']);
+});
