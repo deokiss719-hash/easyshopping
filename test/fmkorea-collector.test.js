@@ -363,6 +363,24 @@ test('scheduler는 HTTP 200 block 분류를 1h→2h→4h→8h→16h→24h 상한
   scheduler.stop();
 });
 
+test('scheduler는 HTTP 430을 block으로 분류해 지수 backoff를 증가시킨다', async () => {
+  const timers = [];
+  const scheduler = startFmkoreaScheduler({
+    collect: () => runFmkoreaCollector({
+      store: leaseStore(),
+      fetchImpl: async () => response('', { ok: false, status: 430 }),
+    }),
+    intervalMs: 1200000,
+    setTimeoutFn(fn, delay) { timers.push({ fn, delay }); return timers.length - 1; },
+    clearTimeoutFn() {},
+    logger: { info() {}, error() {} },
+  });
+  await scheduler.firstRun;
+  await timers[0].fn();
+  assert.deepEqual(timers.map(({ delay }) => delay), [1, 2].map((hours) => hours * 60 * 60 * 1000));
+  scheduler.stop();
+});
+
 test('scheduler는 일반 markup drift를 고정 safe retry로 처리하고 block backoff를 증가시키지 않는다', async () => {
   const timers = [];
   let calls = 0;

@@ -300,7 +300,7 @@ function startFmkoreaScheduler({
       return result;
     } catch (error) {
       if (runId != null) await record('fail', runId);
-      if (error?.blocked === true || error?.status === 403 || error?.status === 429) {
+      if (error?.blocked === true || error?.status === 403 || error?.status === 429 || error?.status === 430) {
         blockBackoff = blockBackoff ? Math.min(blockBackoff * 2, MAX_BACKOFF_MS) : MIN_BLOCK_BACKOFF_MS;
         const retryDelay = Number.isFinite(error.retryAfterMs)
           ? Math.max(0, Math.min(error.retryAfterMs, MAX_BACKOFF_MS)) : 0;
