@@ -18,7 +18,7 @@
     "canary:ppomppu": "node scripts/ppomppu-playwright-canary.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": "26.8.2"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
