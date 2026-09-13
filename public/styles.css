@@ -83,6 +83,8 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .eyebrow { display: block; margin-bottom: 12px; color: var(--primary); font-size: 12px; font-weight: 800; letter-spacing: .11em; }
 .hero h1 { margin: 0; color: var(--navy); font-size: clamp(43px, 6vw, 64px); line-height: 1.12; letter-spacing: -.055em; }
 .hero-copy p { margin: 16px 0 0; color: var(--text-secondary); font-size: 18px; line-height: 1.6; }
+.kakao-room-cta { min-height: 48px; margin-top: 20px; padding: 0 20px; display: inline-flex; align-items: center; justify-content: center; color: #191919; background: #fee500; border-radius: 14px; box-shadow: 0 8px 22px rgba(25,25,25,.12); font-size: 14px; font-weight: 800; transition: transform .18s, box-shadow .18s, background .18s; }
+.kakao-room-cta:hover { color: #191919; background: #f7df00; box-shadow: 0 10px 26px rgba(25,25,25,.16); transform: translateY(-2px); }
 .hero-search-wrap { max-width: 720px; margin: 36px auto 0; }
 .hero-search {
   min-height: 64px;
