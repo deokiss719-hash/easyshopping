@@ -74,7 +74,7 @@ function productCard(deal) {
     ? `<img class="product-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
     : '';
   const manualBadge = deal.isManual
-    ? '<span class="manual-deal-badge">이지폰 특가</span>'
+    ? '<span class="manual-deal-badge">실시간 핫딜</span>'
     : '';
   return DealCardLink.renderCardContainer('deal-card', deal.url, `
       <div class="product-media tone-${escapeHtml(deal.imageTone)}">

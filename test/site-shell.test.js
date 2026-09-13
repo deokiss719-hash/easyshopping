@@ -121,7 +121,10 @@ test('메인·실시간·최신 상품 영역은 이미지를 지연 로딩하�
 });
 
 test('공개 화면은 수동 휴대폰 특가를 전용 섹션에 표시하고 기본 목록은 커뮤니티만 조회한다', () => {
-  assert.match(script, /manual-deal-badge[^\n]*이지폰 특가/);
+  assert.match(html, /section-kicker[^\n]*실시간 핫딜/);
+  assert.match(script, /manual-deal-badge[^\n]*실시간 핫딜/);
+  assert.doesNotMatch(html, /이지폰 특가/);
+  assert.doesNotMatch(script, /이지폰 특가/);
   assert.match(styles, /\.manual-deal-badge\s*\{/);
   assert.match(script, /DealPage\.fetchLiveDealsPage\(\{\s*query:\s*state\.query,[\s\S]*?source:\s*['"]community['"]/);
   assert.match(script, /fetchLiveDealsPage\(\{\s*source:\s*['"]community['"],\s*page:\s*1,\s*size:\s*5\s*\}\)/);
