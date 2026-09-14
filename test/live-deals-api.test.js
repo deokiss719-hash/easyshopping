@@ -4,7 +4,7 @@ const express = require('express');
 const { newDb, DataType } = require('pg-mem');
 
 const { migrate, createDealStore } = require('../src/deal-store');
-const { createLiveDealsRouter } = require('../src/live-deals-api');
+const { createLiveDealsRouter, toApiDeal } = require('../src/live-deals-api');
 
 async function makeStore() {
   const memoryDb = newDb();
@@ -32,6 +32,21 @@ async function withServer(store, callback, options = {}) {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
   }
 }
+
+test('ruliweb hotlink-blocked thumbnails are not exposed to public clients', () => {
+  const deal = toApiDeal({
+    id: 'ruliweb-1',
+    source: 'ruliweb',
+    title: '루리웹 핫딜',
+    merchant: '테스트몰',
+    originalUrl: 'https://bbs.ruliweb.com/market/board/1020/read/1',
+    imageUrl: 'https://i1.ruliweb.com/thumb/example.webp',
+    imageStatus: 'ready',
+  });
+
+  assert.equal(deal.imageUrl, null);
+  assert.equal(deal.imageStatus, 'missing_merchant_url');
+});
 
 test('live deals API returns stored deals with pagination metadata and original links', async () => {
   const { pool, store } = await makeStore();
