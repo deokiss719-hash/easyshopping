@@ -54,11 +54,19 @@ test('CSP는 FMKorea 이미지와 리다이렉트 CDN의 정확한 origin만 추
   const policy = buildContentSecurityPolicy({ enabled: false }, { enabled: false });
   assert.equal(policy,
     "default-src 'self'; "
-    + "img-src 'self' https://ppomppu.co.kr https://*.ppomppu.co.kr https://image.fmkorea.com https://ext.fmkorea.com https://*.coupangcdn.com https://www.facebook.com; "
+    + "img-src 'self' https://ppomppu.co.kr https://*.ppomppu.co.kr https://image.fmkorea.com https://ext.fmkorea.com https://i1.ruliweb.com https://i2.ruliweb.com https://i3.ruliweb.com https://*.coupangcdn.com https://www.facebook.com; "
     + "style-src 'self' https://cdn.jsdelivr.net; "
     + "font-src 'self' https://cdn.jsdelivr.net; "
     + "script-src 'self' https://connect.facebook.net; "
     + "connect-src 'self' https://www.facebook.com; "
     + "base-uri 'self'; object-src 'none'");
   assert.doesNotMatch(policy, /\*\.fmkorea\.com/);
+});
+
+test('CSP는 루리웹 RSS thumbnail의 i1/i2/i3 정확한 origin만 허용한다', () => {
+  const policy = buildContentSecurityPolicy({ enabled: false }, { enabled: false });
+  for (const host of ['i1.ruliweb.com', 'i2.ruliweb.com', 'i3.ruliweb.com']) {
+    assert.match(policy, new RegExp(`img-src[^;]*https:\\/\\/${host.replaceAll('.', '\\.')}\\b`));
+  }
+  assert.doesNotMatch(policy, /\*\.ruliweb\.com/);
 });

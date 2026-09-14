@@ -280,6 +280,32 @@ test('재수집 네이버 매칭은 기존 R2 이미지와 관련 메타데이�
   await pool.end();
 });
 
+test('루리웹 direct thumbnail은 재수집 시 최신 RSS URL로 갱신한다', async () => {
+  const { pool, store } = await makeStore();
+  const deal = {
+    ...firstDeal,
+    source: 'ruliweb',
+    sourceItemId: '123456',
+    originalUrl: 'https://bbs.ruliweb.com/market/board/1020/read/123456',
+    sourceImageUrl: 'https://i1.ruliweb.com/old.webp',
+    imageUrl: 'https://i1.ruliweb.com/old.webp',
+    imageStatus: 'ready',
+    imageProvider: 'ruliweb-direct',
+  };
+  await store.upsert(deal);
+  await store.upsert({
+    ...deal,
+    sourceImageUrl: 'https://i2.ruliweb.com/new.webp',
+    imageUrl: 'https://i2.ruliweb.com/new.webp',
+  });
+
+  const stored = (await store.list({ source: 'ruliweb' })).items[0];
+  assert.equal(stored.sourceImageUrl, 'https://i2.ruliweb.com/new.webp');
+  assert.equal(stored.imageUrl, 'https://i2.ruliweb.com/new.webp');
+  assert.equal(stored.imageProvider, 'ruliweb-direct');
+  await pool.end();
+});
+
 test('이미지 상태를 저장하고 실패 재시도 시각이 지난 판매처 또는 원문 URL 후보를 backfill한다', async () => {
   const { pool, store } = await makeStore();
   const pending = await store.upsert({
@@ -522,6 +548,52 @@ test('이미 유효한 카테고리는 시작 시 재분류로 덮어쓰지 않�
   await pool.end();
 });
 
+test('RSS batch는 중간 DB 실패 시 rollback하고 retention을 실행하지 않는다', async () => {
+  const calls = [];
+  let released = false;
+  let inserts = 0;
+  const client = {
+    async query(input) {
+      const text = typeof input === 'string' ? input : input?.text;
+      const kind = String(text || '').trim().split(/\s+/)[0].toUpperCase();
+      calls.push(kind);
+      if (kind === 'INSERT' && ++inserts === 2) throw new Error('injected second upsert failure');
+      if (kind === 'INSERT') {
+        return {
+          rows: [{
+            id: '1', source: 'ruliweb', source_item_id: `fresh-${inserts}`,
+            title: '테스트', original_url: `https://bbs.ruliweb.com/market/board/1020/read/${inserts}`,
+            is_ended: false,
+          }],
+          rowCount: 1,
+        };
+      }
+      return { rows: [], rowCount: 0 };
+    },
+    release() { released = true; },
+  };
+  const store = createDealStore({ async connect() { return client; } });
+  const fresh = (id) => ({
+    ...firstDeal,
+    source: 'ruliweb',
+    sourceItemId: `fresh-${id}`,
+    originalUrl: `https://bbs.ruliweb.com/market/board/1020/read/${id}`,
+    publishedAt: '2026-09-15T00:00:00.000Z',
+  });
+
+  await assert.rejects(
+    () => store.upsertBatchAndDeleteBefore(
+      'ruliweb',
+      [fresh(1), fresh(2)],
+      new Date('2026-09-12T00:00:00.000Z'),
+    ),
+    /injected second upsert failure/,
+  );
+
+  assert.deepEqual(calls, ['BEGIN', 'INSERT', 'INSERT', 'ROLLBACK']);
+  assert.equal(released, true);
+});
+
 test('deletes deals at or older than 72 hours only from the selected source', async () => {
   const { pool, store } = await makeStore();
   await store.upsert({ ...firstDeal, sourceItemId: 'old', publishedAt: '2026-09-01T00:00:00.000Z' });
@@ -742,5 +814,81 @@ test('FMKorea advisory unlock 실패 시 잠금 보유 연결을 폐기한다', 
   };
   const store = createDealStore({ connect: async () => client });
   await assert.rejects(() => store.withFmkoreaCollectionLease(async () => 'collected'), /unlock/i);
+  assert.equal(releaseArgument, true);
+});
+
+test('범용 collection lease는 동일 source에 안정적인 잠금 키를 쓰고 source별로 분리한다', async () => {
+  const lockParams = [];
+  const events = [];
+  const client = {
+    async query(sql, params) {
+      if (/pg_try_advisory_lock/.test(sql)) {
+        lockParams.push(params);
+        events.push('lock');
+        return { rows: [{ acquired: true }] };
+      }
+      if (/pg_advisory_unlock/.test(sql)) {
+        events.push('unlock');
+        return { rows: [{ unlocked: true }] };
+      }
+      throw new Error(`unexpected query: ${sql}`);
+    },
+    release() { events.push('release'); },
+  };
+  const store = createDealStore({ connect: async () => client });
+  assert.equal(await store.withCollectionLease('ruliweb', async () => 'first'), 'first');
+  assert.equal(await store.withCollectionLease('ruliweb', async () => 'second'), 'second');
+  assert.equal(await store.withCollectionLease('fmkorea', async () => 'third'), 'third');
+  assert.deepEqual(lockParams[0], lockParams[1]);
+  assert.equal(lockParams[0][0], lockParams[2][0]);
+  assert.notEqual(lockParams[0][1], lockParams[2][1]);
+  assert.ok(Number.isInteger(lockParams[0][1]));
+  assert.deepEqual(events, [
+    'lock', 'unlock', 'release',
+    'lock', 'unlock', 'release',
+    'lock', 'unlock', 'release',
+  ]);
+});
+
+test('범용 collection lease 경합 패자는 worker와 unlock 없이 연결만 반환한다', async () => {
+  let worked = false;
+  const queries = [];
+  let released = false;
+  const client = {
+    async query(sql) {
+      queries.push(sql);
+      return { rows: [{ acquired: false }] };
+    },
+    release() { released = true; },
+  };
+  const store = createDealStore({ connect: async () => client });
+  const value = await store.withCollectionLease('ruliweb', async () => { worked = true; });
+  assert.equal(value, null);
+  assert.equal(worked, false);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0], /pg_try_advisory_lock/);
+  assert.equal(released, true);
+});
+
+test('범용 collection lease는 source와 worker를 연결 획득 전에 검증한다', async () => {
+  let connected = false;
+  const store = createDealStore({ connect: async () => { connected = true; } });
+  await assert.rejects(() => store.withCollectionLease('../ruliweb', async () => {}), /source/i);
+  await assert.rejects(() => store.withCollectionLease('ruliweb', null), /worker/i);
+  assert.equal(connected, false);
+});
+
+test('범용 collection lease unlock 실패는 잠금 보유 가능성이 있는 연결을 폐기한다', async () => {
+  let releaseArgument;
+  const client = {
+    async query(sql) {
+      if (/pg_try_advisory_lock/.test(sql)) return { rows: [{ acquired: true }] };
+      if (/pg_advisory_unlock/.test(sql)) return { rows: [{ unlocked: false }] };
+      throw new Error(`unexpected query: ${sql}`);
+    },
+    release(value) { releaseArgument = value; },
+  };
+  const store = createDealStore({ connect: async () => client });
+  await assert.rejects(() => store.withCollectionLease('ruliweb', async () => 'done'), /unlock/i);
   assert.equal(releaseArgument, true);
 });

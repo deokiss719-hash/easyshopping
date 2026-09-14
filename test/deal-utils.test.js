@@ -116,6 +116,18 @@ test('FMKorea 이미지는 정확한 image.fmkorea.com HTTPS origin만 허용한
   assert.equal(safeImageUrl('http://image.fmkorea.com/a.jpg'), '');
 });
 
+test('루리웹 remote thumbnail은 정확한 i1/i2/i3 HTTPS origin만 브라우저에 전달한다', () => {
+  for (const host of ['i1.ruliweb.com', 'i2.ruliweb.com', 'i3.ruliweb.com']) {
+    assert.equal(safeImageUrl(`https://${host}/image/item.jpg`), `https://${host}/image/item.jpg`);
+  }
+  for (const url of [
+    'http://i1.ruliweb.com/a.jpg',
+    'https://sub.i1.ruliweb.com/a.jpg',
+    'https://i1.ruliweb.com.evil.example/a.jpg',
+    'https://i1.ruliweb.com:444/a.jpg',
+  ]) assert.equal(safeImageUrl(url), '');
+});
+
 test('메인 수동 특가는 우선순위로 제한하고 RSS 첫 네 개 뒤부터 일정하게 섞는다', () => {
   const rss = Array.from({ length: 10 }, (_, index) => ({ id: `r${index + 1}`, isManual: false }));
   const manual = [

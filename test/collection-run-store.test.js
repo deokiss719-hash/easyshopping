@@ -17,12 +17,15 @@ test('collection run lifecycle records start, success counts, and sanitized fail
   assert.equal(await store.start(), '7');
   await store.succeed('7', { fetched: 5, stored: 4 });
   await store.fail('7');
+  await store.skip('7');
 
   assert.deepEqual(calls.map(({ values }) => values), [
     ['ppomppu'],
     [5, 4, '7'],
     ['collector_failed', '7'],
+    ['lease_unavailable', '7'],
   ]);
+  assert.match(calls[3].text, /status = 'skipped'/);
 });
 
 test('collection status returns latest state and most recent successful completion', async () => {

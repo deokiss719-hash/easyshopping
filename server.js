@@ -38,6 +38,7 @@ const {
   runFmkoreaCollector,
   startFmkoreaScheduler,
 } = require('./src/fmkorea-collector');
+const { readRuliwebRuntime, runRuliwebCollector } = require('./src/ruliweb-collector');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -167,6 +168,7 @@ async function start() {
     freshnessThresholdMs,
   } = readCollectorRuntime(process.env);
   const fmkoreaRuntime = readFmkoreaRuntime(process.env);
+  const ruliwebRuntime = readRuliwebRuntime(process.env);
   const coupangRuntime = readCoupangRuntime(process.env);
   const r2Config = readR2Config(process.env);
   const imageBaseUrls = [
@@ -299,6 +301,19 @@ async function start() {
       });
       console.log('FMKorea 핫딜 첫 페이지 자동 수집 활성화');
     }
+    if (ruliwebRuntime.enabled) {
+      const ruliwebRunStore = createCollectionRunStore(pool, 'ruliweb');
+      startPollingCollector({
+        collect: () => runRuliwebCollector({
+          store,
+          timeoutMs: ruliwebRuntime.timeoutMs,
+        }),
+        intervalMs: ruliwebRuntime.intervalMs,
+        runRecorder: ruliwebRunStore,
+        label: 'Ruliweb 핫딜 RSS',
+      });
+      console.log('Ruliweb 핫딜 공식 RSS 자동 수집 활성화');
+    }
     if (coupangRuntime.enabled) {
       startPollingCollector({
         collect: () => runCoupangCollector({ runtime: coupangRuntime, store }),
@@ -317,7 +332,7 @@ async function start() {
 
   app.use('/api/live-deals', createLiveDealsRouter(store, {
     imageBaseUrls,
-    allowedSources: ['ppomppu', 'fmkorea', 'community', 'manual', ...(coupangRuntime.enabled ? ['coupang'] : [])],
+    allowedSources: ['ppomppu', 'fmkorea', 'ruliweb', 'community', 'manual', ...(coupangRuntime.enabled ? ['coupang'] : [])],
   }));
   app.use(adminJsonErrorHandler);
   app.use(publicNotFound);

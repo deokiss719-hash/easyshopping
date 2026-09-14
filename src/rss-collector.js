@@ -60,6 +60,7 @@ const ANCILLARY_PRICE_AFTER_PATTERN = /^\s*(?:배송\s*비|배송료|배달비|�
 function isAncillaryPrice(value, match) {
   const before = value.slice(0, match.index);
   const after = value.slice(match.index + match[0].length);
+  const unlabeledSlashShipping = /\d+(?:[,.]\d+)*\s*원\s*\/\s*$/i.test(before);
   const shippingStatusFollowsAmount = /^\s*(?:배송\s*비|배송료|배달비|운임)\s*(?:[:：]\s*|\(\s*)?(?:무료|별도|포함|착불|조건부|문의|0(?!\s*원))/i.test(after);
   const couponLabelClosesGroup = /^\s*쿠폰\s*\)/i.test(after);
   const labelFollowsAmount = (
@@ -69,6 +70,7 @@ function isAncillaryPrice(value, match) {
   ) || couponLabelClosesGroup;
   return ANCILLARY_PRICE_BEFORE_PATTERN.test(before)
     || /[-−]\s*$/.test(before)
+    || unlabeledSlashShipping
     || labelFollowsAmount;
 }
 
@@ -80,6 +82,9 @@ function parseKrw(text) {
     const group = parentheticalMatch[1];
     const deliveredPrice = group.match(/(?<![\d.,])(\d+(?:[,.]\d+)*)(?![\d.,])\s*(?:원)?\s*(?=\/|$)/);
     if (deliveredPrice) {
+      const hasExplicitWon = /원\s*$/.test(deliveredPrice[0]);
+      const hasExplicitFreeDelivery = /^\s*\d+(?:[,.]\d+)*\s*\/\s*무료(?:배송)?\s*$/i.test(group);
+      if (!hasExplicitWon && !hasExplicitFreeDelivery) continue;
       const contextualMatch = {
         0: deliveredPrice[0],
         index: parentheticalMatch.index + 1 + deliveredPrice.index,
@@ -303,24 +308,37 @@ function requestHop(url, options, { lookup, request, fetchImpl }) {
   return requestPinnedHttps(url, { ...options, lookup, request: transport });
 }
 
-async function requestFeed(startUrl, { allowedHosts, fetchImpl, lookup, request }) {
+async function requestFeed(startUrl, {
+  allowedHosts,
+  fetchImpl,
+  lookup,
+  request,
+  maxRedirects = MAX_REDIRECTS,
+  validateUrl = null,
+  timeoutMs = 15000,
+}) {
+  if (!Number.isSafeInteger(maxRedirects) || maxRedirects < 0 || maxRedirects > MAX_REDIRECTS) {
+    throw new TypeError(`maxRedirects must be an integer between 0 and ${MAX_REDIRECTS}`);
+  }
   let url = validateFeedUrl(startUrl, allowedHosts);
-  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+  if (validateUrl && !validateUrl(url)) throw new TypeError('feed URL is not allowed');
+  for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
     const response = await requestHop(url, {
       headers: {
         Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml',
         'User-Agent': 'easyshopping-feed-collector/0.1 (+https://easyshoopping.com)',
       },
       redirect: 'manual',
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(timeoutMs),
     }, { lookup, request, fetchImpl });
 
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers?.get?.('location');
       await cancelResponseBody(response);
-      if (redirectCount === MAX_REDIRECTS) throw new Error('Too many feed redirects');
+      if (redirectCount === maxRedirects) throw new Error('Too many feed redirects');
       if (!location) throw new Error('Feed redirect is missing Location');
       url = validateFeedUrl(new URL(location, url).href, allowedHosts);
+      if (validateUrl && !validateUrl(url)) throw new TypeError('feed URL is not allowed');
       continue;
     }
     if (!response.ok) {
@@ -812,7 +830,10 @@ async function runRssCollector({
 
 module.exports = {
   parseFeed,
+  parseKrw,
   runRssCollector,
+  requestFeed,
+  readLimitedBody,
   safeImageUrl,
   fetchOpenGraphImage,
   fetchPpomppuBodyImage,

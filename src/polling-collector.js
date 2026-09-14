@@ -42,7 +42,10 @@ function startPollingCollector({
     const runId = await record('start');
     try {
       const result = await collect();
-      if (runId != null) await record('succeed', runId, result);
+      if (runId != null) {
+        const method = result?.skipped && typeof runRecorder?.skip === 'function' ? 'skip' : 'succeed';
+        await record(method, runId, result || {});
+      }
       logger.info(`${label} 수집 완료`, result);
       return result;
     } catch {
