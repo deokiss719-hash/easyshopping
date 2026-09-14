@@ -8,6 +8,7 @@ function toApiDeal(deal) {
       ? `/api/public/manual-deals/${deal.manualId}/image`
       : null)
     : deal.imageUrl;
+  const publicImageUrl = deal.source === 'ruliweb' ? null : manualImageUrl;
   return {
     id: deal.id,
     badge: deal.isEnded ? '종료' : (deal.badge || 'LIVE'),
@@ -19,8 +20,10 @@ function toApiDeal(deal) {
     source: deal.source,
     publishedAt: deal.publishedAt,
     postedAt: deal.publishedAt,
-    imageUrl: manualImageUrl,
-    imageStatus: deal.imageStatus || (manualImageUrl ? 'ready' : 'missing_merchant_url'),
+    imageUrl: publicImageUrl,
+    imageStatus: deal.source === 'ruliweb'
+      ? 'missing_merchant_url'
+      : (deal.imageStatus || (publicImageUrl ? 'ready' : 'missing_merchant_url')),
     originalPrice: deal.originalPriceAmount ?? null,
     description: deal.description ?? null,
     isManual,
