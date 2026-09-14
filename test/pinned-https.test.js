@@ -21,6 +21,17 @@ test('resolvePublic은 DNS mixed answer와 특수 목적 IPv4/IPv6를 모두 거
   }
 });
 
+test('requestPinnedHttps의 AbortSignal은 DNS lookup 대기까지 중단한다', async () => {
+  const controller = new AbortController();
+  const pending = requestPinnedHttps('https://feed.example/rss', {
+    lookup: async () => new Promise(() => {}),
+    request: async () => assert.fail('DNS가 끝나기 전에 transport가 호출되면 안 된다'),
+    signal: controller.signal,
+  });
+  controller.abort(new Error('request timed out'));
+  await assert.rejects(pending, /request timed out/);
+});
+
 test('requestPinnedHttps는 검증한 IP 하나만 transport lookup에 제공하고 원래 host/SNI URL을 보존한다', async () => {
   const calls = [];
   const response = { status: 200 };

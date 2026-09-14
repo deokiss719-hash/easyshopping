@@ -116,6 +116,27 @@ test('수집 시작과 성공 건수를 관측 저장소에 기록한다', async
   polling.stop();
 });
 
+test('lease 경합으로 수집을 건너뛰면 성공이 아닌 skipped로 기록한다', async () => {
+  const events = [];
+  const polling = startPollingCollector({
+    collect: async () => ({ skipped: 'lease-unavailable', fetched: 0, stored: 0 }),
+    intervalMs: 600000,
+    runRecorder: {
+      async start() { events.push(['start']); return 'run-skip'; },
+      async succeed() { events.push(['succeed']); },
+      async skip(id) { events.push(['skip', id]); },
+      async fail() { events.push(['fail']); },
+    },
+    setIntervalFn() { return 'timer'; },
+    clearIntervalFn() {},
+    logger: { info() {}, error() {} },
+  });
+
+  assert.deepEqual(await polling.firstRun, { skipped: 'lease-unavailable', fetched: 0, stored: 0 });
+  assert.deepEqual(events, [['start'], ['skip', 'run-skip']]);
+  polling.stop();
+});
+
 test('수집 실패를 원문 오류 없이 관측 저장소에 기록한다', async () => {
   const events = [];
   const polling = startPollingCollector({

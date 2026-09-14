@@ -44,6 +44,17 @@ function createCollectionRunStore(pool, source, { queryTimeoutMs = 2000 } = {}) 
       });
     },
 
+    async skip(id) {
+      await pool.query({
+        text: `UPDATE collection_runs
+         SET status = 'skipped', finished_at = CURRENT_TIMESTAMP,
+             error_message = $1
+         WHERE id = $2`,
+        values: ['lease_unavailable', String(id)],
+        query_timeout: queryTimeoutMs,
+      });
+    },
+
     async getStatus({ timeoutMs = 2000 } = {}) {
       const result = await pool.query({
         text: `SELECT

@@ -78,6 +78,13 @@ test('FMKorea 수집기는 명시적으로 활성화된 경우에만 RSS readine
   assert.doesNotMatch(server, /freshnessThresholdMs:\s*fmkoreaRuntime/);
 });
 
+test('Ruliweb 수집기는 기본 OFF runtime, 실행 기록, 공용 poller에 연결된다', () => {
+  assert.match(server, /const ruliwebRuntime = readRuliwebRuntime\(process\.env\)/);
+  assert.match(server, /if \(ruliwebRuntime\.enabled\) \{[\s\S]*?startPollingCollector\(/);
+  assert.match(server, /createCollectionRunStore\(pool, ['"]ruliweb['"]\)/);
+  assert.match(server, /runRuliwebCollector\(\{[\s\S]*?timeoutMs:\s*ruliwebRuntime\.timeoutMs/);
+});
+
 test('운영 RSS 수집은 뽐뿌 작성자 본문 이미지를 R2에 저속·차단 감지 방식으로 저장한다', () => {
   assert.match(server, /createPpomppuImageProvider/);
   assert.match(server, /productMatcher:\s*null/);

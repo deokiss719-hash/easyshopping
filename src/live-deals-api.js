@@ -31,7 +31,7 @@ function toApiDeal(deal) {
   };
 }
 
-function createLiveDealsRouter(store, { imageBaseUrls = [], allowedSources = ['ppomppu', 'fmkorea', 'community', 'manual'] } = {}) {
+function createLiveDealsRouter(store, { imageBaseUrls = [], allowedSources = ['ppomppu', 'fmkorea', 'ruliweb', 'community', 'manual'] } = {}) {
   const router = express.Router();
   const publicSources = new Set(allowedSources);
   const trustedImageBaseUrls = Object.freeze(
@@ -53,7 +53,7 @@ function createLiveDealsRouter(store, { imageBaseUrls = [], allowedSources = ['p
       }
       const result = await store.list({
         q: req.query.q,
-        source: requestedSource === 'community' ? ['ppomppu', 'fmkorea'] : requestedSource,
+        source: requestedSource === 'community' ? ['ppomppu', 'fmkorea', 'ruliweb'] : requestedSource,
         category: req.query.category,
         sort: req.query.sort,
         featured: req.query.featured,

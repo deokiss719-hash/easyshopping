@@ -7,11 +7,30 @@ async function defaultLookup(hostname) {
   return dns.lookup(hostname, { all: true, verbatim: true });
 }
 
-async function resolvePublic(url, lookup = defaultLookup) {
+async function abortable(promise, signal) {
+  if (!signal || typeof signal.addEventListener !== 'function') return promise;
+  if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error('request aborted');
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(signal.reason instanceof Error ? signal.reason : new Error('request aborted'));
+    signal.addEventListener('abort', onAbort, { once: true });
+    Promise.resolve(promise).then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function resolvePublic(url, lookup = defaultLookup, signal) {
   const literalFamily = net.isIP(url.hostname);
   const addresses = literalFamily
     ? [{ address: url.hostname, family: literalFamily }]
-    : await lookup(url.hostname);
+    : await abortable(lookup(url.hostname), signal);
   if (!Array.isArray(addresses) || addresses.length === 0) {
     throw new Error('destination must resolve only to public addresses');
   }
@@ -90,7 +109,7 @@ async function requestPinnedHttps(value, options = {}) {
   if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) {
     throw new TypeError('pinned request requires HTTPS without credentials or a non-default port');
   }
-  const selected = await resolvePublic(url, options.lookup || defaultLookup);
+  const selected = await resolvePublic(url, options.lookup || defaultLookup, options.signal);
   const request = options.request || nativePinnedRequest;
   return request(url, selected, options);
 }

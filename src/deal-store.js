@@ -1,5 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { createHash } = require('node:crypto');
 const { isCategory } = require('./deal-category');
 
 const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
@@ -17,6 +18,7 @@ const COUPANG_COLLECTION_ADVISORY_LOCK_NAMESPACE = 1129270864;
 const COUPANG_COLLECTION_ADVISORY_LOCK_ID = 1347374160;
 const FMKOREA_COLLECTION_ADVISORY_LOCK_NAMESPACE = 1179478866;
 const FMKOREA_COLLECTION_ADVISORY_LOCK_ID = 1213158226;
+const SOURCE_COLLECTION_ADVISORY_LOCK_NAMESPACE = 1381190739;
 const migratedPools = new WeakSet();
 
 class InvalidQueryError extends TypeError {}
@@ -135,6 +137,54 @@ function mapDeal(row) {
 
 function createDealStore(pool) {
   return {
+    async withCollectionLease(source, worker) {
+      const normalizedSource = String(source || '').trim();
+      if (!/^[a-z0-9_-]{1,64}$/i.test(normalizedSource)) throw new TypeError('source is invalid');
+      if (typeof worker !== 'function') throw new TypeError('worker is required');
+      const lockId = createHash('sha256')
+        .update(`easyhotdeal:collector:${normalizedSource}`)
+        .digest()
+        .readInt32BE(0);
+      const client = await pool.connect();
+      let acquired = false;
+      let workerError = null;
+      try {
+        const result = await client.query(
+          'SELECT pg_try_advisory_lock($1, $2) AS acquired',
+          [SOURCE_COLLECTION_ADVISORY_LOCK_NAMESPACE, lockId],
+        );
+        acquired = result.rows[0]?.acquired === true;
+        if (!acquired) return null;
+        try {
+          return await worker();
+        } catch (error) {
+          workerError = error;
+          throw error;
+        }
+      } finally {
+        let unlockError = null;
+        try {
+          if (acquired) {
+            const result = await client.query(
+              'SELECT pg_advisory_unlock($1, $2) AS unlocked',
+              [SOURCE_COLLECTION_ADVISORY_LOCK_NAMESPACE, lockId],
+            );
+            if (result.rows[0]?.unlocked !== true) {
+              throw new Error('source collection advisory unlock failed');
+            }
+          }
+        } catch (error) {
+          unlockError = error;
+        } finally {
+          client.release(unlockError ? true : undefined);
+        }
+        if (unlockError) {
+          if (workerError) workerError.advisoryUnlockError = unlockError;
+          else throw unlockError;
+        }
+      }
+    },
+
     async getImageBackfillCooldown() {
       const result = await pool.query('SELECT cooldown_until FROM image_backfill_control WHERE singleton = TRUE');
       const value = result.rows[0]?.cooldown_until;
@@ -322,10 +372,16 @@ function createDealStore(pool) {
           original_url = EXCLUDED.original_url,
           merchant_url = COALESCE(deals.merchant_url, EXCLUDED.merchant_url),
           source_image_url = CASE
+            WHEN deals.image_provider = 'ruliweb-direct' AND EXCLUDED.image_provider = 'ruliweb-direct'
+              THEN EXCLUDED.source_image_url
             WHEN deals.image_url IS NOT NULL THEN deals.source_image_url
             ELSE COALESCE(EXCLUDED.source_image_url, deals.source_image_url)
           END,
-          image_url = COALESCE(deals.image_url, EXCLUDED.image_url),
+          image_url = CASE
+            WHEN deals.image_provider = 'ruliweb-direct' AND EXCLUDED.image_provider = 'ruliweb-direct'
+              THEN EXCLUDED.image_url
+            ELSE COALESCE(deals.image_url, EXCLUDED.image_url)
+          END,
           image_status = CASE
             WHEN COALESCE(deals.image_url, EXCLUDED.image_url) IS NOT NULL THEN 'ready'
             WHEN deals.image_status IN ('failed', 'unsupported_provider') THEN deals.image_status
@@ -333,6 +389,8 @@ function createDealStore(pool) {
             ELSE EXCLUDED.image_status
           END,
           image_provider = CASE
+            WHEN deals.image_provider = 'ruliweb-direct' AND EXCLUDED.image_provider = 'ruliweb-direct'
+              THEN EXCLUDED.image_provider
             WHEN deals.image_url IS NOT NULL THEN deals.image_provider
             WHEN EXCLUDED.image_url IS NOT NULL THEN EXCLUDED.image_provider
             ELSE COALESCE(deals.image_provider, EXCLUDED.image_provider)
@@ -355,6 +413,38 @@ function createDealStore(pool) {
         values,
       );
       return mapDeal(result.rows[0]);
+    },
+
+    async upsertBatchAndDeleteBefore(source, inputs, cutoff) {
+      const normalizedSource = String(source || '').trim();
+      if (!/^[a-z0-9_-]{1,64}$/i.test(normalizedSource)) throw new TypeError('source is invalid');
+      if (normalizedSource === 'manual') throw new TypeError('manual deals cannot be deleted by retention');
+      if (!Array.isArray(inputs)) throw new TypeError('batch inputs must be an array');
+      const deals = inputs.map(normalizeDeal);
+      if (deals.some((deal) => deal.source !== normalizedSource)) {
+        throw new TypeError('batch may only contain the selected source');
+      }
+      const threshold = new Date(cutoff);
+      if (Number.isNaN(threshold.getTime())) throw new TypeError('cutoff must be a valid date');
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const transactionStore = createDealStore(client);
+        for (const deal of deals) await transactionStore.upsert(deal);
+        const deleted = await transactionStore.deleteBefore(normalizedSource, threshold);
+        await client.query('COMMIT');
+        return { stored: deals.length, deleted };
+      } catch (error) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (rollbackError) {
+          error.rollbackError = rollbackError;
+        }
+        throw error;
+      } finally {
+        client.release();
+      }
     },
 
     async syncCoupangSnapshot(inputs) {

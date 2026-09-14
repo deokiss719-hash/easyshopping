@@ -5,6 +5,9 @@ function buildContentSecurityPolicy(r2Config = { enabled: false }, naverShopping
     'https://*.ppomppu.co.kr',
     'https://image.fmkorea.com',
     'https://ext.fmkorea.com',
+    'https://i1.ruliweb.com',
+    'https://i2.ruliweb.com',
+    'https://i3.ruliweb.com',
     'https://*.coupangcdn.com',
     'https://www.facebook.com',
   ];
