@@ -139,6 +139,25 @@ function mapDeal(row) {
   return deal;
 }
 
+function balanceTossDeals(rows) {
+  const community = rows.filter((row) => row.source !== 'toss');
+  const toss = rows.filter((row) => row.source === 'toss');
+  const balanced = [];
+  let communityIndex = 0;
+  let tossIndex = 0;
+  while (communityIndex < community.length || tossIndex < toss.length) {
+    for (let count = 0; count < 2 && communityIndex < community.length; count += 1) {
+      balanced.push(community[communityIndex++]);
+    }
+    if (tossIndex < toss.length) balanced.push(toss[tossIndex++]);
+    if (communityIndex >= community.length) {
+      balanced.push(...toss.slice(tossIndex));
+      break;
+    }
+  }
+  return balanced;
+}
+
 function createDealStore(pool) {
   return {
     async withCollectionLease(source, worker) {
@@ -676,6 +695,8 @@ function createDealStore(pool) {
       const orderBy = isFeatured
         ? 'm.priority DESC, d.published_at DESC NULLS LAST, d.id DESC'
         : SORT_ORDERS[normalizedSort];
+      const balanceToss = normalizedSources?.includes('toss')
+        && normalizedSources.some((value) => value !== 'toss');
       const client = await pool.connect();
       try {
         await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
@@ -688,8 +709,7 @@ function createDealStore(pool) {
           values,
         );
         const listValues = [...values, safeSize, (safePage - 1) * safeSize];
-        const listResult = await client.query(
-          `SELECT d.*, c.click_count,
+        const listSelect = `SELECT d.*, c.click_count,
              m.id AS manual_id,
              (m.image_url IS NOT NULL) AS manual_has_image,
              m.original_price_amount AS manual_original_price_amount,
@@ -700,10 +720,12 @@ function createDealStore(pool) {
            FROM deals d
            LEFT JOIN manual_deals m ON d.source = 'manual' AND m.deal_id = d.id
            LEFT JOIN (SELECT deal_id, COUNT(*) AS click_count FROM deal_clicks WHERE clicked_at >= $2 GROUP BY deal_id) c ON c.deal_id = d.id
-           ${where}
-           ORDER BY ${orderBy}
-           LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-          listValues,
+           ${where}`;
+        const listResult = await client.query(
+          `${listSelect}
+           ORDER BY ${orderBy}${balanceToss ? '' : `
+           LIMIT $${values.length + 1} OFFSET $${values.length + 2}`}`,
+          balanceToss ? values : listValues,
         );
         await client.query('COMMIT');
 
@@ -711,7 +733,9 @@ function createDealStore(pool) {
           page: safePage,
           size: safeSize,
           total: safeNumber(countResult.rows[0].total, 'total'),
-          items: listResult.rows.map(mapDeal),
+          items: (balanceToss
+            ? balanceTossDeals(listResult.rows).slice((safePage - 1) * safeSize, safePage * safeSize)
+            : listResult.rows).map(mapDeal),
         };
       } catch (error) {
         await client.query('ROLLBACK');

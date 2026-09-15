@@ -87,6 +87,34 @@ test('upsert inserts a deal and exposes it through the listing API', async () =>
   await pool.end();
 });
 
+test('전체 피드는 커뮤니티 두 개마다 토스 한 개를 배치한다', async () => {
+  const { pool, store } = await makeStore();
+  const now = Date.now();
+  for (let index = 1; index <= 6; index += 1) {
+    await store.upsert({
+      source: index % 2 ? 'ppomppu' : 'fmkorea', sourceItemId: `community-${index}`,
+      title: `커뮤니티 ${index}`, originalUrl: `https://example.com/community/${index}`,
+      publishedAt: new Date(now - index * 2000).toISOString(),
+    });
+    await store.upsert({
+      source: 'toss', sourceItemId: `toss-${index}`, title: `토스 ${index}`,
+      originalUrl: `https://toss.im/_m/Test${index}`,
+      publishedAt: new Date(now - index * 1000).toISOString(),
+    });
+  }
+
+  const balanced = await store.list({
+    source: ['ppomppu', 'fmkorea', 'ruliweb', 'toss'], sort: 'latest', size: 9,
+  });
+  assert.deepEqual(balanced.items.map((deal) => deal.source === 'toss' ? 'toss' : 'community'), [
+    'community', 'community', 'toss', 'community', 'community', 'toss',
+    'community', 'community', 'toss',
+  ]);
+  const tossOnly = await store.list({ source: 'toss', sort: 'latest', size: 6 });
+  assert.equal(tossOnly.items.every((deal) => deal.source === 'toss'), true);
+  await pool.end();
+});
+
 test('public listing exposes only manual projections linked to a published manual deal', async () => {
   const { pool, store } = await makeStore();
   await store.upsert(firstDeal);
