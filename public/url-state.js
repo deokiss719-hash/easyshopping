@@ -9,7 +9,7 @@
     '상품권/쿠폰', '기타',
   ]);
   const sorts = new Set(['latest', 'price-low']);
-  const defaults = { query: '', category: '전체', sort: 'latest' };
+  const defaults = { query: '', category: '전체', sort: 'latest', source: 'all' };
 
   function readDealState(search = '') {
     const params = new URLSearchParams(String(search || '').replace(/^\?/, ''));
@@ -17,6 +17,7 @@
     const category = String(params.get('category') || '');
     const sort = String(params.get('sort') || '');
     return {
+      source: ['all', 'community', 'toss'].includes(params.get('source')) ? params.get('source') : 'all',
       query: query.length <= 100 ? query : defaults.query,
       category: categories.has(category) ? category : defaults.category,
       sort: sorts.has(sort) ? sort : defaults.sort,
@@ -26,15 +27,17 @@
   function buildDealStateUrl(currentUrl, state) {
     const url = new URL(String(currentUrl), 'https://easyshoopping.com');
     const normalized = readDealState(new URLSearchParams({
+      source: state?.source || 'all',
       q: state?.query || '',
       category: state?.category || '',
       sort: state?.sort || '',
     }).toString());
 
-    for (const key of ['q', 'category', 'sort']) url.searchParams.delete(key);
+    for (const key of ['q', 'category', 'sort', 'source']) url.searchParams.delete(key);
     if (normalized.query) url.searchParams.set('q', normalized.query);
     if (normalized.category !== defaults.category) url.searchParams.set('category', normalized.category);
     if (normalized.sort !== defaults.sort) url.searchParams.set('sort', normalized.sort);
+    if (normalized.source !== defaults.source) url.searchParams.set('source', normalized.source);
     return `${url.pathname}${url.search}${url.hash}`;
   }
 

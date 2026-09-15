@@ -1,5 +1,6 @@
 const express = require('express');
 const { InvalidQueryError } = require('./deal-store');
+const { TOSS_SHARELINK_DISCLOSURE } = require('./kakao-message');
 
 function toApiDeal(deal) {
   const isManual = deal.source === 'manual';
@@ -25,7 +26,7 @@ function toApiDeal(deal) {
       ? 'missing_merchant_url'
       : (deal.imageStatus || (publicImageUrl ? 'ready' : 'missing_merchant_url')),
     originalPrice: deal.originalPriceAmount ?? null,
-    description: deal.description ?? null,
+    description: deal.source === 'toss' ? TOSS_SHARELINK_DISCLOSURE : (deal.description ?? null),
     isManual,
     showOnHome: deal.showOnHome ?? false,
     priority: deal.priority ?? 0,
@@ -34,7 +35,7 @@ function toApiDeal(deal) {
   };
 }
 
-function createLiveDealsRouter(store, { imageBaseUrls = [], allowedSources = ['ppomppu', 'fmkorea', 'ruliweb', 'community', 'manual'] } = {}) {
+function createLiveDealsRouter(store, { imageBaseUrls = [], allowedSources = ['ppomppu', 'fmkorea', 'ruliweb', 'community', 'all', 'toss', 'manual'] } = {}) {
   const router = express.Router();
   const publicSources = new Set(allowedSources);
   const trustedImageBaseUrls = Object.freeze(
@@ -56,7 +57,8 @@ function createLiveDealsRouter(store, { imageBaseUrls = [], allowedSources = ['p
       }
       const result = await store.list({
         q: req.query.q,
-        source: requestedSource === 'community' ? ['ppomppu', 'fmkorea', 'ruliweb'] : requestedSource,
+        source: requestedSource === 'all' ? ['ppomppu', 'fmkorea', 'ruliweb', 'toss']
+          : requestedSource === 'community' ? ['ppomppu', 'fmkorea', 'ruliweb'] : requestedSource,
         category: req.query.category,
         sort: req.query.sort,
         featured: req.query.featured,

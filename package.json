@@ -15,7 +15,9 @@
     "image:backfill:agent:install": "node scripts/manage-image-backfill-launchagent.js install",
     "image:backfill:agent:status": "node scripts/manage-image-backfill-launchagent.js status",
     "image:backfill:agent:uninstall": "node scripts/manage-image-backfill-launchagent.js uninstall",
-    "canary:ppomppu": "node scripts/ppomppu-playwright-canary.js"
+    "canary:ppomppu": "node scripts/ppomppu-playwright-canary.js",
+    "toss:web:preview": "bash ops/macos/run-toss-web-sync.sh --dry-run",
+    "toss:web:sync": "bash ops/macos/run-toss-web-sync.sh --apply"
   },
   "engines": {
     "node": "26.8.2"

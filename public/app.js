@@ -1,5 +1,6 @@
 const state = {
   category: '전체',
+  source: 'all',
   sort: 'latest',
   query: '',
   deals: [],
@@ -13,6 +14,7 @@ const state = {
 
 const elements = {
   searchInput: document.querySelector('#searchInput'),
+  sourceFilter: document.querySelector('#sourceFilter'),
   phoneDeals: document.querySelector('#phone-deals'),
   phoneDealTitle: document.querySelector('#phone-deal-title'),
   phoneDealGrid: document.querySelector('#phoneDealGrid'),
@@ -84,14 +86,14 @@ function productCard(deal) {
         ${image}
       </div>
       <div class="card-body">
-        <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(deal.source)}</span></div>
+        <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(deal.source === 'toss' ? '제휴' : deal.source)}</span></div>
         <h3 class="card-title">${escapeHtml(deal.title)}</h3>
         <div class="price-row"><strong class="current-price">${formatPrice(deal.price)}</strong></div>
         ${deal.originalPrice != null ? `<p class="original-price">${formatPrice(deal.originalPrice)}</p>` : ''}
         ${deal.description ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}
         <div class="card-meta"><span>${escapeHtml(deal.postedAt)}</span><span>${escapeHtml(deal.category)}</span></div>
       </div>`, {
-    rel: deal.source === 'coupang' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
+    rel: ['coupang', 'toss'].includes(deal.source) ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
 
@@ -102,7 +104,10 @@ function popularItem(deal, index) {
   return DealCardLink.renderCardContainer('popular-item', deal.url, `
       <div class="rank-line"><span class="rank-number">${index + 1}</span>${visual}</div>
       <h3>${escapeHtml(deal.title)}</h3>
-      <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>`);
+      <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>
+      ${deal.source === 'toss' ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}`, {
+    rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
+  });
 }
 
 function latestItem(deal) {
@@ -111,8 +116,11 @@ function latestItem(deal) {
     : '';
   return DealCardLink.renderCardContainer('latest-item', deal.url, `
       <span class="latest-media" aria-hidden="true"><span class="latest-icon">${categoryEmoji(deal.category)}</span>${image}</span>
-      <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}</small></div>
-      <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>`);
+      <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}</small>
+        ${deal.source === 'toss' ? `<small class="affiliate-disclosure">${escapeHtml(deal.description)}</small>` : ''}</div>
+      <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>`, {
+    rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
+  });
 }
 
 function bindImageFallbacks(container) {
@@ -186,7 +194,7 @@ async function loadDeals({ scroll = false, append = false } = {}) {
       query: state.query,
       category: state.category,
       sort: state.sort,
-      source: 'community',
+      source: state.source,
       page: requestedPage,
       size: 8,
       signal: controller.signal,
@@ -253,7 +261,7 @@ async function loadHomeDeals() {
 
 async function loadPopular() {
   try {
-    const result = await DealPage.fetchLiveDealsPage({ source: 'community', page: 1, size: 5 });
+    const result = await DealPage.fetchLiveDealsPage({ source: 'all', page: 1, size: 5 });
     const deals = result.deals.map((deal) => DealUtils.normalizeDeal(deal));
     elements.popularList.classList.remove('skeleton-list');
     elements.popularList.innerHTML = deals.map(popularItem).join('');
@@ -275,7 +283,7 @@ function renderLatest(deals) {
 
 async function loadLatest() {
   try {
-    const result = await DealPage.fetchLiveDealsPage({ source: 'community', page: 1, size: 6, sort: 'latest' });
+    const result = await DealPage.fetchLiveDealsPage({ source: 'all', page: 1, size: 6, sort: 'latest' });
     renderLatest(result.deals.map((deal) => DealUtils.normalizeDeal(deal)));
   } catch (error) {
     console.error('최신 핫딜을 불러오지 못했습니다.', error);
@@ -292,6 +300,8 @@ function syncDealUrl(mode = 'push') {
 }
 
 function applyUrlState(nextState) {
+  state.source = nextState.source;
+  elements.sourceFilter.value = nextState.source;
   state.query = nextState.query;
   if (!state.query) window.MetaEvents?.resetSearch();
   state.category = nextState.category;
@@ -324,6 +334,12 @@ function runSearch(value, { scroll = true, updateUrl = true } = {}) {
   if (updateUrl) syncDealUrl('replace');
   loadDeals({ scroll });
 }
+
+elements.sourceFilter.addEventListener('change', () => {
+  state.source = elements.sourceFilter.value;
+  syncDealUrl();
+  loadDeals();
+});
 
 elements.categoryList.addEventListener('click', (event) => {
   const button = event.target.closest('[data-category]');
@@ -378,6 +394,8 @@ elements.loadMore.addEventListener('click', () => {
 });
 
 document.querySelector('#resetSearch').addEventListener('click', () => {
+  state.source = 'all';
+  elements.sourceFilter.value = 'all';
   elements.searchInput.value = '';
   state.query = '';
   window.MetaEvents?.resetSearch();

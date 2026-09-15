@@ -373,3 +373,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+.source-filter { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; font-size: 14px; font-weight: 600; }
+.source-filter select { font: inherit; color: inherit; background: #fff; border: 1px solid #dce3ee; border-radius: 8px; padding: 8px 12px; }
+.affiliate-disclosure { white-space: normal; line-height: 1.5; }

@@ -179,3 +179,24 @@ test('ruliweb은 공개 source이고 community alias는 세 커뮤니티를 함�
     'fmkorea', 'ruliweb', ['ppomppu', 'fmkorea', 'ruliweb'], 'ppomppu',
   ]);
 });
+
+test('Toss feed includes monetized link and disclosure, and all feed keeps community semantics separate', async () => {
+  const { pool, store } = await makeStore();
+  try {
+    await store.upsert({ source: 'toss', sourceItemId: '42', title: '토스 생수',
+      priceAmount: 5000, merchant: '토스쇼핑', originalUrl: 'https://toss.im/_m/Existing',
+      imageUrl: 'https://static.toss.im/image.jpg', publishedAt: new Date().toISOString() });
+    await withServer(store, async (base) => {
+      for (const source of ['toss', 'all']) {
+        const response = await fetch(`${base}/api/live-deals?source=${source}`);
+        assert.equal(response.status, 200);
+        const body = await response.json();
+        assert.equal(body.deals.length, 1);
+        assert.equal(body.deals[0].url, 'https://toss.im/_m/Existing');
+        assert.match(body.deals[0].description, /수수료/);
+      }
+      const community = await (await fetch(`${base}/api/live-deals?source=community`)).json();
+      assert.equal(community.total, 0);
+    });
+  } finally { await pool.end(); }
+});

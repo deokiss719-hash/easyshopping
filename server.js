@@ -332,7 +332,7 @@ async function start() {
 
   app.use('/api/live-deals', createLiveDealsRouter(store, {
     imageBaseUrls,
-    allowedSources: ['ppomppu', 'fmkorea', 'ruliweb', 'community', 'manual', ...(coupangRuntime.enabled ? ['coupang'] : [])],
+    allowedSources: ['ppomppu', 'fmkorea', 'ruliweb', 'community', 'all', 'toss', 'manual', ...(coupangRuntime.enabled ? ['coupang'] : [])],
   }));
   app.use(adminJsonErrorHandler);
   app.use(publicNotFound);

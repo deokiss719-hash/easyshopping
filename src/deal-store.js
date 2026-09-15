@@ -642,9 +642,10 @@ function createDealStore(pool) {
       }
       const conditions = [
         'd.is_ended = FALSE',
+        `(d.source <> 'toss' OR d.last_seen_at >= $1)`,
         `(d.source <> 'manual' OR (m.deal_id IS NOT NULL AND m.is_published = TRUE))`,
       ];
-      const values = [];
+      const values = [new Date(Date.now() - 30 * 60 * 1000).toISOString()];
 
       if (normalizedQuery) {
         values.push(normalizedQuery);

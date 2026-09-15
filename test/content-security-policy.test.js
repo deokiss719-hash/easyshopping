@@ -54,7 +54,7 @@ test('CSP는 FMKorea 이미지와 리다이렉트 CDN의 정확한 origin만 추
   const policy = buildContentSecurityPolicy({ enabled: false }, { enabled: false });
   assert.equal(policy,
     "default-src 'self'; "
-    + "img-src 'self' https://ppomppu.co.kr https://*.ppomppu.co.kr https://image.fmkorea.com https://ext.fmkorea.com https://i1.ruliweb.com https://i2.ruliweb.com https://i3.ruliweb.com https://*.coupangcdn.com https://www.facebook.com; "
+    + "img-src 'self' https://ppomppu.co.kr https://*.ppomppu.co.kr https://image.fmkorea.com https://static.toss.im https://shopping.toss.im https://ext.fmkorea.com https://i1.ruliweb.com https://i2.ruliweb.com https://i3.ruliweb.com https://*.coupangcdn.com https://www.facebook.com; "
     + "style-src 'self' https://cdn.jsdelivr.net; "
     + "font-src 'self' https://cdn.jsdelivr.net; "
     + "script-src 'self' https://connect.facebook.net; "

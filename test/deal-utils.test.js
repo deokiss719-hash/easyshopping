@@ -180,3 +180,10 @@ test('공개 사이트 설정은 휴대폰 섹션 제목을 보존하되 비정�
   }), { home_manual_limit: 4, phone_section_title: '오늘의 폰딜' });
   assert.equal((await fetchPublicSiteSettings({ fetchImpl: async () => ({ ok: true, json: async () => ({ phone_section_title: '' }) }) })).phone_section_title, '휴대폰 초특가 핫딜');
 });
+
+test('토스 이미지 서버만 허용하고 유사 도메인과 비보안 URL은 차단한다', () => {
+  const { safeImageUrl } = require('../public/deal-utils');
+  assert.equal(safeImageUrl('https://shopping.toss.im/image/a.jpg'), 'https://shopping.toss.im/image/a.jpg');
+  assert.equal(safeImageUrl('https://shopping.toss.im.evil.test/image.jpg'), '');
+  assert.equal(safeImageUrl('http://shopping.toss.im/image.jpg'), '');
+});

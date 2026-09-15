@@ -127,18 +127,18 @@ test('메인·실시간·최신 상품 영역은 이미지를 지연 로딩하�
   assert.match(styles, /\.latest-image[^}]*object-fit:\s*cover/);
 });
 
-test('공개 화면은 수동 휴대폰 특가를 전용 섹션에 표시하고 기본 목록은 커뮤니티만 조회한다', () => {
+test('공개 화면은 수동 휴대폰 특가를 전용 섹션에 표시하고 기본 목록은 선택한 출처를 조회한다', () => {
   assert.match(html, /section-kicker[^\n]*실시간 핫딜/);
   assert.match(script, /manual-deal-badge[^\n]*실시간 핫딜/);
   assert.doesNotMatch(html, /이지폰 특가/);
   assert.doesNotMatch(script, /이지폰 특가/);
   assert.match(styles, /\.manual-deal-badge\s*\{/);
-  assert.match(script, /DealPage\.fetchLiveDealsPage\(\{\s*query:\s*state\.query,[\s\S]*?source:\s*['"]community['"]/);
-  assert.match(script, /fetchLiveDealsPage\(\{\s*source:\s*['"]community['"],\s*page:\s*1,\s*size:\s*5\s*\}\)/);
+  assert.match(script, /DealPage\.fetchLiveDealsPage\(\{\s*query:\s*state\.query,[\s\S]*?source:\s*state\.source/);
+  assert.match(script, /fetchLiveDealsPage\(\{\s*source:\s*['"]all['"],\s*page:\s*1,\s*size:\s*5\s*\}\)/);
   assert.match(script, /source:\s*['"]manual['"][^\n]*featured:\s*true/);
   assert.match(script, /selectPhoneDeals\(deals,\s*\{\s*limit:\s*state\.siteSettings\.home_manual_limit\s*\}\)/);
   assert.match(script, /if \(state\.siteSettings\.home_manual_limit === 0\)/);
-  assert.match(script, /fetchLiveDealsPage\(\{\s*source:\s*['"]community['"],\s*page:\s*1,\s*size:\s*6,\s*sort:\s*['"]latest['"]\s*\}\)/);
+  assert.match(script, /fetchLiveDealsPage\(\{\s*source:\s*['"]all['"],\s*page:\s*1,\s*size:\s*6,\s*sort:\s*['"]latest['"]\s*\}\)/);
   assert.match(script, /fetchPublicSiteSettings/);
   assert.doesNotMatch(script, /mixHomeDeals\(/);
   assert.match(script, /home_manual_limit/);

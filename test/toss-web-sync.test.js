@@ -1,0 +1,121 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { createHash } = require('node:crypto');
+const { DatabaseSync } = require('node:sqlite');
+const { newDb, DataType } = require('pg-mem');
+const { migrate, createDealStore } = require('../src/deal-store');
+const { buildTossWebSnapshot, applyTossWebSnapshot, readSentTossPublications, syncTossWeb, safeTossImage } = require('../src/toss-web-sync');
+const SCHEMA = `CREATE TABLE kakao_auto_publications (deal_id TEXT PRIMARY KEY, source TEXT, title TEXT, price_text TEXT, price_amount INTEGER, original_url TEXT, first_seen_at TEXT, generated_message TEXT, message_hash TEXT, status TEXT, confirmation_proof TEXT, confirmed_at TEXT)`;
+const { TOSS_SHARELINK_DISCLOSURE } = require('../src/kakao-message');
+const now = new Date();
+function product(overrides = {}) {
+  return { rank: 1, tacaItemId: 10001, displayName: '올리브오일 1L',
+    thumbnailUrl: 'https://static.toss.im/image.jpg', productUrl: 'https://toss.shopping/product/10001',
+    displayPrice: 12900, originalPrice: 15900, discountRate: 18, isSoldOut: false,
+    reviewScore: 4.8, reviewCount: 321, ...overrides };
+}
+function publication(overrides = {}) {
+  const original_url = 'https://toss.im/_m/ExistingLink';
+  const generated_message = `${TOSS_SHARELINK_DISCLOSURE}\n상품\n${original_url}`;
+  return { deal_id: 'toss:10001', source: 'toss', original_url, confirmed_at: now.toISOString(),
+    confirmation_proof: 'exact-ui-match', generated_message,
+    message_hash: createHash('sha256').update(generated_message).digest('hex'), ...overrides };
+}
+const ranking = (items) => ({ items, hasNext: false, nextCursor: null });
+const snapshot = (products = [product()], publications = [publication()]) => buildTossWebSnapshot({ publications, ranking: ranking(products), now });
+async function database(t) {
+  const mem = newDb();
+  mem.public.registerFunction({ name: 'strpos', args: [DataType.text, DataType.text], returns: DataType.integer,
+    implementation: (text, term) => text.indexOf(term) + 1 });
+  const { Pool } = mem.adapters.createPg();
+  const pool = new Pool(); await migrate(pool); t.after(() => pool.end());
+  return { pool, store: createDealStore(pool) };
+}
+
+test('only confirmed products in current ranking use the existing monetized link and latest price', () => {
+  const result = snapshot([product(), product({ rank: 2, tacaItemId: 10002 })]);
+  assert.equal(result.deals.length, 1);
+  assert.equal(result.deals[0].originalUrl, publication().original_url);
+  assert.equal(result.deals[0].priceAmount, 12900);
+  assert.equal(result.deals[0].sourceItemId, '10001');
+  assert.equal(result.deals[0].publishedAt, now.toISOString());
+  assert.equal(snapshot([product({ isSoldOut: true })]).deals.length, 0);
+  assert.equal(snapshot([product({ tacaItemId: 10002 })]).deals.length, 0);
+});
+
+test('bad upstream snapshots or unverified links never produce a writeable batch', () => {
+  for (const items of [[], [product({ displayPrice: null })], [product(), product({ rank: 2 })], [product({ displayName: 'hello\nhttps://evil.test' })]]) {
+    assert.throws(() => snapshot(items));
+  }
+  for (const changes of [{ message_hash: '0'.repeat(64) }, { confirmation_proof: null },
+    { original_url: 'https://evil.test/_m/link' }, { confirmed_at: 'bad' }, { deal_id: 'toss:0' }]) {
+    assert.throws(() => snapshot([product()], [publication(changes)]));
+  }
+  assert.throws(() => buildTossWebSnapshot({ publications: [], ranking: { ...ranking([product()]), hasNext: true }, now }));
+});
+
+test('only exact known HTTPS image origin is allowed; untrusted images use a placeholder', () => {
+  assert.equal(safeTossImage('https://static.toss.im/image.jpg'), 'https://static.toss.im/image.jpg');
+  for (const url of ['http://static.toss.im/i', 'https://static.toss.im.evil.test/i', 'https://user@static.toss.im/i', 'https://127.0.0.1/i']) {
+    assert.equal(safeTossImage(url), null);
+  }
+  assert.equal(snapshot([product({ thumbnailUrl: 'https://unknown.test/image.jpg' })]).deals[0].imageUrl, null);
+});
+
+test('SQLite reader excludes sending, failed, uncertain and non-Toss rows without changing DB', () => {
+  const db = new DatabaseSync(':memory:'); db.exec(SCHEMA);
+  const row = publication();
+  for (const [i, status] of ['sent', 'sending', 'uncertain', 'failed', 'linking'].entries()) {
+    db.prepare(`INSERT INTO kakao_auto_publications (deal_id, source, title, price_text, price_amount,
+      original_url, first_seen_at, generated_message, message_hash, status, confirmation_proof, confirmed_at)
+      VALUES (?, 'toss', 'test', '100원', 100, ?, ?, ?, ?, ?, ?, ?)`).run(`toss:${10001 + i}`,
+      row.original_url, now.toISOString(), row.generated_message, row.message_hash, status, row.confirmation_proof, row.confirmed_at);
+  }
+  const before = db.prepare('SELECT * FROM kakao_auto_publications').all();
+  db.exec('PRAGMA query_only = ON');
+  assert.deepEqual(readSentTossPublications(db).map((r) => r.deal_id), ['toss:10001']);
+  assert.deepEqual(db.prepare('SELECT * FROM kakao_auto_publications').all(), before);
+  db.close();
+});
+
+test('sync is idempotent, refreshes price/image, expires missing products, preserves other sources', async (t) => {
+  const { pool, store } = await database(t);
+  await store.upsert({ source: 'ppomppu', sourceItemId: '10001', title: '커뮤니티', originalUrl: 'https://example.com' });
+  await applyTossWebSnapshot(pool, snapshot());
+  await applyTossWebSnapshot(pool, snapshot([product({ displayPrice: 9900, thumbnailUrl: 'https://static.toss.im/new.jpg' })]));
+  let result = await store.list({ source: 'toss' });
+  assert.equal(result.total, 1);
+  assert.equal(result.items[0].priceAmount, 9900);
+  assert.equal(result.items[0].imageUrl, 'https://static.toss.im/new.jpg');
+  assert.equal(result.items[0].originalUrl, publication().original_url);
+  assert.equal(result.items[0].description, TOSS_SHARELINK_DISCLOSURE);
+  await applyTossWebSnapshot(pool, snapshot([product({ isSoldOut: true })]));
+  assert.equal((await store.list({ source: 'toss' })).total, 0);
+  assert.equal((await store.list({ source: 'ppomppu' })).total, 1);
+  await applyTossWebSnapshot(pool, snapshot());
+  assert.equal((await store.list({ source: 'toss' })).total, 1);
+  assert.equal((await pool.query("SELECT * FROM deals WHERE source = 'toss'")).rowCount, 1);
+});
+
+test('stale Toss prices are hidden after 30 minutes without hiding community posts', async (t) => {
+  const { pool, store } = await database(t);
+  await applyTossWebSnapshot(pool, snapshot());
+  await store.upsert({ source: 'ppomppu', sourceItemId: 'old', title: '커뮤니티', originalUrl: 'https://example.com' });
+  await pool.query('UPDATE deals SET last_seen_at = $1', [new Date(now.getTime() - 31 * 60000).toISOString()]);
+  assert.equal((await store.list({ source: 'toss' })).total, 0);
+  assert.equal((await store.list({ source: 'ppomppu' })).total, 1);
+});
+
+test('dry run never requests a new link or touches PostgreSQL', async () => {
+  const db = { prepare: () => ({ all: () => [publication()] }) };
+  const result = await syncTossWeb({ db, pool: new Proxy({}, { get() { throw new Error('must not touch DB'); } }),
+    tossClient: { fetchBestSelling: async () => ranking([product()]), createLink() { throw new Error('must not issue link'); } }, now: () => now });
+  assert.equal(result.status, 'preview'); assert.equal(result.active, 1);
+});
+
+test('failed transaction rolls back and releases connection', async () => {
+  const calls = [];
+  const pool = { connect: async () => ({ async query(sql) { calls.push(sql); if (sql.includes('INSERT INTO deals')) throw new Error('write failed'); }, release() { calls.push('release'); } }) };
+  await assert.rejects(applyTossWebSnapshot(pool, snapshot()), /write failed/);
+  assert.equal(calls.at(-2), 'ROLLBACK'); assert.equal(calls.at(-1), 'release');
+});

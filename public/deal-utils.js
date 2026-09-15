@@ -41,6 +41,7 @@
       const ruliwebAllowed = url.origin === 'https://i1.ruliweb.com'
         || url.origin === 'https://i2.ruliweb.com'
         || url.origin === 'https://i3.ruliweb.com';
+      const tossAllowed = url.origin === 'https://static.toss.im' || url.origin === 'https://shopping.toss.im';
       const coupangAllowed = host.endsWith('.coupangcdn.com');
       const configuredAllowed = Array.isArray(allowedBaseUrls) && allowedBaseUrls.some((value) => {
         try {
@@ -52,7 +53,7 @@
           return false;
         }
       });
-      if (!legacyAllowed && !fmkoreaAllowed && !ruliwebAllowed && !coupangAllowed && !configuredAllowed) return '';
+      if (!legacyAllowed && !fmkoreaAllowed && !ruliwebAllowed && !coupangAllowed && !tossAllowed && !configuredAllowed) return '';
       if (host === 'localhost' || host.endsWith('.localhost') || host.includes(':')) return '';
       const octets = host.split('.').map(Number);
       if (octets.length === 4 && octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {

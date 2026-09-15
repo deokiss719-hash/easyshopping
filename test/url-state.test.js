@@ -6,12 +6,12 @@ const {
   buildDealStateUrl,
 } = require('../public/url-state');
 
-const defaults = { query: '', category: '전체', sort: 'latest' };
+const defaults = { query: '', category: '전체', sort: 'latest', source: 'all' };
 
 test('검색어, 카테고리, 정렬을 URL에서 복원한다', () => {
   assert.deepEqual(
     readDealState('?q=%EA%B0%A4%EB%9F%AD%EC%8B%9C&category=%EC%8B%9D%ED%92%88&sort=price-low'),
-    { query: '갤럭시', category: '식품', sort: 'price-low' },
+    { query: '갤럭시', category: '식품', sort: 'price-low', source: 'all' },
   );
 });
 
@@ -34,4 +34,13 @@ test('URL 생성은 기본값을 생략하고 기존 앵커와 무관한 query�
     '/?utm_source=test&q=%EC%95%84%EC%9D%B4%ED%8F%B0+15&category=%EB%94%94%EC%A7%80%ED%84%B8%2F%EA%B0%80%EC%A0%84&sort=price-low#all-deals',
   );
   assert.equal(buildDealStateUrl('/?q=old&category=%EC%8B%9D%ED%92%88&sort=price-low#all-deals', defaults), '/#all-deals');
+});
+
+
+test('토스 출처 필터는 새로고침과 공유 URL에서 유지한다', () => {
+  const state = readDealState('?source=toss&q=생수');
+  assert.equal(state.source, 'toss');
+  assert.equal(readDealState(buildDealStateUrl('/', state).slice(1)).source, 'toss');
+  assert.equal(readDealState('?source=unknown').source, 'all');
+  assert.equal(buildDealStateUrl('/?source=toss', defaults), '/');
 });
