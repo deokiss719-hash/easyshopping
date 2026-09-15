@@ -17,7 +17,7 @@ test('검색어, 카테고리, 정렬을 URL에서 복원한다', () => {
 
 test('알 수 없거나 과도한 query 값은 안전한 기본값으로 정규화한다', () => {
   assert.deepEqual(
-    readDealState(`?q=${'x'.repeat(101)}&category=unknown&sort=popular`),
+    readDealState(`?q=${'x'.repeat(101)}&category=unknown&sort=invalid`),
     defaults,
   );
   assert.deepEqual(readDealState('?q=%20%20%EC%95%84%EC%9D%B4%ED%8F%B0%20%20'), {

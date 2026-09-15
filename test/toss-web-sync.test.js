@@ -119,3 +119,50 @@ test('failed transaction rolls back and releases connection', async () => {
   await assert.rejects(applyTossWebSnapshot(pool, snapshot()), /write failed/);
   assert.equal(calls.at(-2), 'ROLLBACK'); assert.equal(calls.at(-1), 'release');
 });
+
+test('popular selection combines quality with Toss rank or observed web clicks', () => {
+ const {isPopularProduct}=require('../src/toss-web-sync');
+ assert.equal(isPopularProduct(product()),true);
+ assert.equal(isPopularProduct(product({reviewCount:99})),false);
+ assert.equal(isPopularProduct(product({reviewScore:4.4})),false);
+ assert.equal(isPopularProduct(product({rank:50}),2),false);
+ assert.equal(isPopularProduct(product({rank:50}),3),true);
+ assert.equal(isPopularProduct(product({rank:50,reviewScore:4.1}),100),false);
+});
+
+test('eligible web links allow unposted products; stale/low-quality selections expire; Kakao entries remain', () => {
+ const link={source_item_id:'10002',status:'ready',short_url:'https://toss.im/_m/WebLink',created_at:now.toISOString()};
+ const build=(p,clickCounts={})=>buildTossWebSnapshot({publications:[],ranking:ranking([p]),webLinks:[link],clickCounts,now});
+ assert.equal(build(product({tacaItemId:10002})).deals[0].originalUrl,link.short_url);
+ assert.equal(build(product({tacaItemId:10002,rank:50})).deals.length,0);
+ assert.equal(build(product({tacaItemId:10002,rank:50}),{'10002':3}).deals.length,1);
+ assert.equal(build(product({tacaItemId:10002,isSoldOut:true})).deals.length,0);
+ assert.equal(snapshot([product({reviewScore:4.1})]).deals.length,1);
+});
+
+test('link reservation survives timeout without duplicate issuance on next run',async(t)=>{
+ const {pool}=await database(t);
+ // pg-mem does not implement advisory locks. Supply the same successful lease result.
+ const query=pool.query.bind(pool),connect=pool.connect.bind(pool);
+ pool.connect=async()=>{const c=await connect();const q=c.query.bind(c);c.query=(sql,args)=>/pg_try_advisory_lock/.test(sql)?Promise.resolve({rows:[{acquired:true}]}):/pg_advisory_unlock/.test(sql)?Promise.resolve({rows:[{unlocked:true}]}):q(sql,args);return c;};
+ const db={prepare:()=>({all:()=>[]})};let issued=0;
+ const api={fetchBestSelling:async()=>ranking([product()]),createLink:async()=>{issued++;throw new Error('timeout');}};
+ const first=await syncTossWeb({pool,db,tossClient:api,dryRun:false,now:()=>now});
+ assert.equal(first.uncertainLinks,1);assert.equal(issued,1);
+ await syncTossWeb({pool,db,tossClient:api,dryRun:false,now:()=>now});assert.equal(issued,1);
+ assert.equal((await query('SELECT * FROM toss_web_links')).rows[0].status,'uncertain');
+});
+
+test('new popular product gets one link, uses fresh price, and reuses link on repeated sync',async(t)=>{
+ const {pool}=await database(t);
+ const connect=pool.connect.bind(pool);
+ pool.connect=async()=>{const c=await connect();const q=c.query.bind(c);c.query=(sql,args)=>/pg_try_advisory_lock/.test(sql)?Promise.resolve({rows:[{acquired:true}]}):/pg_advisory_unlock/.test(sql)?Promise.resolve({rows:[{unlocked:true}]}):q(sql,args);return c;};
+ const db={prepare:()=>({all:()=>[]})};let issued=0,reads=0;
+ const api={fetchBestSelling:async()=>{reads++;return ranking([product({displayPrice:reads===1?12900:9900})]);},createLink:async()=>{issued++;return {shortUrl:'https://toss.im/_m/newLink'};}};
+ const first=await syncTossWeb({pool,db,tossClient:api,dryRun:false,now:()=>new Date()});
+ assert.equal(first.linksIssued,1);assert.equal(first.upserted,1);
+ await syncTossWeb({pool,db,tossClient:api,dryRun:false,now:()=>new Date()});
+ assert.equal(issued,1);
+ const rows=(await pool.query("SELECT * FROM deals WHERE source='toss'")).rows;
+ assert.equal(rows.length,1);assert.equal(Number(rows[0].price_amount),9900);
+});

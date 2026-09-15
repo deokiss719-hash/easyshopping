@@ -31,6 +31,7 @@ const { createCollectionRunStore } = require('./src/collection-run-store');
 const { createOperationalHealth } = require('./src/operational-health');
 const { createHealthRouter } = require('./src/health-routes');
 const { createTrafficAnalytics, koreaDay } = require('./src/traffic-analytics');
+const { createDealClickStore, createDealClicksRouter } = require('./src/deal-clicks');
 const { createTrafficAnalyticsStore } = require('./src/traffic-analytics-store');
 const { readCoupangRuntime, runCoupangCollector } = require('./src/coupang-products');
 const {
@@ -225,6 +226,7 @@ async function start() {
       }),
     });
     if (adminRuntime.sessionSecret) {
+      app.use('/api/deal-clicks', createDealClicksRouter({ store: createDealClickStore(pool), secret: adminRuntime.sessionSecret }));
       trafficAnalytics = createTrafficAnalytics({
         store: analyticsStore,
         secret: adminRuntime.sessionSecret,

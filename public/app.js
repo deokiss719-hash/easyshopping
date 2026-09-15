@@ -90,9 +90,11 @@ function productCard(deal) {
         <h3 class="card-title">${escapeHtml(deal.title)}</h3>
         <div class="price-row"><strong class="current-price">${formatPrice(deal.price)}</strong></div>
         ${deal.originalPrice != null ? `<p class="original-price">${formatPrice(deal.originalPrice)}</p>` : ''}
+        ${deal.tossRank ? `<p class="card-benefit">토스 베스트 ${deal.tossRank}위 · 평점 ${deal.reviewScore} · 리뷰 ${won.format(deal.reviewCount)}개</p>` : ''}
         ${deal.description ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}
         <div class="card-meta"><span>${escapeHtml(deal.postedAt)}</span><span>${escapeHtml(deal.category)}</span></div>
       </div>`, {
+    dealId: deal.id,
     rel: ['coupang', 'toss'].includes(deal.source) ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
@@ -106,6 +108,7 @@ function popularItem(deal, index) {
       <h3>${escapeHtml(deal.title)}</h3>
       <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>
       ${deal.source === 'toss' ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}`, {
+    dealId: deal.id,
     rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
@@ -119,6 +122,7 @@ function latestItem(deal) {
       <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}</small>
         ${deal.source === 'toss' ? `<small class="affiliate-disclosure">${escapeHtml(deal.description)}</small>` : ''}</div>
       <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>`, {
+    dealId: deal.id,
     rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
@@ -261,7 +265,7 @@ async function loadHomeDeals() {
 
 async function loadPopular() {
   try {
-    const result = await DealPage.fetchLiveDealsPage({ source: 'all', page: 1, size: 5 });
+    const result = await DealPage.fetchLiveDealsPage({ source: 'all', page: 1, size: 5, sort: 'popular' });
     const deals = result.deals.map((deal) => DealUtils.normalizeDeal(deal));
     elements.popularList.classList.remove('skeleton-list');
     elements.popularList.innerHTML = deals.map(popularItem).join('');

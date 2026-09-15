@@ -155,3 +155,25 @@ CREATE TABLE IF NOT EXISTS traffic_daily_referrers (
   visitors BIGINT NOT NULL DEFAULT 0 CHECK (visitors >= 0),
   PRIMARY KEY (day, source, domain)
 );
+
+-- Public ranking metadata and first-party, daily-deduplicated product clicks.
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS toss_rank INTEGER;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS review_score NUMERIC;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS review_count INTEGER;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS is_popular BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE TABLE IF NOT EXISTS deal_clicks (
+  deal_id BIGINT NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  visitor_hash TEXT NOT NULL,
+  clicked_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (deal_id, visitor_hash)
+);
+CREATE INDEX IF NOT EXISTS deal_clicks_time_idx ON deal_clicks(clicked_at);
+CREATE TABLE IF NOT EXISTS toss_web_links (
+  source_item_id TEXT PRIMARY KEY,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'ready', 'uncertain')),
+  short_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE deal_clicks ADD COLUMN IF NOT EXISTS insert_marker TEXT;

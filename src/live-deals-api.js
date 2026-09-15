@@ -12,7 +12,8 @@ function toApiDeal(deal) {
   const publicImageUrl = deal.source === 'ruliweb' ? null : manualImageUrl;
   return {
     id: deal.id,
-    badge: deal.isEnded ? '종료' : (deal.badge || 'LIVE'),
+    badge: deal.isEnded ? '종료' : (deal.isPopular ? '인기' : (deal.badge || 'LIVE')),
+    tossRank: deal.tossRank ?? null, reviewScore: deal.reviewScore ?? null, reviewCount: deal.reviewCount ?? null, clicks24h: deal.clicks24h || 0,
     title: deal.title,
     price: deal.priceAmount,
     priceText: deal.priceText,

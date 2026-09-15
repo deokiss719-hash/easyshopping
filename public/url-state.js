@@ -8,7 +8,7 @@
     '육아/아동', '게임', '스포츠/레저', '반려동물', '자동차', '여행/숙박',
     '상품권/쿠폰', '기타',
   ]);
-  const sorts = new Set(['latest', 'price-low']);
+  const sorts = new Set(['latest', 'price-low', 'popular']);
   const defaults = { query: '', category: '전체', sort: 'latest', source: 'all' };
 
   function readDealState(search = '') {

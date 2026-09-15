@@ -21,12 +21,13 @@
     }
   }
 
-  function renderCardContainer(className, value, content, { rel = 'noopener noreferrer' } = {}) {
+  function renderCardContainer(className, value, content, { rel = 'noopener noreferrer', dealId = null } = {}) {
     const safeClassName = escapeAttribute(className);
     const url = safeExternalUrl(value);
     if (!url) return `<article class="${safeClassName}" aria-disabled="true">${content}</article>`;
     const safeRel = rel === 'sponsored noopener noreferrer' ? rel : 'noopener noreferrer';
-    return `<a class="${safeClassName}" href="${escapeAttribute(url)}" target="_blank" rel="${safeRel}">${content}</a>`;
+    const data = /^[1-9]\d{0,15}$/.test(String(dealId || '')) ? ` data-deal-id="${dealId}"` : '';
+    return `<a${data} class="${safeClassName}" href="${escapeAttribute(url)}" target="_blank" rel="${safeRel}">${content}</a>`;
   }
 
   return { renderCardContainer };

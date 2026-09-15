@@ -8,6 +8,7 @@ const MAX_PAGE = 10000;
 const MAX_PAGE_SIZE = 100;
 const MAX_QUERY_LENGTH = 100;
 const SORT_ORDERS = Object.freeze({
+  popular: 'COALESCE(c.click_count, 0) DESC, d.is_popular DESC, d.toss_rank ASC NULLS LAST, d.published_at DESC NULLS LAST, d.id DESC',
   latest: 'd.published_at DESC NULLS LAST, d.first_seen_at DESC, d.id DESC',
   'price-low': 'd.price_amount ASC NULLS LAST, d.published_at DESC NULLS LAST, d.id DESC',
 });
@@ -122,6 +123,9 @@ function mapDeal(row) {
     lastSeenAt: row.last_seen_at,
     endedAt: row.ended_at,
     isEnded: row.is_ended,
+    tossRank: row.toss_rank ?? null, reviewScore: row.review_score == null ? null : Number(row.review_score),
+    reviewCount: row.review_count ?? null, isPopular: row.is_popular === true,
+    clicks24h: Number(row.click_count || 0),
   };
   if (row.manual_id != null) {
     deal.manualId = String(row.manual_id);
@@ -645,7 +649,7 @@ function createDealStore(pool) {
         `(d.source <> 'toss' OR d.last_seen_at >= $1)`,
         `(d.source <> 'manual' OR (m.deal_id IS NOT NULL AND m.is_published = TRUE))`,
       ];
-      const values = [new Date(Date.now() - 30 * 60 * 1000).toISOString()];
+      const values = [new Date(Date.now() - 30 * 60 * 1000).toISOString(), new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()];
 
       if (normalizedQuery) {
         values.push(normalizedQuery);
@@ -679,12 +683,13 @@ function createDealStore(pool) {
           `SELECT COUNT(*) AS total
            FROM deals d
            LEFT JOIN manual_deals m ON d.source = 'manual' AND m.deal_id = d.id
+           LEFT JOIN (SELECT deal_id, COUNT(*) AS click_count FROM deal_clicks WHERE clicked_at >= $2 GROUP BY deal_id) c ON c.deal_id = d.id
            ${where}`,
           values,
         );
         const listValues = [...values, safeSize, (safePage - 1) * safeSize];
         const listResult = await client.query(
-          `SELECT d.*,
+          `SELECT d.*, c.click_count,
              m.id AS manual_id,
              (m.image_url IS NOT NULL) AS manual_has_image,
              m.original_price_amount AS manual_original_price_amount,
@@ -694,6 +699,7 @@ function createDealStore(pool) {
              m.priority AS manual_priority
            FROM deals d
            LEFT JOIN manual_deals m ON d.source = 'manual' AND m.deal_id = d.id
+           LEFT JOIN (SELECT deal_id, COUNT(*) AS click_count FROM deal_clicks WHERE clicked_at >= $2 GROUP BY deal_id) c ON c.deal_id = d.id
            ${where}
            ORDER BY ${orderBy}
            LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,

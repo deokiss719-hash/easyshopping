@@ -173,5 +173,5 @@ function createTrafficAnalytics({
 }
 
 module.exports = {
-  COOKIE_NAME, analyzeReferrer, classifyReferrer, createTrafficAnalytics, koreaDay, shouldTrackRequest,
+  cookieVisitor, BOT_PATTERN, COOKIE_NAME, analyzeReferrer, classifyReferrer, createTrafficAnalytics, koreaDay, shouldTrackRequest,
 };
