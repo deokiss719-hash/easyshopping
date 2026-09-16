@@ -10,7 +10,8 @@ const styles = fs.readFileSync(path.join(publicDir, 'styles.css'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
 
 test('공개 화면은 이지핫딜 브랜드명을 표시한다', () => {
-  assert.match(html, /<title>이지핫딜 — 오늘 뭐가 싸지\?<\/title>/);
+  assert.match(html, /<title>실시간 핫딜 모음·오늘의 특가 \| 이지핫딜<\/title>/);
+  assert.match(html, /<h1 id="hero-title">실시간 핫딜, 오늘 뭐가 싸지\?<\/h1>/);
   assert.match(html, /aria-label="이지핫딜 홈"/);
   assert.equal((html.match(/<span class="wordmark-name">이지핫딜<\/span>/g) || []).length, 2);
   assert.doesNotMatch(html, /이지쇼핑/);
@@ -24,11 +25,16 @@ test('검색봇에 대표 URL, 사이트맵, 이지핫딜 구조화 데이터를
   assert.match(html, /<script type="application\/ld\+json">/);
   assert.match(html, /"@type":\s*"WebSite"/);
   assert.match(html, /"@type":\s*"Organization"/);
+  assert.match(html, /"@type":\s*"SearchAction"/);
+  assert.match(html, /"urlTemplate":\s*"https:\/\/easyshoopping\.com\/\?q=\{search_term_string\}"/);
   assert.match(html, /"name":\s*"이지핫딜"/);
+  assert.match(html, /<meta name="keywords" content="실시간 핫딜, 핫딜 모음, 오늘의 핫딜, 특가 상품, 토스쇼핑 핫딜, 커뮤니티 핫딜, 할인 정보"/);
+  assert.match(html, /<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"/);
   assert.match(robots, /^User-agent: \*$/m);
   assert.match(robots, /^Disallow: \/admin\/$/m);
   assert.match(robots, /^Sitemap: https:\/\/easyshoopping\.com\/sitemap\.xml$/m);
   assert.match(sitemap, /<loc>https:\/\/easyshoopping\.com\/<\/loc>/);
+  assert.match(sitemap, /<lastmod>2026-09-16<\/lastmod>/);
 });
 
 test('로그인과 MY UI 및 관련 동작 코드가 제거되어 있다', () => {
