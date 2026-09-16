@@ -38,9 +38,14 @@ function validatePublication(row) {
 }
 
 const POPULAR_POLICY = Object.freeze({ maxRank: 30, minScore: 4.5, minReviews: 100, minClicks24h: 3 });
+const WEB_PRODUCT_LIMIT = 50;
+const MAX_NEW_LINKS_PER_SYNC = 48;
 function isPopularProduct(product, clicks = 0) {
   return product.reviewScore >= POPULAR_POLICY.minScore && product.reviewCount >= POPULAR_POLICY.minReviews
     && (product.rank <= POPULAR_POLICY.maxRank || clicks >= POPULAR_POLICY.minClicks24h);
+}
+function isWebProduct(product) {
+  return Number.isInteger(product.rank) && product.rank >= 1 && product.rank <= WEB_PRODUCT_LIMIT;
 }
 function validShortUrl(value) {
   try {
@@ -62,7 +67,7 @@ function buildTossWebSnapshot({ publications, ranking, webLinks = [], clickCount
     if (!item.isSoldOut) products.set(candidate.id, candidate);
   }
   const deals = new Map();
-  const popular = [...products.values()].filter((p) => isPopularProduct(p, clickCounts[p.tacaItemId] || 0));
+  const popular = [...products.values()].filter(isWebProduct);
   function add(product, url, publishedAt) {
     const image = safeTossImage(product.thumbnailUrl);
     deals.set(product.id, {
@@ -84,7 +89,7 @@ function buildTossWebSnapshot({ publications, ranking, webLinks = [], clickCount
     if (seen.has(row.deal_id)) throw new Error('Duplicate Toss publication');
     seen.add(row.deal_id);
     const product = products.get(row.deal_id);
-    if (product) add(product, row.original_url, row.confirmed_at);
+    if (product && isWebProduct(product)) add(product, row.original_url, row.confirmed_at);
   }
   for (const link of webLinks) {
     if (link.status !== 'ready') continue;
@@ -92,7 +97,7 @@ function buildTossWebSnapshot({ publications, ranking, webLinks = [], clickCount
     const product = products.get(`toss:${link.source_item_id}`);
     if (!product) continue;
     // Keep the web URL stable even if Kakao subsequently publishes this same product.
-    if (deals.has(product.id) || isPopularProduct(product, clickCounts[product.tacaItemId] || 0)) add(product, link.short_url, link.created_at);
+    if (deals.has(product.id) || isWebProduct(product)) add(product, link.short_url, link.created_at);
   }
   return { deals: [...deals.values()], popularCandidates: popular, observedAt: at.toISOString(), confirmedCount: publications.length };
 }
@@ -148,6 +153,7 @@ async function syncTossWeb({ pool, db, tossClient, dryRun = true, now = () => ne
     const reserved = new Set(links.map((r) => r.source_item_id));
     let issued = 0, uncertain = 0;
     for (const product of snapshot.popularCandidates) {
+      if (issued >= MAX_NEW_LINKS_PER_SYNC) break;
       const id = String(product.tacaItemId);
       if (existing.has(id) || reserved.has(id) || kakaoIds.has(product.id)) continue;
       // Persist the reservation BEFORE the external API call. Unknown outcomes never auto-retry.
@@ -175,4 +181,4 @@ async function syncTossWeb({ pool, db, tossClient, dryRun = true, now = () => ne
   const result = await createDealStore(pool).withCollectionLease('toss', run);
   return result || { status: 'skipped', reason: 'already_running' };
 }
-module.exports = { safeTossImage, readSentTossPublications, buildTossWebSnapshot, applyTossWebSnapshot, syncTossWeb, isPopularProduct, POPULAR_POLICY, readTossWebSignals };
+module.exports = { safeTossImage, readSentTossPublications, buildTossWebSnapshot, applyTossWebSnapshot, syncTossWeb, isPopularProduct, isWebProduct, POPULAR_POLICY, WEB_PRODUCT_LIMIT, MAX_NEW_LINKS_PER_SYNC, readTossWebSignals };

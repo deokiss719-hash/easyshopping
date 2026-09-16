@@ -97,11 +97,11 @@ test('sync is idempotent, refreshes price/image, expires missing products, prese
   assert.equal((await pool.query("SELECT * FROM deals WHERE source = 'toss'")).rowCount, 1);
 });
 
-test('stale Toss prices are hidden after 2 hours without hiding community posts', async (t) => {
+test('stale Toss prices are hidden after 26 hours without hiding community posts', async (t) => {
   const { pool, store } = await database(t);
   await applyTossWebSnapshot(pool, snapshot());
   await store.upsert({ source: 'ppomppu', sourceItemId: 'old', title: '커뮤니티', originalUrl: 'https://example.com' });
-  await pool.query('UPDATE deals SET last_seen_at = $1', [new Date(now.getTime() - 121 * 60000).toISOString()]);
+  await pool.query('UPDATE deals SET last_seen_at = $1', [new Date(now.getTime() - 1561 * 60000).toISOString()]);
   assert.equal((await store.list({ source: 'toss' })).total, 0);
   assert.equal((await store.list({ source: 'ppomppu' })).total, 1);
 });
@@ -130,12 +130,12 @@ test('popular selection combines quality with Toss rank or observed web clicks',
  assert.equal(isPopularProduct(product({rank:50,reviewScore:4.1}),100),false);
 });
 
-test('eligible web links allow unposted products; stale/low-quality selections expire; Kakao entries remain', () => {
+test('web links expose the current top 50 and expire products outside that range', () => {
  const link={source_item_id:'10002',status:'ready',short_url:'https://toss.im/_m/WebLink',created_at:now.toISOString()};
  const build=(p,clickCounts={})=>buildTossWebSnapshot({publications:[],ranking:ranking([p]),webLinks:[link],clickCounts,now});
  assert.equal(build(product({tacaItemId:10002})).deals[0].originalUrl,link.short_url);
- assert.equal(build(product({tacaItemId:10002,rank:50})).deals.length,0);
- assert.equal(build(product({tacaItemId:10002,rank:50}),{'10002':3}).deals.length,1);
+ assert.equal(build(product({tacaItemId:10002,rank:50})).deals.length,1);
+ assert.equal(build(product({tacaItemId:10002,rank:51}),{'10002':100}).deals.length,0);
  assert.equal(build(product({tacaItemId:10002,isSoldOut:true})).deals.length,0);
  assert.equal(snapshot([product({reviewScore:4.1})]).deals.length,1);
 });

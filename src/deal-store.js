@@ -7,7 +7,7 @@ const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
 const MAX_PAGE = 10000;
 const MAX_PAGE_SIZE = 100;
 const MAX_QUERY_LENGTH = 100;
-const TOSS_FRESHNESS_MS = 2 * 60 * 60 * 1000;
+const TOSS_FRESHNESS_MS = 26 * 60 * 60 * 1000;
 const SORT_ORDERS = Object.freeze({
   popular: 'COALESCE(c.click_count, 0) DESC, d.is_popular DESC, d.toss_rank ASC NULLS LAST, d.published_at DESC NULLS LAST, d.id DESC',
   latest: 'd.published_at DESC NULLS LAST, d.first_seen_at DESC, d.id DESC',

@@ -4,7 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const LABEL = 'com.easyhotdeal.toss-web-sync';
-const INTERVAL_SECONDS = 5400;
+const INTERVAL_SECONDS = 86400;
 const escape = (s) => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&apos;');
 function buildPlist({ projectDir, nodeBinary, logDir }) {
   for (const value of [projectDir, nodeBinary, logDir]) if (!path.isAbsolute(value)) throw new TypeError('Absolute paths required');
