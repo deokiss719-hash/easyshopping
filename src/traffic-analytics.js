@@ -95,7 +95,7 @@ function analyzeReferrer(value, siteHosts = new Set()) {
 }
 
 function shouldTrackRequest(req) {
-  if (req.method !== 'GET' || !['/', '/index.html'].includes(req.path)) return false;
+  if (req.method !== 'GET' || (!['/', '/index.html'].includes(req.path) && !/^\/(?:deals\/\d+|hot-deals\/[a-z-]+)$/.test(req.path))) return false;
   const userAgent = String(req.get('user-agent') || '').trim();
   if (!userAgent || BOT_PATTERN.test(userAgent)) return false;
   const purpose = `${req.get('purpose') || ''} ${req.get('sec-purpose') || ''}`;

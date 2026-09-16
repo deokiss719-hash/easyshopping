@@ -161,6 +161,45 @@ function balanceTossDeals(rows) {
 
 function createDealStore(pool) {
   return {
+    async getPublicById(id) {
+      const value = String(id || '');
+      if (!/^[1-9]\d{0,15}$/.test(value)) return null;
+      const result = await pool.query(
+        `SELECT d.*, NULL::bigint AS click_count,
+           m.id AS manual_id,
+           (m.image_url IS NOT NULL) AS manual_has_image,
+           m.original_price_amount AS manual_original_price_amount,
+           m.description AS manual_description,
+           m.badge AS manual_badge,
+           m.show_on_home AS manual_show_on_home,
+           m.priority AS manual_priority
+         FROM deals d
+         LEFT JOIN manual_deals m ON d.source = 'manual' AND m.deal_id = d.id
+         WHERE d.id = $1 AND d.is_ended = FALSE
+           AND (d.source <> 'toss' OR d.last_seen_at >= $2)
+           AND (d.source <> 'manual' OR (m.deal_id IS NOT NULL AND m.is_published = TRUE))
+         LIMIT 1`,
+        [value, new Date(Date.now() - TOSS_FRESHNESS_MS).toISOString()],
+      );
+      return result.rows[0] ? mapDeal(result.rows[0]) : null;
+    },
+
+    async listSitemapDeals({ limit = 5000 } = {}) {
+      const safeLimit = positiveInteger(limit, 'limit', 5000, 10000);
+      const result = await pool.query(
+        `SELECT d.id, COALESCE(d.last_seen_at, d.published_at, d.first_seen_at) AS updated_at
+         FROM deals d
+         LEFT JOIN manual_deals m ON d.source = 'manual' AND m.deal_id = d.id
+         WHERE d.is_ended = FALSE
+           AND (d.source <> 'toss' OR d.last_seen_at >= $1)
+           AND (d.source <> 'manual' OR (m.deal_id IS NOT NULL AND m.is_published = TRUE))
+         ORDER BY COALESCE(d.last_seen_at, d.published_at, d.first_seen_at) DESC, d.id DESC
+         LIMIT $2`,
+        [new Date(Date.now() - TOSS_FRESHNESS_MS).toISOString(), safeLimit],
+      );
+      return result.rows.map((row) => ({ id: String(row.id), updatedAt: new Date(row.updated_at).toISOString() }));
+    },
+
     async withCollectionLease(source, worker) {
       const normalizedSource = String(source || '').trim();
       if (!/^[a-z0-9_-]{1,64}$/i.test(normalizedSource)) throw new TypeError('source is invalid');

@@ -350,4 +350,48 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .source-filter { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; font-size: 14px; font-weight: 600; }
 .source-filter select { font: inherit; color: inherit; background: #fff; border: 1px solid #dce3ee; border-radius: 8px; padding: 8px 12px; }
 .partner-note { margin: -8px 0 20px; color: var(--text-tertiary); font-size: 11px; line-height: 1.5; }
+
+.seo-nav { margin-left: auto; display: flex; gap: 22px; color: var(--text-secondary); font-size: 13px; font-weight: 700; }
+.seo-footer { padding: 34px max(24px,calc((100% - var(--container))/2)); display: flex; justify-content: space-between; gap: 20px; color: var(--text-secondary); background: var(--background); font-size: 12px; }
+.seo-footer a { color: var(--primary); font-weight: 800; }
+.seo-breadcrumb { margin-bottom: 28px; display: flex; gap: 9px; color: var(--text-secondary); font-size: 12px; }
+.seo-breadcrumb a:hover { color: var(--primary); }
+.seo-detail, .seo-listing { padding: 54px 0 88px; }
+.seo-product { display: grid; grid-template-columns: minmax(280px,420px) minmax(0,1fr); gap: 46px; align-items: start; }
+.seo-product > img, .seo-image-placeholder { width: 100%; aspect-ratio: 1.2; object-fit: cover; background: var(--light-blue); border-radius: 24px; }
+.seo-image-placeholder { display: grid; place-items: center; color: var(--primary); font-size: 32px; font-weight: 900; }
+.seo-source { color: var(--primary); font-size: 13px; font-weight: 800; }
+.seo-product h1 { margin: 12px 0 20px; color: var(--navy); font-size: clamp(27px,4vw,42px); line-height: 1.28; letter-spacing: -.04em; word-break: keep-all; }
+.seo-price { display: block; margin-bottom: 22px; color: var(--navy); font-size: 30px; }
+.seo-product p { color: var(--text-secondary); line-height: 1.7; }
+.seo-checked { padding: 14px 16px; background: var(--background); border-radius: 12px; font-size: 13px; }
+.seo-buy { min-height: 52px; margin-top: 20px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; color: #fff; background: var(--primary); border-radius: 14px; font-weight: 800; }
+.seo-disclosure { margin-top: 11px; display: block; color: var(--text-tertiary); font-size: 11px; line-height: 1.5; }
+.seo-related { margin-top: 54px; padding: 25px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--background); border-radius: 18px; }
+.seo-related h2 { margin: 0; font-size: 18px; }
+.seo-related a, .seo-home-link { color: var(--primary); font-size: 13px; font-weight: 800; }
+.seo-listing > header { margin-bottom: 30px; }
+.seo-listing > header > span { color: var(--primary); font-size: 12px; font-weight: 800; }
+.seo-listing h1 { margin: 8px 0; color: var(--navy); font-size: clamp(30px,4vw,44px); letter-spacing: -.045em; }
+.seo-listing > header p { margin: 0; color: var(--text-secondary); line-height: 1.65; }
+.seo-deal-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
+.seo-deal-card { min-width: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--divider); border-radius: 18px; box-shadow: var(--shadow-sm); }
+.seo-deal-card > img, .seo-card-placeholder { width: 100%; aspect-ratio: 1.55; object-fit: cover; background: var(--light-blue); }
+.seo-card-placeholder { display: grid; place-items: center; color: var(--primary); font-weight: 900; }
+.seo-deal-card > div { padding: 16px; }
+.seo-deal-card span { color: var(--text-tertiary); font-size: 11px; }
+.seo-deal-card h2 { height: 44px; margin: 8px 0 12px; overflow: hidden; font-size: 15px; line-height: 1.45; }
+.seo-deal-card h2 a:hover { color: var(--primary); }
+.seo-deal-card strong { display: block; color: var(--navy); font-size: 18px; }
+.seo-card-link { margin-top: 16px; display: block; color: var(--primary); font-size: 12px; font-weight: 800; }
+.seo-home-link { margin-top: 28px; display: inline-block; }
+
+@media (max-width: 720px) {
+  .seo-nav { display: none; }
+  .seo-product { grid-template-columns: 1fr; gap: 28px; }
+  .seo-detail, .seo-listing { padding: 34px 0 64px; }
+  .seo-related { align-items: flex-start; flex-direction: column; }
+  .seo-deal-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+  .seo-footer { padding-bottom: 34px; flex-direction: column; }
+}
 .affiliate-disclosure { white-space: normal; line-height: 1.5; }

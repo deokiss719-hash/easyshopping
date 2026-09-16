@@ -35,6 +35,7 @@ test('검색봇에 대표 URL, 사이트맵, 이지핫딜 구조화 데이터를
   assert.match(robots, /^Sitemap: https:\/\/easyshoopping\.com\/sitemap\.xml$/m);
   assert.match(sitemap, /<loc>https:\/\/easyshoopping\.com\/<\/loc>/);
   assert.match(sitemap, /<lastmod>2026-09-16<\/lastmod>/);
+  for (const slug of ['food', 'digital', 'living', 'fashion']) assert.match(html, new RegExp(`href="/hot-deals/${slug}"`));
 });
 
 test('로그인과 MY UI 및 관련 동작 코드가 제거되어 있다', () => {

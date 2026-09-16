@@ -34,6 +34,7 @@ const { createTrafficAnalytics, koreaDay } = require('./src/traffic-analytics');
 const { createDealClickStore, createDealClicksRouter } = require('./src/deal-clicks');
 const { createTrafficAnalyticsStore } = require('./src/traffic-analytics-store');
 const { createCtaEventStore, createCtaEventsRouter } = require('./src/cta-events');
+const { createSeoPagesRouter } = require('./src/seo-pages');
 const { readCoupangRuntime, runCoupangCollector } = require('./src/coupang-products');
 const {
   readFmkoreaRuntime,
@@ -332,6 +333,7 @@ async function start() {
 
   app.use('/admin', createAdminUiRouter({ auth: adminAuth }));
   app.use(trafficAnalytics);
+  if (store) app.use(createSeoPagesRouter(store));
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.use('/api/live-deals', createLiveDealsRouter(store, {
