@@ -2,6 +2,7 @@ const express = require('express');
 const { createHash, randomUUID } = require('node:crypto');
 const { cookieVisitor, koreaDay, BOT_PATTERN } = require('./traffic-analytics');
 const adminCookie = require('./admin/admin-traffic-cookie');
+const TOSS_FRESHNESS_MS = 2 * 60 * 60 * 1000;
 
 function createDealClickStore(pool) {
   let purgedAt = 0;
@@ -15,7 +16,7 @@ function createDealClickStore(pool) {
           AND (d.source <> 'toss' OR d.last_seen_at >= $4)
           AND (d.source <> 'manual' OR m.is_published = TRUE)
         ON CONFLICT (deal_id, visitor_hash) DO NOTHING RETURNING insert_marker`,
-      [dealId, visitorHash, now.toISOString(), new Date(now.getTime()-1800000).toISOString(), insertMarker]);
+      [dealId, visitorHash, now.toISOString(), new Date(now.getTime()-TOSS_FRESHNESS_MS).toISOString(), insertMarker]);
       if (now.getTime() - purgedAt > 3600000) {
         await pool.query('DELETE FROM deal_clicks WHERE clicked_at < $1', [new Date(now.getTime()-48*3600000).toISOString()]);
         purgedAt = now.getTime();

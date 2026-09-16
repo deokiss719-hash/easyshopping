@@ -97,11 +97,11 @@ test('sync is idempotent, refreshes price/image, expires missing products, prese
   assert.equal((await pool.query("SELECT * FROM deals WHERE source = 'toss'")).rowCount, 1);
 });
 
-test('stale Toss prices are hidden after 30 minutes without hiding community posts', async (t) => {
+test('stale Toss prices are hidden after 2 hours without hiding community posts', async (t) => {
   const { pool, store } = await database(t);
   await applyTossWebSnapshot(pool, snapshot());
   await store.upsert({ source: 'ppomppu', sourceItemId: 'old', title: '커뮤니티', originalUrl: 'https://example.com' });
-  await pool.query('UPDATE deals SET last_seen_at = $1', [new Date(now.getTime() - 31 * 60000).toISOString()]);
+  await pool.query('UPDATE deals SET last_seen_at = $1', [new Date(now.getTime() - 121 * 60000).toISOString()]);
   assert.equal((await store.list({ source: 'toss' })).total, 0);
   assert.equal((await store.list({ source: 'ppomppu' })).total, 1);
 });

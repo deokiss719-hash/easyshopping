@@ -7,6 +7,7 @@ const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
 const MAX_PAGE = 10000;
 const MAX_PAGE_SIZE = 100;
 const MAX_QUERY_LENGTH = 100;
+const TOSS_FRESHNESS_MS = 2 * 60 * 60 * 1000;
 const SORT_ORDERS = Object.freeze({
   popular: 'COALESCE(c.click_count, 0) DESC, d.is_popular DESC, d.toss_rank ASC NULLS LAST, d.published_at DESC NULLS LAST, d.id DESC',
   latest: 'd.published_at DESC NULLS LAST, d.first_seen_at DESC, d.id DESC',
@@ -668,7 +669,7 @@ function createDealStore(pool) {
         `(d.source <> 'toss' OR d.last_seen_at >= $1)`,
         `(d.source <> 'manual' OR (m.deal_id IS NOT NULL AND m.is_published = TRUE))`,
       ];
-      const values = [new Date(Date.now() - 30 * 60 * 1000).toISOString(), new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()];
+      const values = [new Date(Date.now() - TOSS_FRESHNESS_MS).toISOString(), new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()];
 
       if (normalizedQuery) {
         values.push(normalizedQuery);

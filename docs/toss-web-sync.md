@@ -25,7 +25,7 @@ macOS 키체인의 기존 `easyshopping-toss-sharelink-{access-key,secret-key,me
 
 기본 DB: `~/Library/Application Support/EasyHotDeal/kakao-auto.sqlite`. 직접 CLI 실행 시 `KAKAO_AUTO_DB_PATH`로 바꿀 수 있다.
 
-설치할 때는 테스트가 끝난 고정된 릴리스 폴더에서 실행한다. 별도 LaunchAgent `com.easyhotdeal.toss-web-sync`가 설치 직후 및 600초마다 실행된다. Mac이 켜져 있고 사용자 세션이 살아 있어야 한다. 기존 카카오 발행기와 독립적이므로 발행 후 웹 반영까지 최대 약 10분 걸릴 수 있다.
+설치할 때는 테스트가 끝난 고정된 릴리스 폴더에서 실행한다. 별도 LaunchAgent `com.easyhotdeal.toss-web-sync`가 설치 직후 및 5,400초마다 실행된다. 토스 OpenAPI 일일 한도를 카카오 자동발행기와 함께 사용하므로 두 작업 모두 90분 간격을 유지한다. Mac이 켜져 있고 사용자 세션이 살아 있어야 한다.
 
 로그: `~/Library/Logs/EasyHotDeal/toss-web-sync.log`, `toss-web-sync.error.log`.
 
@@ -36,6 +36,6 @@ macOS 키체인의 기존 `easyshopping-toss-sharelink-{access-key,secret-key,me
 3. 실행 1회 뒤 동기화를 다시 실행해 중복이 없는지 확인한다.
 4. 브라우저에서 출처 필터·가격 정렬·더 보기와 상품 이미지·제휴 고지를 확인한다.
 
-중단은 해당 LaunchAgent만 `launchctl bootout`한다. 토스 상품은 마지막 갱신 30분 후 자동 숨김된다. 기존 커뮤니티 상품과 카카오 발행은 영향을 받지 않는다. 웹 코드 롤백은 Render에서 직전 배포 커밋을 다시 배포한다. 데이터 삭제는 필요 없다.
+중단은 해당 LaunchAgent만 `launchctl bootout`한다. 토스 상품은 마지막 갱신 2시간 후 자동 숨김된다. 기존 커뮤니티 상품과 카카오 발행은 영향을 받지 않는다. 웹 코드 롤백은 Render에서 직전 배포 커밋을 다시 배포한다. 데이터 삭제는 필요 없다.
 
 사이트 클릭은 서명된 방문 쿠키 기준 상품별 하루 1회 집계한다. 봇·관리자·다른 출처 요청은 제외한다. 최근 24시간 클릭 수로 인기순 정렬하며 동률이면 인기상품·토스 순위를 사용한다. 구매나 토스 내부 실적을 뜻하지 않는다. 클릭 해시는 48시간 뒤 정리한다. dry-run은 DB 없이 순위 기준 후보를 확인하므로 클릭 신호는 포함하지 않는다.
