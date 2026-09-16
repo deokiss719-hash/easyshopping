@@ -5,7 +5,6 @@ const state = {
   query: '',
   deals: [],
   homeDeals: [],
-  coupangDeals: [],
   page: 0,
   total: 0,
   hasNextPage: false,
@@ -18,7 +17,6 @@ const elements = {
   phoneDeals: document.querySelector('#phone-deals'),
   phoneDealTitle: document.querySelector('#phone-deal-title'),
   phoneDealGrid: document.querySelector('#phoneDealGrid'),
-  coupangProductGrid: document.querySelector('#coupangProductGrid'),
   dealGrid: document.querySelector('#dealGrid'),
   popularList: document.querySelector('#popularList'),
   latestList: document.querySelector('#latestList'),
@@ -96,7 +94,7 @@ function productCard(deal, { section = 'all-deals', position = 1 } = {}) {
         <div class="card-meta"><span>${escapeHtml(deal.postedAt)}</span><span>${escapeHtml(deal.category)}</span></div>
       </div>`, {
     dealId: deal.id, section, position,
-    rel: ['coupang', 'toss'].includes(deal.source) ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
+    rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
 
@@ -166,24 +164,6 @@ function renderPhoneDeals(deals) {
   elements.phoneDealGrid.innerHTML = phoneDeals.map((deal, index) => productCard(deal, { section: 'phone', position: index + 1 })).join('');
   elements.phoneDeals.hidden = phoneDeals.length === 0;
   bindImageFallbacks(elements.phoneDealGrid);
-}
-
-function renderCoupangDeals(deals) {
-  elements.coupangProductGrid.innerHTML = deals.map((deal, index) => productCard(deal, { section: 'coupang', position: index + 1 })).join('');
-  elements.coupangProductGrid.hidden = deals.length === 0;
-  bindImageFallbacks(elements.coupangProductGrid);
-}
-
-async function loadCoupangDeals() {
-  try {
-    const result = await DealPage.fetchLiveDealsPage({ source: 'coupang', page: 1, size: 8 });
-    state.coupangDeals = result.deals.map((deal) => DealUtils.normalizeDeal(deal));
-    renderCoupangDeals(state.coupangDeals);
-  } catch (error) {
-    if (error?.status !== 400) console.error('쿠팡 추천 상품을 불러오지 못했습니다.', error);
-    state.coupangDeals = [];
-    renderCoupangDeals([]);
-  }
 }
 
 async function loadDeals({ scroll = false, append = false } = {}) {
@@ -425,6 +405,5 @@ syncDealUrl('replace');
 Promise.all([
   loadPopular(),
   loadLatest(),
-  loadCoupangDeals(),
   loadSiteSettings().then(() => Promise.all([loadHomeDeals(), loadDeals()])),
 ]);

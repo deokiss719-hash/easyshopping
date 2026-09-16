@@ -37,24 +37,11 @@ test('로그인과 MY UI 및 관련 동작 코드가 제거되어 있다', () =>
   assert.doesNotMatch(styles, /my-button/);
 });
 
-test('쿠팡 파트너스 광고는 핫딜 링크와 분리된 독립 영역에서 필수 고지를 제공한다', () => {
-  const popularAt = html.indexOf('id="popular"');
-  const affiliateAt = html.indexOf('class="affiliate-section');
-  const categoriesAt = html.indexOf('id="categories"');
-
-  assert.ok(popularAt >= 0 && popularAt < affiliateAt && affiliateAt < categoriesAt);
-  assert.match(html, /href="https:\/\/link\.coupang\.com\/a\/[A-Za-z0-9]+"/);
-  assert.match(html, /rel="sponsored noopener noreferrer"/);
-  assert.doesNotMatch(html, /ads-partners\.coupang\.com|<iframe/);
-  assert.match(html, /쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다/);
-  assert.match(styles, /\.affiliate-section\s*\{/);
-  assert.match(styles, /\.affiliate-cta\s*\{/);
-  assert.match(styles, /\.affiliate-disclosure\s*\{[^}]*color:\s*var\(--text-secondary\)[^}]*font-size:\s*13px[^}]*font-weight:\s*600/);
-  assert.match(styles, /@media \(max-width:\s*720px\)[\s\S]*?\.section\.affiliate-section\s*\{\s*width:\s*100%/);
-  assert.match(styles, /@media \(max-width:\s*720px\)[\s\S]*?\.affiliate-card\s*\{[^}]*padding:\s*20px 0/);
-  assert.match(html, /id="coupangProductGrid"/);
-  assert.match(script, /source:\s*'coupang'/);
-  assert.match(script, /sponsored noopener noreferrer/);
+test('홈페이지에서 쿠팡 파트너스 홍보와 상품 호출을 노출하지 않는다', () => {
+  for (const content of [html, script, styles]) {
+    assert.doesNotMatch(content, /쿠팡 추천 상품|쿠팡 파트너스|link\.coupang\.com|coupangProductGrid|affiliate-section|affiliate-cta/);
+  }
+  assert.doesNotMatch(script, /source:\s*['"]coupang['"]/);
 });
 
 test('MY 제거 후 모바일 메뉴는 기존 네 항목을 균등 배치한다', () => {

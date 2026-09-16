@@ -3,7 +3,7 @@ const { createHash, randomUUID } = require('node:crypto');
 const { cookieVisitor, koreaDay, BOT_PATTERN } = require('./traffic-analytics');
 const adminCookie = require('./admin/admin-traffic-cookie');
 const TOSS_FRESHNESS_MS = 26 * 60 * 60 * 1000;
-const SECTIONS = new Set(['all-deals', 'popular', 'latest', 'phone', 'coupang']);
+const SECTIONS = new Set(['all-deals', 'popular', 'latest', 'phone']);
 
 function createDealClickStore(pool) {
   let purgedAt = 0;
