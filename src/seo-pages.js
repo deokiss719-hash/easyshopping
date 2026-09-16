@@ -1,4 +1,12 @@
 const express = require('express');
+const { toApiDeal } = require('./live-deals-api');
+function safeUrl(value) {
+  try { const url = new URL(String(value || '')); return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : ''; } catch { return ''; }
+}
+function publicImage(deal) {
+  const value = toApiDeal(deal).imageUrl;
+  return /^\/api\/public\/manual-deals\/\d+\/image$/.test(value || '') ? `https://easyshoopping.com${value}` : safeUrl(value);
+}
 
 const CATEGORY_PATHS = Object.freeze({
   digital: '디지털/가전', food: '식품', living: '생활/주방', fashion: '패션/의류',
@@ -22,9 +30,10 @@ function dealPage(deal) {
   const amount = price(deal.priceAmount);
   const description = `${deal.title} ${amount} ${sourceLabel(deal.source)} 핫딜 정보입니다. 가격과 판매 조건을 확인하세요.`.slice(0, 170);
   const categoryUrl = `/hot-deals/${CATEGORY_SLUGS[deal.category] || 'other'}`;
-  const image = deal.source === 'ruliweb' ? null : deal.imageUrl;
-  const body = `<section class="seo-detail section"><nav class="seo-breadcrumb" aria-label="경로"><a href="/">홈</a><span>›</span><a href="${categoryUrl}">${esc(deal.category || '기타')} 핫딜</a></nav><article class="seo-product">${image ? `<img src="${esc(image)}" alt="${esc(deal.title)}" referrerpolicy="no-referrer">` : `<div class="seo-image-placeholder" aria-hidden="true">HOT</div>`}<div><span class="seo-source">${esc(sourceLabel(deal.source))} · ${esc(deal.category || '기타')}</span><h1>${esc(deal.title)}</h1><strong class="seo-price">${amount}</strong>${deal.description && deal.source !== 'toss' ? `<p>${esc(deal.description)}</p>` : ''}<p class="seo-checked">최근 등록·확인된 핫딜이에요. 판매처에서 최종 가격과 품절 여부를 확인해 주세요.</p><a class="seo-buy" href="${esc(deal.originalUrl)}" target="_blank" rel="${deal.source === 'toss' ? 'sponsored ' : ''}noopener noreferrer">판매처에서 상품 확인하기 →</a>${deal.source === 'toss' ? '<small class="seo-disclosure">토스쇼핑 제휴 링크를 통해 구매가 발생하면 일정 수수료를 지급받을 수 있습니다.</small>' : ''}</div></article><aside class="seo-related"><h2>${esc(deal.category || '기타')}의 다른 할인 상품도 확인하세요</h2><a href="${categoryUrl}">${esc(deal.category || '기타')} 핫딜 전체 보기 →</a></aside></section>`;
-  const structuredData = { '@context': 'https://schema.org', '@type': 'Product', name: deal.title, image: image ? [image] : undefined, description, category: deal.category, offers: { '@type': 'Offer', url: deal.originalUrl, priceCurrency: 'KRW', price: deal.priceAmount ?? undefined, availability: 'https://schema.org/InStock' } };
+  const image = publicImage(deal);
+  const target = safeUrl(deal.originalUrl);
+  const body = `<section class="seo-detail section"><nav class="seo-breadcrumb" aria-label="경로"><a href="/">홈</a><span>›</span><a href="${categoryUrl}">${esc(deal.category || '기타')} 핫딜</a></nav><article class="seo-product">${image ? `<img src="${esc(image)}" alt="${esc(deal.title)}" referrerpolicy="no-referrer">` : `<div class="seo-image-placeholder" aria-hidden="true">HOT</div>`}<div><span class="seo-source">${esc(sourceLabel(deal.source))} · ${esc(deal.category || '기타')}</span><h1>${esc(deal.title)}</h1><strong class="seo-price">${amount}</strong>${deal.description && deal.source !== 'toss' ? `<p>${esc(deal.description)}</p>` : ''}<p class="seo-checked">수집된 할인 정보예요. 원문에서 최종 가격과 품절 여부를 확인해 주세요.</p><a class="seo-buy" href="${esc(target || canonical)}" target="_blank" rel="${deal.source === 'toss' ? 'sponsored ' : ''}noopener noreferrer">원문에서 상품 확인하기 →</a>${deal.source === 'toss' ? '<small class="seo-disclosure">토스쇼핑 제휴 링크를 통해 구매가 발생하면 일정 수수료를 지급받을 수 있습니다.</small>' : ''}</div></article><aside class="seo-related"><h2>${esc(deal.category || '기타')}의 다른 할인 상품도 확인하세요</h2><a href="${categoryUrl}">${esc(deal.category || '기타')} 핫딜 전체 보기 →</a></aside></section>`;
+  const structuredData = { '@context': 'https://schema.org', '@type': 'Product', name: deal.title, image: image ? [image] : undefined, description, category: deal.category, offers: Number.isSafeInteger(deal.priceAmount) && target ? { '@type': 'Offer', url: target, priceCurrency: 'KRW', price: deal.priceAmount } : undefined };
   return layout({ title: `${deal.title} ${amount} | 이지핫딜`, description, canonical, body, structuredData, image });
 }
 
@@ -32,7 +41,7 @@ function categoryPage(slug, category, deals) {
   const canonical = `https://easyshoopping.com/hot-deals/${slug}`;
   const title = `${category} 실시간 핫딜·오늘의 특가 | 이지핫딜`;
   const description = `${category} 분야의 오늘의 실시간 핫딜과 특가 상품을 모았습니다. 가격과 판매처를 한눈에 비교해 보세요.`;
-  const cards = deals.map((deal) => `<article class="seo-deal-card">${deal.imageUrl && deal.source !== 'ruliweb' ? `<img src="${esc(deal.imageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '<div class="seo-card-placeholder" aria-hidden="true">HOT</div>'}<div><span>${esc(sourceLabel(deal.source))}</span><h2><a href="/deals/${deal.id}">${esc(deal.title)}</a></h2><strong>${price(deal.priceAmount)}</strong><a class="seo-card-link" href="/deals/${deal.id}">핫딜 자세히 보기 →</a></div></article>`).join('');
+  const cards = deals.map((deal) => `<article class="seo-deal-card">${publicImage(deal) ? `<img src="${esc(publicImage(deal))}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '<div class="seo-card-placeholder" aria-hidden="true">HOT</div>'}<div><span>${esc(sourceLabel(deal.source))}</span><h2><a href="/deals/${deal.id}">${esc(deal.title)}</a></h2><strong>${price(deal.priceAmount)}</strong><a class="seo-card-link" href="/deals/${deal.id}">핫딜 자세히 보기 →</a></div></article>`).join('');
   const body = `<section class="seo-listing section"><nav class="seo-breadcrumb" aria-label="경로"><a href="/">홈</a><span>›</span><span>${esc(category)} 핫딜</span></nav><header><span>오늘의 특가</span><h1>${esc(category)} 실시간 핫딜</h1><p>${esc(description)}</p></header><div class="seo-deal-grid">${cards || '<p>현재 확인 가능한 상품을 준비하고 있어요.</p>'}</div><a class="seo-home-link" href="/?category=${encodeURIComponent(category)}#all-deals">전체 목록에서 더 보기 →</a></section>`;
   const structuredData = { '@context': 'https://schema.org', '@type': 'ItemList', name: `${category} 실시간 핫딜`, itemListElement: deals.map((deal, index) => ({ '@type': 'ListItem', position: index + 1, url: `https://easyshoopping.com/deals/${deal.id}`, name: deal.title })) };
   return layout({ title, description, canonical, body, structuredData });
@@ -48,7 +57,7 @@ function createSeoPagesRouter(store) {
   const router = express.Router();
   router.get('/sitemap.xml', async (_req, res, next) => { try { res.type('application/xml').send(sitemapXml(await store.listSitemapDeals())); } catch (error) { next(error); } });
   router.get('/deals/:id', async (req, res, next) => { try { const deal = await store.getPublicById(req.params.id); if (!deal) return next(); return res.type('html').send(dealPage(deal)); } catch (error) { return next(error); } });
-  router.get('/hot-deals/:slug', async (req, res, next) => { try { const category = CATEGORY_PATHS[req.params.slug]; if (!category) return next(); const result = await store.list({ source: ['ppomppu', 'fmkorea', 'ruliweb', 'toss'], category, sort: 'latest', page: 1, size: 24 }); return res.type('html').send(categoryPage(req.params.slug, category, result.items)); } catch (error) { return next(error); } });
+  router.get('/hot-deals/:slug', async (req, res, next) => { try { const category = Object.hasOwn(CATEGORY_PATHS, req.params.slug) ? CATEGORY_PATHS[req.params.slug] : null; if (!category) return next(); const result = await store.list({ source: ['ppomppu', 'fmkorea', 'ruliweb', 'toss'], category, sort: 'latest', page: 1, size: 24 }); return res.type('html').send(categoryPage(req.params.slug, category, result.items)); } catch (error) { return next(error); } });
   return router;
 }
 

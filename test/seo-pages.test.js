@@ -26,3 +26,30 @@ test('dynamic sitemap contains home, category and active detail URLs', () => {
   assert.match(xml, /https:\/\/easyshoopping\.com\/deals\/42/);
   assert.match(xml, /<lastmod>2026-09-16<\/lastmod>/);
 });
+
+test('detail escapes content, rejects executable URLs and does not claim verified inventory', () => {
+  const { dealPage } = require('../src/seo-pages');
+  const html = dealPage({ ...deal, title: '<script>alert(1)</script>', originalUrl: 'javascript:alert(1)' });
+  assert.doesNotMatch(html, /href="javascript:|<script>alert|schema.org\/InStock/);
+  assert.match(html, /&lt;script&gt;/);
+  const manual = dealPage({ ...deal, source: 'manual', manualId: '9', hasManualImage: true });
+  assert.match(manual, /https:\/\/easyshoopping.com\/api\/public\/manual-deals\/9\/image/);
+});
+
+test('public detail and sitemap exclude ended, stale Toss, drafts and unsupported sources', async (t) => {
+  const { newDb } = require('pg-mem');
+  const { migrate, createDealStore } = require('../src/deal-store');
+  const { Pool } = newDb().adapters.createPg(); const pool = new Pool();
+  t.after(() => pool.end()); await migrate(pool);
+  const store = createDealStore(pool);
+  const active = await store.upsert({ source: 'ppomppu', sourceItemId: 'a', title: '공개', originalUrl: 'https://example.com/a' });
+  const ended = await store.upsert({ source: 'ppomppu', sourceItemId: 'b', title: '종료', originalUrl: 'https://example.com/b' });
+  await pool.query('UPDATE deals SET is_ended=TRUE WHERE id=$1', [ended.id]);
+  const stale = await store.upsert({ source: 'toss', sourceItemId: 'c', title: '오래됨', originalUrl: 'https://example.com/c' });
+  await pool.query('UPDATE deals SET last_seen_at=$1 WHERE id=$2', [new Date(Date.now()-48*3600000).toISOString(), stale.id]);
+  const draft = await store.upsert({ source: 'manual', sourceItemId: 'd', title: '초안', originalUrl: 'https://example.com/d' });
+  const other = await store.upsert({ source: 'coupang', sourceItemId: 'e', title: '제외', originalUrl: 'https://example.com/e' });
+  assert.equal((await store.getPublicById(active.id)).title, '공개');
+  for (const row of [ended, stale, draft, other]) assert.equal(await store.getPublicById(row.id), null);
+  assert.deepEqual((await store.listSitemapDeals()).map(x=>x.id), [active.id]);
+});

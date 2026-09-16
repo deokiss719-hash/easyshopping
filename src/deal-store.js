@@ -176,6 +176,7 @@ function createDealStore(pool) {
          FROM deals d
          LEFT JOIN manual_deals m ON d.source = 'manual' AND m.deal_id = d.id
          WHERE d.id = $1 AND d.is_ended = FALSE
+           AND d.source IN ('ppomppu', 'fmkorea', 'ruliweb', 'toss', 'manual')
            AND (d.source <> 'toss' OR d.last_seen_at >= $2)
            AND (d.source <> 'manual' OR (m.deal_id IS NOT NULL AND m.is_published = TRUE))
          LIMIT 1`,
@@ -191,6 +192,7 @@ function createDealStore(pool) {
          FROM deals d
          LEFT JOIN manual_deals m ON d.source = 'manual' AND m.deal_id = d.id
          WHERE d.is_ended = FALSE
+           AND d.source IN ('ppomppu', 'fmkorea', 'ruliweb', 'toss', 'manual')
            AND (d.source <> 'toss' OR d.last_seen_at >= $1)
            AND (d.source <> 'manual' OR (m.deal_id IS NOT NULL AND m.is_published = TRUE))
          ORDER BY COALESCE(d.last_seen_at, d.published_at, d.first_seen_at) DESC, d.id DESC
