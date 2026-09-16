@@ -86,8 +86,10 @@
           href="https://open.kakao.com/o/pQIoypNi"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="이지핫딜 카톡방 입장하기 (새 창)"
-        >이지핫딜 카톡방 입장하기</a>
+          aria-label="카카오톡으로 핫딜 알림받기 (새 창)"
+          data-kakao-placement="hero"
+        >놓치기 전에 카톡으로 핫딜 알림받기</a>
+        <small class="kakao-room-benefit">인기 상품만 골라서 빠르게 알려드려요.</small>
       </div>
       <div class="hero-search-wrap">
         <label class="hero-search" for="searchInput">
@@ -171,6 +173,10 @@
       <div id="dealGrid" class="deal-grid skeleton-grid" aria-live="polite">
         <div class="card-skeleton"></div><div class="card-skeleton"></div><div class="card-skeleton"></div><div class="card-skeleton"></div>
       </div>
+      <aside class="kakao-mid-banner" aria-label="카카오톡 핫딜 알림">
+        <div><strong>마음에 드는 핫딜을 놓치지 마세요</strong><span>새로운 인기 상품을 카카오톡으로 받아보세요.</span></div>
+        <a href="https://open.kakao.com/o/pQIoypNi" target="_blank" rel="noopener noreferrer" data-kakao-placement="middle">카톡 알림받기 <span aria-hidden="true">→</span></a>
+      </aside>
       <div id="emptyState" class="empty-state" hidden>
         <div class="empty-illustration" aria-hidden="true">?</div>
         <h3>아직 이 상품의 핫딜이 없어요.</h3>
@@ -209,6 +215,8 @@
     <a href="#popular"><span>♨</span>실시간</a>
   </nav>
 
+  <a class="kakao-mobile-cta" href="https://open.kakao.com/o/pQIoypNi" target="_blank" rel="noopener noreferrer" data-kakao-placement="mobile" aria-label="카카오톡으로 핫딜 알림받기 (새 창)">카톡으로 핫딜 알림받기</a>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/deal-utils.js" defer></script>
   <script src="/deal-page.js" defer></script>
@@ -216,6 +224,7 @@
   <script src="/deal-card-link.js" defer></script>
   <script src="/meta-events.js" defer></script>
   <script src="/deal-clicks.js" defer></script>
+  <script src="/cta-events.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

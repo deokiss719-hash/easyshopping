@@ -180,6 +180,24 @@
     const clicks = sections.reduce((sum, row) => sum + Number(row.clicks || 0), 0);
     byId('stat-impressions-today').textContent = impressions.toLocaleString('ko-KR');
     byId('stat-ctr-today').textContent = impressions ? `${(clicks / impressions * 100).toFixed(1)}%` : '0%';
+    const ctaMetrics = Array.isArray(data.ctaMetrics) ? data.ctaMetrics : [];
+    const ctaImpressions = ctaMetrics.reduce((sum, row) => sum + Number(row.impressions || 0), 0);
+    const ctaClicks = ctaMetrics.reduce((sum, row) => sum + Number(row.clicks || 0), 0);
+    byId('stat-kakao-clicks').textContent = ctaClicks.toLocaleString('ko-KR');
+    byId('stat-kakao-ctr').textContent = ctaImpressions ? `${(ctaClicks / ctaImpressions * 100).toFixed(1)}%` : '0%';
+    const kakaoPerformance = byId('kakao-performance');
+    kakaoPerformance.replaceChildren();
+    const placementLabels = { hero: '상단', middle: '상품 목록 중간', mobile: '모바일 고정' };
+    if (!ctaMetrics.length) kakaoPerformance.append(textNode('p', '아직 오늘 카카오 버튼 기록이 없습니다.', 'empty-copy'));
+    ctaMetrics.forEach((row) => {
+      const item = document.createElement('div');
+      item.className = 'referrer-item';
+      const copy = document.createElement('div');
+      copy.append(textNode('strong', placementLabels[row.placement] || row.placement));
+      copy.append(textNode('span', `노출 ${Number(row.impressions || 0).toLocaleString('ko-KR')}회`));
+      item.append(copy, textNode('b', `${Number(row.clicks || 0).toLocaleString('ko-KR')}회`));
+      kakaoPerformance.append(item);
+    });
     const performance = byId('deal-performance');
     performance.replaceChildren();
     const deals = metrics.filter((row) => row.dealId).slice(0, 10);

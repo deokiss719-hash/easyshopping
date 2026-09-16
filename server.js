@@ -33,6 +33,7 @@ const { createHealthRouter } = require('./src/health-routes');
 const { createTrafficAnalytics, koreaDay } = require('./src/traffic-analytics');
 const { createDealClickStore, createDealClicksRouter } = require('./src/deal-clicks');
 const { createTrafficAnalyticsStore } = require('./src/traffic-analytics-store');
+const { createCtaEventStore, createCtaEventsRouter } = require('./src/cta-events');
 const { readCoupangRuntime, runCoupangCollector } = require('./src/coupang-products');
 const {
   readFmkoreaRuntime,
@@ -227,6 +228,7 @@ async function start() {
     });
     if (adminRuntime.sessionSecret) {
       app.use('/api/deal-clicks', createDealClicksRouter({ store: createDealClickStore(pool), secret: adminRuntime.sessionSecret }));
+      app.use('/api/cta-events', createCtaEventsRouter({ store: createCtaEventStore(pool), secret: adminRuntime.sessionSecret }));
       trafficAnalytics = createTrafficAnalytics({
         store: analyticsStore,
         secret: adminRuntime.sessionSecret,

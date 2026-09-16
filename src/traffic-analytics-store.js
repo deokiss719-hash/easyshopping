@@ -131,7 +131,7 @@ function createTrafficAnalyticsStore(pool, { detailLimit = 200, resultLimit = 10
 
     async getDay(day) {
       if (!validDay(day)) throw new TypeError('invalid analytics day');
-      const [aggregateResult, detailResult, sectionMetrics, topDealMetrics] = await Promise.all([
+      const [aggregateResult, detailResult, sectionMetrics, topDealMetrics, ctaMetrics] = await Promise.all([
         timedQuery(
           pool,
           `WITH daily_stats AS (
@@ -166,6 +166,10 @@ function createTrafficAnalyticsStore(pool, { detailLimit = 200, resultLimit = 10
           FROM deal_daily_metrics m JOIN deals d ON d.id=m.deal_id
           WHERE m.day=$1::date GROUP BY d.id,d.title,d.source
           ORDER BY clicks DESC, impressions DESC LIMIT 20`, [day]),
+        timedQuery(pool, `SELECT placement,
+          COUNT(*) FILTER (WHERE event='impression') impressions,
+          COUNT(*) FILTER (WHERE event='click') clicks
+          FROM cta_daily_events WHERE day=$1::date GROUP BY placement ORDER BY placement`, [day]),
       ]);
       const first = aggregateResult.rows[0] || { page_views: 0, unique_visitors: 0 };
       return {
@@ -189,6 +193,11 @@ function createTrafficAnalyticsStore(pool, { detailLimit = 200, resultLimit = 10
           section: row.section || null, dealId: row.deal_id ? String(row.deal_id) : null,
           title: row.title || null, source: row.source || null,
           impressions: safeCount(row.impressions, 'deal impressions'), clicks: safeCount(row.clicks, 'deal clicks'),
+        })),
+        ctaMetrics: ctaMetrics.rows.map((row) => ({
+          placement: row.placement,
+          impressions: safeCount(row.impressions, 'CTA impressions'),
+          clicks: safeCount(row.clicks, 'CTA clicks'),
         })),
         referrerDetailLimit: resultLimit,
       };

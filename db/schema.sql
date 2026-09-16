@@ -197,3 +197,13 @@ CREATE TABLE IF NOT EXISTS deal_daily_metrics (
   PRIMARY KEY (day, deal_id, section)
 );
 CREATE INDEX IF NOT EXISTS deal_daily_metrics_day_idx ON deal_daily_metrics(day);
+
+CREATE TABLE IF NOT EXISTS cta_daily_events (
+  day DATE NOT NULL,
+  visitor_hash TEXT NOT NULL,
+  placement VARCHAR(16) NOT NULL CHECK (placement IN ('hero', 'middle', 'mobile')),
+  event VARCHAR(16) NOT NULL CHECK (event IN ('impression', 'click')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (day, visitor_hash, placement, event)
+);
+CREATE INDEX IF NOT EXISTS cta_daily_events_day_idx ON cta_daily_events(day);

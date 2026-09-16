@@ -15,7 +15,7 @@ async function setup() {
 test('traffic migration is idempotent and creates aggregate tables', async () => {
   const { pool } = await setup();
   await migrate(pool);
-  for (const table of ['traffic_daily', 'traffic_daily_visitors', 'traffic_daily_referrers']) {
+  for (const table of ['traffic_daily', 'traffic_daily_visitors', 'traffic_daily_referrers', 'cta_daily_events']) {
     assert.equal((await pool.query(`SELECT * FROM ${table} LIMIT 1`)).rowCount, 0);
   }
   await pool.end();
@@ -41,6 +41,7 @@ test('traffic store counts page views, daily browsers, and first-touch sources',
       { source: 'search', domain: 'search.naver.com', visitors: 1, searchTerm: '갤럭시', referrerUrl: 'https://search.naver.com/search.naver?query=%EA%B0%A4%EB%9F%AD%EC%8B%9C' },
     ],
     dealMetrics: [],
+    ctaMetrics: [],
     referrerDetailLimit: 100,
   });
   await pool.end();
