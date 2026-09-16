@@ -174,6 +174,25 @@
     byId('stat-visitors-today').textContent = Number(data.uniqueVisitors || 0).toLocaleString('ko-KR');
     byId('stat-pageviews-today').textContent = Number(data.pageViews || 0).toLocaleString('ko-KR');
     byId('analytics-day').textContent = `${String(data.day || '')} · 한국시간 기준`;
+    const metrics = Array.isArray(data.dealMetrics) ? data.dealMetrics : [];
+    const sections = metrics.filter((row) => row.section);
+    const impressions = sections.reduce((sum, row) => sum + Number(row.impressions || 0), 0);
+    const clicks = sections.reduce((sum, row) => sum + Number(row.clicks || 0), 0);
+    byId('stat-impressions-today').textContent = impressions.toLocaleString('ko-KR');
+    byId('stat-ctr-today').textContent = impressions ? `${(clicks / impressions * 100).toFixed(1)}%` : '0%';
+    const performance = byId('deal-performance');
+    performance.replaceChildren();
+    const deals = metrics.filter((row) => row.dealId).slice(0, 10);
+    if (!deals.length) performance.append(textNode('p', '아직 오늘 상품 클릭이 없습니다.', 'empty-copy'));
+    deals.forEach((row) => {
+      const item = document.createElement('div');
+      item.className = 'referrer-item';
+      const copy = document.createElement('div');
+      copy.append(textNode('strong', row.title || `상품 ${row.dealId}`));
+      copy.append(textNode('span', `${row.source || '기타'} · 노출 ${Number(row.impressions || 0).toLocaleString('ko-KR')}회`));
+      item.append(copy, textNode('b', `${Number(row.clicks || 0).toLocaleString('ko-KR')}회`));
+      performance.append(item);
+    });
     renderTrafficRows(
       byId('referrer-breakdown'),
       Array.isArray(data.referrers) ? data.referrers : [],

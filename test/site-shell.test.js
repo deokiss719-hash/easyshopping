@@ -163,7 +163,7 @@ test('휴대폰 초특가 섹션은 검색 바로 뒤, 빠른 메뉴 앞에 있�
   assert.match(html, /id="phoneDealGrid"/);
   assert.match(script, /selectPhoneDeals\(/);
   assert.match(script, /phone_section_title/);
-  assert.match(script, /elements\.phoneDealGrid\.innerHTML\s*=\s*phoneDeals\.map\(productCard\)/);
+  assert.match(script, /elements\.phoneDealGrid\.innerHTML\s*=\s*phoneDeals\.map/);
   assert.match(script, /class="original-price"/);
 });
 

@@ -4,7 +4,8 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const LABEL = 'com.easyhotdeal.toss-web-sync';
-const INTERVAL_SECONDS = 86400;
+const SCHEDULE_HOUR = 0;
+const SCHEDULE_MINUTE = 10;
 const escape = (s) => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&apos;');
 function buildPlist({ projectDir, nodeBinary, logDir }) {
   for (const value of [projectDir, nodeBinary, logDir]) if (!path.isAbsolute(value)) throw new TypeError('Absolute paths required');
@@ -15,7 +16,7 @@ function buildPlist({ projectDir, nodeBinary, logDir }) {
 <key>ProgramArguments</key><array><string>/bin/bash</string><string>${escape(path.join(projectDir,'ops/macos/run-toss-web-sync.sh'))}</string><string>--apply</string></array>
 <key>WorkingDirectory</key><string>${escape(projectDir)}</string>
 <key>EnvironmentVariables</key><dict><key>EASYHOTDEAL_PROJECT_DIR</key><string>${escape(projectDir)}</string><key>EASYHOTDEAL_NODE_BINARY</key><string>${escape(nodeBinary)}</string><key>USER</key><string>${escape(os.userInfo().username)}</string></dict>
-<key>StartInterval</key><integer>${INTERVAL_SECONDS}</integer>
+<key>StartCalendarInterval</key><dict><key>Hour</key><integer>${SCHEDULE_HOUR}</integer><key>Minute</key><integer>${SCHEDULE_MINUTE}</integer></dict>
 <key>RunAtLoad</key><true/>
 <key>ProcessType</key><string>Background</string>
 <key>StandardOutPath</key><string>${escape(path.join(logDir,'toss-web-sync.log'))}</string>
@@ -33,7 +34,7 @@ function install() {
   fs.writeFileSync(plist,buildPlist({projectDir,nodeBinary:process.execPath,logDir}),{mode:0o600,flag:'wx'});
   execFileSync('/usr/bin/plutil',['-lint',plist],{stdio:'pipe'});
   execFileSync('/bin/launchctl',['bootstrap',`gui/${process.getuid()}`,plist],{stdio:'pipe'});
-  return {status:'installed',label:LABEL,intervalSeconds:INTERVAL_SECONDS};
+  return {status:'installed',label:LABEL,schedule:{hour:SCHEDULE_HOUR,minute:SCHEDULE_MINUTE}};
 }
 if(require.main===module){
  try {
@@ -41,4 +42,4 @@ if(require.main===module){
   console.log(JSON.stringify(install()));
  } catch {console.error('{"status":"error","reason":"toss_web_agent_install_failed"}');process.exitCode=1;}
 }
-module.exports={buildPlist,install,LABEL,INTERVAL_SECONDS};
+module.exports={buildPlist,install,LABEL,SCHEDULE_HOUR,SCHEDULE_MINUTE};

@@ -177,3 +177,23 @@ CREATE TABLE IF NOT EXISTS toss_web_links (
 );
 
 ALTER TABLE deal_clicks ADD COLUMN IF NOT EXISTS insert_marker TEXT;
+
+CREATE TABLE IF NOT EXISTS deal_impressions (
+  day DATE NOT NULL,
+  deal_id BIGINT NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  visitor_hash TEXT NOT NULL,
+  section VARCHAR(32) NOT NULL,
+  seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (day, deal_id, visitor_hash, section)
+);
+CREATE INDEX IF NOT EXISTS deal_impressions_time_idx ON deal_impressions(seen_at);
+
+CREATE TABLE IF NOT EXISTS deal_daily_metrics (
+  day DATE NOT NULL,
+  deal_id BIGINT NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  section VARCHAR(32) NOT NULL,
+  impressions BIGINT NOT NULL DEFAULT 0 CHECK (impressions >= 0),
+  clicks BIGINT NOT NULL DEFAULT 0 CHECK (clicks >= 0),
+  PRIMARY KEY (day, deal_id, section)
+);
+CREATE INDEX IF NOT EXISTS deal_daily_metrics_day_idx ON deal_daily_metrics(day);

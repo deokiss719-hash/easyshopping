@@ -40,6 +40,7 @@ test('traffic store counts page views, daily browsers, and first-touch sources',
     referrerDetails: [
       { source: 'search', domain: 'search.naver.com', visitors: 1, searchTerm: '갤럭시', referrerUrl: 'https://search.naver.com/search.naver?query=%EA%B0%A4%EB%9F%AD%EC%8B%9C' },
     ],
+    dealMetrics: [],
     referrerDetailLimit: 100,
   });
   await pool.end();

@@ -54,12 +54,12 @@ test('click endpoint accepts signed first-party visitor, ignores bots, cross-sit
  assert.match(records[0].visitorHash,/^[a-f0-9]{64}$/);assert.equal(Object.keys(records[0]).includes('ip'),false);
 });
 
-test('browser tracking sends only a deal ID, deduplicates, and never intercepts navigation', () => {
+test('browser tracking sends bounded click context, deduplicates, and never intercepts navigation', () => {
  const vm=require('node:vm');const fs=require('node:fs');const handlers={},events=[];
  const root={document:{addEventListener:(name,fn)=>handlers[name]=fn},navigator:{sendBeacon:(url,body)=>{events.push({url,body});return true;}}};
  vm.runInNewContext(fs.readFileSync(require.resolve('../public/deal-clicks.js'),'utf8'),{window:root,Blob});
  const event={isTrusted:true,type:'click',target:{closest:()=>({dataset:{dealId:'42'}})},preventDefault(){throw new Error('must not block navigation');}};
  handlers.click({...event,isTrusted:false});assert.equal(events.length,0);
  handlers.click(event);handlers.click(event);assert.equal(events.length,1);assert.equal(events[0].url,'/api/deal-clicks');
- return events[0].body.text().then(text=>assert.deepEqual(JSON.parse(text),{dealId:'42'}));
+ return events[0].body.text().then(text=>assert.deepEqual(JSON.parse(text),{dealId:'42',event:'click',section:'all-deals',position:1}));
 });

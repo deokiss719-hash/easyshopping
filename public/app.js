@@ -71,7 +71,7 @@ function showToast(message) {
   toastTimer = setTimeout(() => elements.toast.classList.remove('show'), 2200);
 }
 
-function productCard(deal) {
+function productCard(deal, { section = 'all-deals', position = 1 } = {}) {
   const image = deal.imageUrl
     ? `<img class="product-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
     : '';
@@ -92,9 +92,10 @@ function productCard(deal) {
         ${deal.originalPrice != null ? `<p class="original-price">${formatPrice(deal.originalPrice)}</p>` : ''}
         ${deal.tossRank ? `<p class="card-benefit">토스 베스트 ${deal.tossRank}위 · 평점 ${deal.reviewScore} · 리뷰 ${won.format(deal.reviewCount)}개</p>` : ''}
         ${deal.description ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}
+        <span class="deal-cta">상품 보러가기 <span aria-hidden="true">→</span></span>
         <div class="card-meta"><span>${escapeHtml(deal.postedAt)}</span><span>${escapeHtml(deal.category)}</span></div>
       </div>`, {
-    dealId: deal.id,
+    dealId: deal.id, section, position,
     rel: ['coupang', 'toss'].includes(deal.source) ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
@@ -108,12 +109,12 @@ function popularItem(deal, index) {
       <h3>${escapeHtml(deal.title)}</h3>
       <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>
       ${deal.source === 'toss' ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}`, {
-    dealId: deal.id,
+    dealId: deal.id, section: 'popular', position: index + 1,
     rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
 
-function latestItem(deal) {
+function latestItem(deal, index = 0) {
   const image = deal.imageUrl
     ? `<img class="latest-image deal-image" src="${escapeHtml(deal.imageUrl)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" />`
     : '';
@@ -122,7 +123,7 @@ function latestItem(deal) {
       <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}</small>
         ${deal.source === 'toss' ? `<small class="affiliate-disclosure">${escapeHtml(deal.description)}</small>` : ''}</div>
       <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>`, {
-    dealId: deal.id,
+    dealId: deal.id, section: 'latest', position: index + 1,
     rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
@@ -136,7 +137,7 @@ function bindImageFallbacks(container) {
 function renderDeals() {
   const visibleDeals = state.deals;
   elements.dealGrid.classList.remove('skeleton-grid');
-  elements.dealGrid.innerHTML = visibleDeals.map(productCard).join('');
+  elements.dealGrid.innerHTML = visibleDeals.map((deal, index) => productCard(deal, { section: 'all-deals', position: index + 1 })).join('');
 
   const hasResults = visibleDeals.length > 0;
   elements.dealGrid.hidden = !hasResults;
@@ -162,13 +163,13 @@ function renderDeals() {
 function renderPhoneDeals(deals) {
   const phoneDeals = DealUtils.selectPhoneDeals(deals, { limit: state.siteSettings.home_manual_limit });
   elements.phoneDealTitle.textContent = state.siteSettings.phone_section_title;
-  elements.phoneDealGrid.innerHTML = phoneDeals.map(productCard).join('');
+  elements.phoneDealGrid.innerHTML = phoneDeals.map((deal, index) => productCard(deal, { section: 'phone', position: index + 1 })).join('');
   elements.phoneDeals.hidden = phoneDeals.length === 0;
   bindImageFallbacks(elements.phoneDealGrid);
 }
 
 function renderCoupangDeals(deals) {
-  elements.coupangProductGrid.innerHTML = deals.map(productCard).join('');
+  elements.coupangProductGrid.innerHTML = deals.map((deal, index) => productCard(deal, { section: 'coupang', position: index + 1 })).join('');
   elements.coupangProductGrid.hidden = deals.length === 0;
   bindImageFallbacks(elements.coupangProductGrid);
 }
@@ -200,7 +201,7 @@ async function loadDeals({ scroll = false, append = false } = {}) {
       sort: state.sort,
       source: state.source,
       page: requestedPage,
-      size: 8,
+      size: 12,
       signal: controller.signal,
     });
     if (sequence !== dealsRequestSequence || controller !== dealsController) return;
