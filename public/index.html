@@ -109,12 +109,6 @@
         </div>
         <div id="phoneDealGrid" class="deal-grid" aria-live="polite"></div>
       </section>
-      <div class="quick-menu" aria-label="빠른 메뉴">
-        <a href="#popular"><span class="quick-icon red">🔥</span><strong>실시간 핫딜</strong><small>지금 올라온 상품</small></a>
-        <a href="#latest"><span class="quick-icon yellow">⚡</span><strong>최신 핫딜</strong><small>방금 올라온 딜</small></a>
-        <button type="button" data-quick-category="디지털/가전"><span class="quick-icon blue">📱</span><strong>디지털/가전</strong><small>IT·가전</small></button>
-        <button type="button" data-quick-category="식품"><span class="quick-icon mint">🍔</span><strong>식품</strong><small>먹거리 특가</small></button>
-      </div>
     </section>
 
     <section class="popular-section section" id="popular" aria-labelledby="popular-title">
@@ -142,14 +136,15 @@
         <button class="category-item" data-category="패션/의류"><span>👟</span><strong>패션/의류</strong></button>
         <button class="category-item" data-category="뷰티"><span>🧴</span><strong>뷰티</strong></button>
         <button class="category-item" data-category="건강"><span>💊</span><strong>건강</strong></button>
-        <button class="category-item" data-category="육아/아동"><span>🍼</span><strong>육아/아동</strong></button>
-        <button class="category-item" data-category="게임"><span>🎮</span><strong>게임</strong></button>
-        <button class="category-item" data-category="스포츠/레저"><span>🏕️</span><strong>스포츠/레저</strong></button>
-        <button class="category-item" data-category="반려동물"><span>🐾</span><strong>반려동물</strong></button>
-        <button class="category-item" data-category="자동차"><span>🚗</span><strong>자동차</strong></button>
-        <button class="category-item" data-category="여행/숙박"><span>✈️</span><strong>여행/숙박</strong></button>
-        <button class="category-item" data-category="상품권/쿠폰"><span>🎟️</span><strong>상품권/쿠폰</strong></button>
-        <button class="category-item" data-category="기타"><span>＋</span><strong>기타</strong></button>
+        <button class="category-item category-secondary" data-category="육아/아동"><span>🍼</span><strong>육아/아동</strong></button>
+        <button class="category-item category-secondary" data-category="게임"><span>🎮</span><strong>게임</strong></button>
+        <button class="category-item category-secondary" data-category="스포츠/레저"><span>🏕️</span><strong>스포츠/레저</strong></button>
+        <button class="category-item category-secondary" data-category="반려동물"><span>🐾</span><strong>반려동물</strong></button>
+        <button class="category-item category-secondary" data-category="자동차"><span>🚗</span><strong>자동차</strong></button>
+        <button class="category-item category-secondary" data-category="여행/숙박"><span>✈️</span><strong>여행/숙박</strong></button>
+        <button class="category-item category-secondary" data-category="상품권/쿠폰"><span>🎟️</span><strong>상품권/쿠폰</strong></button>
+        <button class="category-item category-secondary" data-category="기타"><span>＋</span><strong>기타</strong></button>
+        <button id="categoryMore" class="category-more" type="button" aria-expanded="false">카테고리 더보기 <span aria-hidden="true">＋</span></button>
       </div>
     </section>
 
@@ -172,6 +167,7 @@
           <option value="toss">토스쇼핑</option>
         </select>
       </label>
+      <p class="partner-note">토스쇼핑 상품은 제휴 링크를 포함하며, 구매가 발생하면 일정 수수료를 지급받을 수 있습니다.</p>
       <div id="dealGrid" class="deal-grid skeleton-grid" aria-live="polite">
         <div class="card-skeleton"></div><div class="card-skeleton"></div><div class="card-skeleton"></div><div class="card-skeleton"></div>
       </div>

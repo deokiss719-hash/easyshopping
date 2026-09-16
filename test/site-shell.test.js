@@ -141,17 +141,34 @@ test('상품 목록은 전체 페이지를 선다운로드하지 않고 서버 �
   assert.match(script, /new AbortController\(\)/);
 });
 
-test('휴대폰 초특가 섹션은 검색 바로 뒤, 빠른 메뉴 앞에 있고 설정 제목과 공용 카드를 쓴다', () => {
+test('휴대폰 초특가 섹션은 검색 바로 뒤에 가로형 공용 카드로 표시된다', () => {
   const searchAt = html.indexOf('class="hero-search-wrap"');
   const phoneAt = html.indexOf('id="phone-deals"');
-  const quickAt = html.indexOf('class="quick-menu"');
-  assert.ok(searchAt >= 0 && searchAt < phoneAt && phoneAt < quickAt);
+  assert.ok(searchAt >= 0 && searchAt < phoneAt);
+  assert.doesNotMatch(html, /class="quick-menu"|data-quick-category/);
+  assert.doesNotMatch(styles, /\.quick-menu/);
   assert.match(html, /id="phone-deal-title"/);
   assert.match(html, /id="phoneDealGrid"/);
   assert.match(script, /selectPhoneDeals\(/);
   assert.match(script, /phone_section_title/);
   assert.match(script, /elements\.phoneDealGrid\.innerHTML\s*=\s*phoneDeals\.map/);
   assert.match(script, /class="original-price"/);
+  assert.match(styles, /\.phone-deals \.deal-grid\s*\{[^}]*display:\s*flex[^}]*overflow-x:\s*auto/);
+});
+
+test('주요 카테고리를 먼저 보여주고 나머지는 더보기로 펼친다', () => {
+  assert.match(html, /id="categoryMore"[^>]*aria-expanded="false"/);
+  assert.match(html, /class="category-item category-secondary"/);
+  assert.match(script, /categoryList\.classList\.toggle\('expanded'\)/);
+  assert.match(styles, /\.category-secondary\s*\{\s*display:\s*none/);
+  assert.match(styles, /\.category-list\.expanded \.category-secondary\s*\{\s*display:\s*flex/);
+});
+
+test('상품 출처는 고객용 한글 이름으로 표시하고 토스 제휴 고지는 한 번 제공한다', () => {
+  assert.match(script, /ppomppu:\s*'뽐뿌'/);
+  assert.match(script, /manual:\s*'이지핫딜'/);
+  assert.doesNotMatch(script, /deal\.source === 'toss' \? '제휴' : deal\.source/);
+  assert.match(html, /class="partner-note"[^>]*>토스쇼핑 상품은 제휴 링크/);
 });
 
 test('검색 입력은 기존 검색 박스 전체를 label로 유지하고 시각적 문구 없이 접근 가능한 이름을 제공한다', () => {

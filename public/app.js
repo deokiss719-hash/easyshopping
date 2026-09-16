@@ -62,6 +62,11 @@ function categoryEmoji(category) {
   }[category] || '✨';
 }
 
+function sourceLabel(source) {
+  return { toss: '토스쇼핑 · 제휴', ppomppu: '뽐뿌', fmkorea: '에펨코리아', ruliweb: '루리웹', manual: '이지핫딜' }[source]
+    || '커뮤니티';
+}
+
 function showToast(message) {
   clearTimeout(toastTimer);
   elements.toast.textContent = message;
@@ -84,12 +89,12 @@ function productCard(deal, { section = 'all-deals', position = 1 } = {}) {
         ${image}
       </div>
       <div class="card-body">
-        <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(deal.source === 'toss' ? '제휴' : deal.source)}</span></div>
+        <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(sourceLabel(deal.source))}</span></div>
         <h3 class="card-title">${escapeHtml(deal.title)}</h3>
         <div class="price-row"><strong class="current-price">${formatPrice(deal.price)}</strong></div>
         ${deal.originalPrice != null ? `<p class="original-price">${formatPrice(deal.originalPrice)}</p>` : ''}
         ${deal.tossRank ? `<p class="card-benefit">토스 베스트 ${deal.tossRank}위 · 평점 ${deal.reviewScore} · 리뷰 ${won.format(deal.reviewCount)}개</p>` : ''}
-        ${deal.description ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}
+        ${deal.description && deal.source !== 'toss' ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}
         <span class="deal-cta">상품 보러가기 <span aria-hidden="true">→</span></span>
         <div class="card-meta"><span>${escapeHtml(deal.postedAt)}</span><span>${escapeHtml(deal.category)}</span></div>
       </div>`, {
@@ -106,7 +111,7 @@ function popularItem(deal, index) {
       <div class="rank-line"><span class="rank-number">${index + 1}</span>${visual}</div>
       <h3>${escapeHtml(deal.title)}</h3>
       <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>
-      ${deal.source === 'toss' ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}`, {
+      ${deal.source === 'toss' ? '<p class="card-benefit">토스쇼핑 제휴 상품</p>' : ''}`, {
     dealId: deal.id, section: 'popular', position: index + 1,
     rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
@@ -118,8 +123,7 @@ function latestItem(deal, index = 0) {
     : '';
   return DealCardLink.renderCardContainer('latest-item', deal.url, `
       <span class="latest-media" aria-hidden="true"><span class="latest-icon">${categoryEmoji(deal.category)}</span>${image}</span>
-      <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}</small>
-        ${deal.source === 'toss' ? `<small class="affiliate-disclosure">${escapeHtml(deal.description)}</small>` : ''}</div>
+      <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}${deal.source === 'toss' ? ' · 제휴' : ''}</small></div>
       <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>`, {
     dealId: deal.id, section: 'latest', position: index + 1,
     rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
@@ -290,6 +294,11 @@ function applyUrlState(nextState) {
   state.query = nextState.query;
   if (!state.query) window.MetaEvents?.resetSearch();
   state.category = nextState.category;
+  if (elements.categoryList.querySelector(`.category-secondary[data-category="${CSS.escape(nextState.category)}"]`)) {
+    elements.categoryList.classList.add('expanded');
+    document.querySelector('#categoryMore').setAttribute('aria-expanded', 'true');
+    document.querySelector('#categoryMore').firstChild.textContent = '카테고리 접기 ';
+  }
   state.sort = nextState.sort;
   elements.searchInput.value = nextState.query;
   elements.categoryList.querySelectorAll('[data-category]').forEach((button) => {
@@ -331,8 +340,10 @@ elements.categoryList.addEventListener('click', (event) => {
   if (button) setCategory(button.dataset.category);
 });
 
-document.querySelectorAll('[data-quick-category]').forEach((button) => {
-  button.addEventListener('click', () => setCategory(button.dataset.quickCategory));
+document.querySelector('#categoryMore').addEventListener('click', (event) => {
+  const expanded = elements.categoryList.classList.toggle('expanded');
+  event.currentTarget.setAttribute('aria-expanded', String(expanded));
+  event.currentTarget.firstChild.textContent = expanded ? '카테고리 접기 ' : '카테고리 더보기 ';
 });
 
 document.querySelectorAll('.sort-control button').forEach((button) => {
