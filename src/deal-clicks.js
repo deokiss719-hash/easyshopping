@@ -55,6 +55,12 @@ function createDealClicksRouter({ store, secret, now = () => new Date() }) {
   if (key.length < 32) throw new TypeError('analytics secret is required');
   const router = express.Router();
   const rates = new Map();
+  router.get('/meta-eligibility', (req, res) => {
+    const agent = String(req.get('user-agent') || '');
+    res.set('Cache-Control', 'no-store');
+    return res.json({ eligible: Boolean(agent) && !BOT_PATTERN.test(agent)
+      && !adminCookie.isValid(req.get('cookie'), key, now()) });
+  });
   router.post('/', async (req, res) => {
     const at = now();
     const agent = String(req.get('user-agent') || '');
