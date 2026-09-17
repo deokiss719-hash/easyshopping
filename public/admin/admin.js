@@ -60,6 +60,7 @@
     byId('sidebar')?.classList.remove('open');
     byId('scrim')?.classList.remove('open');
     byId('menu-toggle')?.setAttribute('aria-expanded', 'false');
+    if (viewId === 'community' && state.csrfToken) void loadCommunity();
   }
 
   function textNode(tag, text, className) {
@@ -1107,6 +1108,9 @@
       state.csrfToken = session.csrfToken;
       byId('admin-user').textContent = session.username || '';
       await Promise.all([loadDeals(), loadSettings(), loadTraffic(), loadDaily(), loadOperations(), loadProducts(), loadInquiries(), loadCommunity()]);
+      window.setInterval(() => {
+        if (!document.hidden && byId('community')?.classList.contains('active')) void loadCommunity();
+      }, 15000);
     } catch (error) {
       showMessage('status-message', errorMessage(error, '관리자 데이터를 불러오지 못했습니다.'), 'error');
     }
