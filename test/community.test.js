@@ -179,12 +179,19 @@ test('admin reply is stored as a clearly identified admin comment', async () => 
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '관리자 답변', body: '본문', answerRequested: true }, 'a'.repeat(64));
-  await store.adminReply(created.post.id, { body: '이지폰 답변입니다.' });
+  const first = await store.createComment(created.post.id, { body: '사용자 댓글' }, 'b'.repeat(64));
+  const reply = await store.adminReply(created.post.id, { body: '이지폰 답변입니다.', parentCommentId: first.id });
+  const nested = await store.adminReply(created.post.id, { body: '관리자 추가 대댓글입니다.', parentCommentId: reply.id });
   const detail = await store.getPost(created.post.id, 'a'.repeat(64));
   assert.equal(detail.post.answered, true);
-  assert.equal(detail.comments[0].isAdmin, true);
-  assert.equal(detail.comments[0].nickname, '이지핫딜 관리자');
-  assert.equal(detail.comments[0].isAuthor, false);
+  assert.equal(reply.parentCommentId, first.id);
+  assert.equal(nested.parentCommentId, reply.id);
+  assert.equal(reply.isAdmin, true);
+  assert.equal(reply.nickname, '이지핫딜 관리자');
+  const publicReply = detail.comments.find((comment) => comment.id === reply.id);
+  const publicNested = detail.comments.find((comment) => comment.id === nested.id);
+  assert.equal(publicReply.isAuthor, false);
+  assert.equal(publicNested.isAuthor, false);
   await pool.end();
 });
 

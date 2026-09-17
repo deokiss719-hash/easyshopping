@@ -17,6 +17,8 @@
 #community-post-list .community-admin-reply-footer{display:flex;align-items:center;justify-content:space-between;gap:12px}
 #community-post-list .community-admin-reply-message{margin:0}
 #community-post-list .admin-comment{padding-left:12px;border-left:3px solid var(--blue)}
+#community-post-list .community-admin-comment.reply-comment{margin-left:min(calc(var(--admin-reply-depth,1) * 20px),120px)}
+#community-post-list .community-admin-comment .community-admin-nested-reply-form{width:100%;margin:10px 0 0}
 #community-post-list .community-admin-badge{display:inline-flex;margin-left:7px;padding:2px 6px;border-radius:999px;color:var(--blue);background:#e8f3ff;font-size:10px;font-weight:900;vertical-align:middle}
 @media(min-width:721px){#community-post-filter{max-width:680px}#community-post-list .community-post-item .deal-actions{justify-content:flex-start}}
 @media(max-width:720px){
@@ -32,6 +34,7 @@
   #community-post-list .community-post-item .deal-content{min-width:0}
   #community-post-list .community-post-item .deal-actions{width:100%}
   #community-post-list .community-post-item .deal-actions .button,#community-post-list .community-post-item .deal-actions .text-button{flex:1 1 calc(50% - 7px);text-align:center}
+  #community-post-list .community-admin-comment.reply-comment{margin-left:min(calc(var(--admin-reply-depth,1) * 8px),40px)}
   #community-post-list .community-admin-reply-footer{align-items:stretch;flex-direction:column}
   #community-post-list .community-admin-reply-footer .button{width:100%}
 }

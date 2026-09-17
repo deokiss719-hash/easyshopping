@@ -263,9 +263,13 @@
           const renderComments = (comments) => {
             box.replaceChildren(replyForm);
             if (!comments?.length) box.append(textNode('p', '등록된 댓글이 없습니다.', 'empty-copy'));
+            const depths = new Map();
             (comments || []).forEach((comment) => {
+              const depth = comment.parentCommentId ? Math.min((depths.get(comment.parentCommentId) || 0) + 1, 6) : 0;
+              depths.set(comment.id, depth);
               const row = document.createElement('div');
-              row.className = `compact-item${comment.isAdmin ? ' admin-comment' : ''}`;
+              row.className = `compact-item community-admin-comment${comment.isAdmin ? ' admin-comment' : ''}${comment.parentCommentId ? ' reply-comment' : ''}`;
+              if (depth) row.style.setProperty('--admin-reply-depth', String(depth));
               const copy = document.createElement('div');
               const label = comment.isAdmin ? '이지핫딜 관리자' : `${comment.nickname}${comment.isPostAuthor ? ' · 글쓴이' : ''}`;
               copy.append(textNode('strong', label));
@@ -279,11 +283,48 @@
                 const refreshed = await api(`/api/admin/community/posts/${post.id}/comments`);
                 renderComments(refreshed.comments || []);
               }));
-              if (!comment.deleted) commentActions.append(communityAction('삭제', async () => {
-                await api(`/api/admin/community/comments/${comment.id}`, { method: 'PATCH', body: JSON.stringify({ hidden: true, deleted: true }) });
-                const refreshed = await api(`/api/admin/community/posts/${post.id}/comments`);
-                renderComments(refreshed.comments || []);
-              }, 'text-button danger'));
+              if (!comment.deleted) {
+                commentActions.append(communityAction('대댓글 등록', async () => {
+                  const existingReply = row.querySelector('.community-admin-nested-reply-form');
+                  if (existingReply) { existingReply.remove(); return; }
+                  const nestedForm = document.createElement('form');
+                  nestedForm.className = 'community-admin-reply-form community-admin-nested-reply-form';
+                  const nestedArea = document.createElement('textarea');
+                  nestedArea.rows = 3;
+                  nestedArea.maxLength = 3000;
+                  nestedArea.required = true;
+                  nestedArea.placeholder = '이 댓글에 관리자 대댓글을 입력하세요.';
+                  const nestedFooter = document.createElement('div');
+                  nestedFooter.className = 'community-admin-reply-footer';
+                  const nestedMessage = textNode('span', '', 'deal-meta community-admin-reply-message');
+                  const nestedButton = textNode('button', '대댓글 등록', 'button primary small');
+                  nestedButton.type = 'submit';
+                  nestedFooter.append(nestedMessage, nestedButton);
+                  nestedForm.append(nestedArea, nestedFooter);
+                  nestedForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const body = nestedArea.value.trim();
+                    if (!body) return;
+                    nestedButton.disabled = true;
+                    nestedMessage.textContent = '등록 중...';
+                    try {
+                      await api(`/api/admin/community/posts/${post.id}/reply`, { method: 'POST', body: JSON.stringify({ body, parentCommentId: comment.id }) });
+                      const refreshed = await api(`/api/admin/community/posts/${post.id}/comments`);
+                      renderComments(refreshed.comments || []);
+                    } catch (error) {
+                      nestedMessage.textContent = error.message || '대댓글 등록에 실패했어요.';
+                      nestedButton.disabled = false;
+                    }
+                  });
+                  row.append(nestedForm);
+                  nestedArea.focus();
+                }));
+                commentActions.append(communityAction('삭제', async () => {
+                  await api(`/api/admin/community/comments/${comment.id}`, { method: 'PATCH', body: JSON.stringify({ hidden: true, deleted: true }) });
+                  const refreshed = await api(`/api/admin/community/posts/${post.id}/comments`);
+                  renderComments(refreshed.comments || []);
+                }, 'text-button danger'));
+              }
               row.append(copy, commentActions);
               box.append(row);
             });

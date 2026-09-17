@@ -86,6 +86,9 @@ test('admin login is public and noindex while management HTML remains authentica
   assert.match(adminScript, /action: post\.isPinned \? 'unpin' : 'pin'/);
   assert.match(adminScript, /이 공지글을 삭제할까요\?/);
   assert.match(adminScript, /관리자 댓글 등록/);
+  assert.match(adminScript, /대댓글 등록/);
+  assert.match(adminScript, /parentCommentId: comment\.id/);
+  assert.match(adminScript, /--admin-reply-depth/);
   assert.match(adminScript, /\/api\/admin\/community\/posts\/\$\{post\.id\}\/reply/);
   assert.match(adminScript, /이지핫딜 관리자/);
   assert.match(html, /id="community-deleted-post-list"/);
