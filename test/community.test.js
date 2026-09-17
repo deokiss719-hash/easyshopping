@@ -94,7 +94,7 @@ test('post views are deduplicated per anonymous identity', async () => {
   await pool.end();
 });
 
-test('admin reply automatically marks an answer-requested post as answered', async () => {
+test('admin reply is stored as a clearly identified admin comment', async () => {
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '관리자 답변', body: '본문', answerRequested: true }, 'a'.repeat(64));
@@ -102,7 +102,8 @@ test('admin reply automatically marks an answer-requested post as answered', asy
   const detail = await store.getPost(created.post.id, 'a'.repeat(64));
   assert.equal(detail.post.answered, true);
   assert.equal(detail.comments[0].isAdmin, true);
-  assert.equal(detail.comments[0].nickname, '이지폰');
+  assert.equal(detail.comments[0].nickname, '이지핫딜 관리자');
+  assert.equal(detail.comments[0].isAuthor, false);
   await pool.end();
 });
 

@@ -241,29 +241,70 @@
           if (existing) { existing.remove(); return; }
           const box = document.createElement('div');
           box.className = 'community-comment-admin deal-list';
-          if (!data.comments?.length) box.append(textNode('p', '댓글이 없습니다.', 'empty-copy'));
-          (data.comments || []).forEach((comment) => {
-            const row = document.createElement('div');
-            row.className = 'compact-item';
-            const copy = document.createElement('div');
-            const label = comment.isAdmin ? '이지폰 ✓ 관리자' : `${comment.nickname}${comment.isPostAuthor ? ' · 글쓴이' : ''}`;
-            copy.append(textNode('strong', label));
-            copy.append(textNode('p', comment.body, 'deal-meta'));
-            if (comment.hidden || comment.deleted) copy.append(textNode('span', [comment.hidden ? '숨김' : '', comment.deleted ? '삭제' : ''].filter(Boolean).join(' · '), 'deal-meta'));
-            const commentActions = document.createElement('div');
-            commentActions.className = 'deal-actions';
-            commentActions.append(communityAction(comment.hidden ? '숨김 해제' : '숨기기', async () => {
-              await api(`/api/admin/community/comments/${comment.id}`, { method: 'PATCH', body: JSON.stringify({ hidden: !comment.hidden, deleted: comment.deleted }) });
-              actions.querySelector('button')?.click();
-              actions.querySelector('button')?.click();
-            }));
-            if (!comment.deleted) commentActions.append(communityAction('삭제', async () => {
-              await api(`/api/admin/community/comments/${comment.id}`, { method: 'PATCH', body: JSON.stringify({ hidden: true, deleted: true }) });
-              await loadCommunity();
-            }, 'text-button danger'));
-            row.append(copy, commentActions);
-            box.append(row);
+          const replyForm = document.createElement('form');
+          replyForm.className = 'community-admin-reply-form';
+          const replyArea = document.createElement('textarea');
+          replyArea.rows = 3;
+          replyArea.maxLength = 3000;
+          replyArea.required = true;
+          replyArea.placeholder = '관리자 댓글을 입력하세요.';
+          const replyFooter = document.createElement('div');
+          replyFooter.className = 'community-admin-reply-footer';
+          const replyMessage = textNode('span', '', 'deal-meta community-admin-reply-message');
+          const replyButton = textNode('button', '관리자 댓글 등록', 'button primary small');
+          replyButton.type = 'submit';
+          replyFooter.append(replyMessage, replyButton);
+          replyForm.append(replyArea, replyFooter);
+
+          const renderComments = (comments) => {
+            box.replaceChildren(replyForm);
+            if (!comments?.length) box.append(textNode('p', '등록된 댓글이 없습니다.', 'empty-copy'));
+            (comments || []).forEach((comment) => {
+              const row = document.createElement('div');
+              row.className = `compact-item${comment.isAdmin ? ' admin-comment' : ''}`;
+              const copy = document.createElement('div');
+              const label = comment.isAdmin ? '이지핫딜 관리자' : `${comment.nickname}${comment.isPostAuthor ? ' · 글쓴이' : ''}`;
+              copy.append(textNode('strong', label));
+              if (comment.isAdmin) copy.append(textNode('span', '관리자', 'community-admin-badge'));
+              copy.append(textNode('p', comment.body, 'deal-meta'));
+              if (comment.hidden || comment.deleted) copy.append(textNode('span', [comment.hidden ? '숨김' : '', comment.deleted ? '삭제' : ''].filter(Boolean).join(' · '), 'deal-meta'));
+              const commentActions = document.createElement('div');
+              commentActions.className = 'deal-actions';
+              commentActions.append(communityAction(comment.hidden ? '숨김 해제' : '숨기기', async () => {
+                await api(`/api/admin/community/comments/${comment.id}`, { method: 'PATCH', body: JSON.stringify({ hidden: !comment.hidden, deleted: comment.deleted }) });
+                const refreshed = await api(`/api/admin/community/posts/${post.id}/comments`);
+                renderComments(refreshed.comments || []);
+              }));
+              if (!comment.deleted) commentActions.append(communityAction('삭제', async () => {
+                await api(`/api/admin/community/comments/${comment.id}`, { method: 'PATCH', body: JSON.stringify({ hidden: true, deleted: true }) });
+                const refreshed = await api(`/api/admin/community/posts/${post.id}/comments`);
+                renderComments(refreshed.comments || []);
+              }, 'text-button danger'));
+              row.append(copy, commentActions);
+              box.append(row);
+            });
+          };
+
+          replyForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const body = replyArea.value.trim();
+            if (!body) return;
+            replyButton.disabled = true;
+            replyMessage.textContent = '등록 중...';
+            try {
+              await api(`/api/admin/community/posts/${post.id}/reply`, { method: 'POST', body: JSON.stringify({ body }) });
+              replyArea.value = '';
+              replyMessage.textContent = '관리자 댓글이 등록됐어요.';
+              const refreshed = await api(`/api/admin/community/posts/${post.id}/comments`);
+              renderComments(refreshed.comments || []);
+            } catch (error) {
+              replyMessage.textContent = error.message || '댓글 등록에 실패했어요.';
+            } finally {
+              replyButton.disabled = false;
+            }
           });
+
+          renderComments(data.comments || []);
           item.append(box);
         }));
         actions.append(communityAction(post.hidden ? '숨김 해제' : '숨기기', async () => {

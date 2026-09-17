@@ -70,7 +70,7 @@ function commentRow(row, postAuthorHash, viewerHash) {
   return {
     id: String(row.id), postId: String(row.post_id), parentCommentId: row.parent_comment_id ? String(row.parent_comment_id) : null,
     body: row.is_deleted ? '삭제된 댓글입니다.' : row.body,
-    nickname: row.is_admin ? '이지폰' : row.nickname,
+    nickname: row.is_admin ? '이지핫딜 관리자' : row.nickname,
     isAdmin: row.is_admin, isPostAuthor: !row.is_admin && row.author_hash === postAuthorHash,
     isAuthor: Boolean(viewerHash && row.author_hash === viewerHash), upvotes: Number(row.upvotes || 0),
     downvotes: Number(row.downvotes || 0), deleted: row.is_deleted, createdAt: row.created_at,
@@ -153,7 +153,7 @@ function createCommunityStore(pool) {
   }
   async function createComment(postId,input,authorHash,{ admin = false }={}) {
     if (!admin && await blocked(authorHash)) throw Object.assign(new Error('blocked'),{status:403});
-    const body=safeText(input.body,3000); const nickname=admin?'이지폰':safeText(input.nickname||'ㅇㅇ',24,'ㅇㅇ');
+    const body=safeText(input.body,3000); const nickname=admin?'이지핫딜 관리자':safeText(input.nickname||'ㅇㅇ',24,'ㅇㅇ');
     if (!admin && await banned(`${body} ${nickname}`)) throw new TypeError('사용할 수 없는 표현이 포함되어 있어요.');
     if ((body.match(URL_PATTERN)||[]).length>2) throw new TypeError('댓글 링크는 최대 2개까지 등록할 수 있어요.');
     if ((PHONE_PATTERN.test(body)||EMAIL_PATTERN.test(body)) && input.confirmPrivacy!==true) throw Object.assign(new Error('privacy_warning'),{status:409,code:'privacy_warning'});

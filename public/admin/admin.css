@@ -12,4 +12,11 @@
 #community-post-list .community-post-item .deal-content{width:100%}
 #community-post-list .community-post-item>.community-comment-admin{grid-column:1;width:100%;margin-top:14px;padding:12px 14px;border-radius:12px;background:#f8fafc}
 #community-post-list .community-post-item .deal-actions{align-items:center}
+#community-post-list .community-admin-reply-form{display:grid;gap:10px;margin:0 0 12px;padding:14px;border:1px solid #dbeafe;border-radius:12px;background:#fff}
+#community-post-list .community-admin-reply-form textarea{min-height:86px}
+#community-post-list .community-admin-reply-footer{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#community-post-list .community-admin-reply-message{margin:0}
+#community-post-list .admin-comment{padding-left:12px;border-left:3px solid var(--blue)}
+#community-post-list .community-admin-badge{display:inline-flex;margin-left:7px;padding:2px 6px;border-radius:999px;color:var(--blue);background:#e8f3ff;font-size:10px;font-weight:900;vertical-align:middle}
 @media(min-width:721px){#community-post-filter{max-width:680px}#community-post-list .community-post-item .deal-actions{justify-content:flex-start}}
+@media(max-width:720px){#community-post-list .community-admin-reply-footer{align-items:stretch;flex-direction:column}#community-post-list .community-admin-reply-footer .button{width:100%}}

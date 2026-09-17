@@ -7,7 +7,17 @@ const publicDir = path.join(__dirname, '..', 'public');
 const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
 const script = fs.readFileSync(path.join(publicDir, 'app.js'), 'utf8');
 const styles = fs.readFileSync(path.join(publicDir, 'styles.css'), 'utf8');
+const communityScript = fs.readFileSync(path.join(publicDir, 'community.js'), 'utf8');
+const communityStyles = fs.readFileSync(path.join(publicDir, 'community.css'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+
+test('커뮤니티 관리자 댓글은 공개 화면에서 관리자 표시와 전용 스타일로 구분한다', () => {
+  assert.match(communityScript, /comment\.isAdmin\?'이지핫딜 관리자'/);
+  assert.match(communityScript, /text\('span','관리자','admin-badge'\)/);
+  assert.match(communityScript, /comment\.isAdmin\?' is-admin'/);
+  assert.match(communityStyles, /\.comment\.is-admin\{/);
+  assert.match(communityStyles, /\.admin-badge\{/);
+});
 
 test('공개 화면은 이지핫딜 브랜드명을 표시한다', () => {
   assert.match(html, /<title>실시간 핫딜 모음·오늘의 특가 \| 이지핫딜<\/title>/);
