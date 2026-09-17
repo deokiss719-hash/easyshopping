@@ -108,11 +108,11 @@
         <div id="inquiry-list" class="deal-list"></div>
       </section>
       <section id="community" class="view" aria-labelledby="community-admin-title">
-        <div class="page-heading"><div><p class="eyebrow">COMMUNITY</p><h1 id="community-admin-title">커뮤니티 관리</h1><p>게시글, 댓글, 신고, 카테고리, 차단과 기본 설정을 관리하세요.</p></div><button id="refresh-community" class="button secondary" type="button">새로고침</button></div>
+        <div class="page-heading"><div><p class="eyebrow">COMMUNITY</p><h1 id="community-admin-title">커뮤니티 관리</h1><p>게시글, 댓글, 신고, 금칙어와 차단 사용자를 한곳에서 관리하세요.</p></div><button id="refresh-community" class="button secondary" type="button">새로고침</button></div>
         <div id="community-admin-message" class="message notice" role="status" aria-live="polite"></div>
         <section class="panel">
-          <div class="panel-title"><div><h2>게시글 · 답변 요청</h2><p class="panel-subtitle">이지폰 관리자 답변을 등록하면 답변완료로 자동 처리됩니다.</p></div></div>
-          <form id="community-post-filter" class="filter-row"><input id="community-post-q" type="search" maxlength="100" placeholder="제목·내용 검색"><select id="community-answer-filter"><option value="">전체</option><option value="unanswered">답변 요청 · 미답변</option><option value="answered">답변완료</option></select><button class="button primary" type="submit">조회</button></form>
+          <div class="panel-title"><div><h2>게시글 관리</h2><p class="panel-subtitle">게시글을 검색하고 숨김·삭제·댓글 관리·사용자 차단을 처리할 수 있어요.</p></div></div>
+          <form id="community-post-filter" class="filter-row"><input id="community-post-q" type="search" maxlength="100" placeholder="제목·내용 검색"><button class="button primary" type="submit">조회</button></form>
           <div id="community-post-list" class="deal-list"><p class="empty-copy">불러오는 중...</p></div>
         </section>
         <section class="panel">
@@ -120,11 +120,6 @@
           <div id="community-report-list" class="deal-list"><p class="empty-copy">불러오는 중...</p></div>
         </section>
         <div class="deal-workspace">
-          <section class="panel">
-            <div class="panel-title"><h2>카테고리</h2></div>
-            <form id="community-category-form" class="filter-row"><input id="community-category-name" maxlength="60" placeholder="카테고리명" required><input id="community-category-slug" maxlength="48" placeholder="영문 식별자" required><button class="button primary" type="submit">추가</button></form>
-            <div id="community-category-list" class="deal-list"></div>
-          </section>
           <section class="panel">
             <div class="panel-title"><h2>금칙어</h2></div>
             <form id="community-banned-form" class="filter-row"><input id="community-banned-word" maxlength="100" placeholder="금칙어" required><button class="button primary" type="submit">추가</button></form>
@@ -144,7 +139,6 @@
               <label>댓글 가중치<input id="community-rank-comment" type="number" min="0" max="100" step="0.01"></label>
               <label>조회 가중치<input id="community-rank-view" type="number" min="0" max="100" step="0.001"></label>
               <label>시간 감쇠<input id="community-rank-age" type="number" min="0" max="100" step="0.01"></label>
-              <label class="span-2">상담 URL<input id="community-consultation-url" type="url" inputmode="url" placeholder="https://..."></label>
               <button class="button primary" type="submit">설정 저장</button>
             </form>
           </section>

@@ -16,7 +16,6 @@
     inquiries: [],
     communityPosts: [],
     communityReports: [],
-    communityCategories: [],
     communityBannedWords: [],
     communityBlocks: [],
     communitySettings: {},
@@ -222,10 +221,9 @@
       item.className = 'deal-item';
       const body = document.createElement('div');
       body.className = 'deal-content';
-      const title = textNode('strong', `${post.answerRequested && !post.answered ? '답변요청 · ' : ''}${post.title}`);
+      const title = textNode('strong', post.title);
       const meta = textNode('p', `${post.categoryName} · ${post.nickname} · 댓글 ${post.commentCount} · 조회 ${post.views} · ${new Date(post.createdAt).toLocaleString('ko-KR')}`, 'deal-meta');
       const flags = [];
-      if (post.answered) flags.push('답변완료');
       if (post.hidden) flags.push('숨김');
       if (post.deleted) flags.push('삭제');
       if (flags.length) body.append(textNode('span', flags.join(' · '), 'deal-meta'));
@@ -283,14 +281,6 @@
           await loadCommunity();
         }));
       }
-      if (!post.deleted) {
-        actions.append(communityAction('관리자 답변', async () => {
-          const reply = window.prompt('이지폰 관리자 답변을 입력하세요.');
-          if (!reply?.trim()) return;
-          await api(`/api/admin/community/posts/${post.id}/reply`, { method: 'POST', body: JSON.stringify({ body: reply.trim() }) });
-          await loadCommunity();
-        }, 'button primary small'));
-      }
       actions.append(communityAction('사용자 차단', async () => {
         const reason = window.prompt('차단 사유를 입력하세요.', '스팸/운영정책 위반');
         if (reason == null) return;
@@ -326,37 +316,6 @@
       })));
       body.append(actions);
       item.append(body);
-      list.append(item);
-    });
-  }
-
-  function renderCommunityCategories() {
-    const list = byId('community-category-list');
-    if (!list) return;
-    list.replaceChildren();
-    state.communityCategories.forEach((category) => {
-      const item = document.createElement('div');
-      item.className = 'compact-item';
-      const copy = document.createElement('div');
-      copy.append(textNode('strong', category.name));
-      copy.append(textNode('span', `${category.slug} · ${category.active ? '사용 중' : '비활성'}`, 'deal-meta'));
-      const toggle = communityAction(category.active ? '비활성화' : '활성화', async () => {
-        await api(`/api/admin/community/categories/${category.id}`, { method: 'PUT', body: JSON.stringify({ name: category.name, slug: category.slug, sortOrder: category.sortOrder, active: !category.active }) });
-        await loadCommunity();
-      });
-      const edit = communityAction('수정', async () => {
-        const name = window.prompt('카테고리명을 입력하세요.', category.name);
-        if (!name?.trim()) return;
-        const slug = window.prompt('영문 식별자를 입력하세요.', category.slug);
-        if (!slug?.trim()) return;
-        const sortOrder = Number(window.prompt('정렬 순서를 입력하세요.', String(category.sortOrder ?? 0)));
-        await api(`/api/admin/community/categories/${category.id}`, { method: 'PUT', body: JSON.stringify({ name: name.trim(), slug: slug.trim(), sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0, active: category.active }) });
-        await loadCommunity();
-      });
-      const actions = document.createElement('div');
-      actions.className = 'deal-actions';
-      actions.append(edit, toggle);
-      item.append(copy, actions);
       list.append(item);
     });
   }
@@ -407,33 +366,28 @@
       'community-rank-comment': values.rank_comment_weight ?? '4',
       'community-rank-view': values.rank_view_weight ?? '0.125',
       'community-rank-age': values.rank_age_power ?? '0.55',
-      'community-consultation-url': values.consultation_url ?? '',
     };
     Object.entries(map).forEach(([id, value]) => { if (byId(id)) byId(id).value = value; });
   }
 
   async function loadCommunity() {
     const q = byId('community-post-q')?.value.trim() || '';
-    const answer = byId('community-answer-filter')?.value || '';
     const params = new URLSearchParams();
     if (q) params.set('q', q);
-    if (answer) params.set('answer', answer);
     try {
-      const [posts, reports, categories, banned, blocks, settings] = await Promise.all([
+      const [posts, reports, banned, blocks, settings] = await Promise.all([
         api(`/api/admin/community/posts${params.size ? `?${params}` : ''}`),
         api('/api/admin/community/reports'),
-        api('/api/admin/community/categories'),
         api('/api/admin/community/banned-words'),
         api('/api/admin/community/blocks'),
         api('/api/admin/community/settings'),
       ]);
       state.communityPosts = posts.posts || [];
       state.communityReports = reports.reports || [];
-      state.communityCategories = categories.categories || [];
       state.communityBannedWords = banned.words || [];
       state.communityBlocks = blocks.blocks || [];
       state.communitySettings = settings.settings || {};
-      renderCommunityPosts(); renderCommunityReports(); renderCommunityCategories(); renderCommunityBannedWords(); renderCommunityBlocks(); renderCommunitySettings();
+      renderCommunityPosts(); renderCommunityReports(); renderCommunityBannedWords(); renderCommunityBlocks(); renderCommunitySettings();
     } catch (error) {
       showMessage('community-admin-message', errorMessage(error, '커뮤니티 관리 데이터를 불러오지 못했습니다.'), 'error');
     }
@@ -1018,13 +972,6 @@
     byId('refresh-inquiries')?.addEventListener('click', loadInquiries);
     byId('refresh-community')?.addEventListener('click', loadCommunity);
     byId('community-post-filter')?.addEventListener('submit', (event) => { event.preventDefault(); loadCommunity(); });
-    byId('community-category-form')?.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      try {
-        await api('/api/admin/community/categories', { method: 'POST', body: JSON.stringify({ name: byId('community-category-name').value.trim(), slug: byId('community-category-slug').value.trim() }) });
-        event.currentTarget.reset(); await loadCommunity();
-      } catch (error) { showMessage('community-admin-message', errorMessage(error, '카테고리를 추가하지 못했습니다.'), 'error'); }
-    });
     byId('community-banned-form')?.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
