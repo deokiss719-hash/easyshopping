@@ -51,6 +51,9 @@ test('admin notices are identified, private from IP display, and pinned above no
   assert.equal(latest.posts[0].isNotice, true);
   const popular = await store.listPosts({ sort: 'popular' });
   assert.equal(popular.posts[0].title, '운영 공지');
+  await store.adminModeratePost(notice.post.id, { action: 'delete' });
+  assert.equal(await store.getPost(notice.post.id, null), null);
+  assert.equal((await store.listPosts({ sort: 'latest' })).posts.some((post) => post.id === notice.post.id), false);
   await pool.end();
 });
 

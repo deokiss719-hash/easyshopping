@@ -75,8 +75,12 @@ test('admin login is public and noindex while management HTML remains authentica
   assert.match(adminScript, /row\.referrerUrl/);
   assert.match(adminScript, /textContent/);
   assert.match(html, /id="community-notice-form"/);
+  assert.match(html, /id="community-notice-list"/);
   assert.match(html, /공지글 등록/);
   assert.match(adminScript, /\/api\/admin\/community\/posts\/notice/);
+  assert.match(adminScript, /function renderCommunityNotices\(\)/);
+  assert.match(adminScript, /공지 삭제/);
+  assert.match(adminScript, /이 공지글을 삭제할까요\?/);
   assert.match(adminScript, /관리자 댓글 등록/);
   assert.match(adminScript, /\/api\/admin\/community\/posts\/\$\{post\.id\}\/reply/);
   assert.match(adminScript, /이지핫딜 관리자/);
