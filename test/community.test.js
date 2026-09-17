@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { newDb } = require('pg-mem');
 
 const { migrate } = require('../src/deal-store');
-const { createCommunityStore, detailHtml } = require('../src/community/community');
+const { createCommunityStore, detailHtml, maskIp } = require('../src/community/community');
 
 async function makeStore() {
   const memoryDb = newDb();
@@ -35,6 +35,26 @@ test('anonymous author can create/read a post without exposing author hash publi
   assert.equal(listed.posts[0].isAuthor, false);
   assert.equal(listed.posts[0].authorHash, undefined);
   await pool.end();
+});
+
+test('community stores only masked IP display values for public posts and comments', async () => {
+  const { pool, store } = await makeStore();
+  const category = await freeCategory(store);
+  const created = await store.createPost({ categoryId: category.id, title: '아이피 표시', body: '본문', nickname: 'ㅇㅇ' }, 'a'.repeat(64), '123.45.*.*');
+  assert.equal(created.post.ipDisplay, '123.45.*.*');
+  const comment = await store.createComment(created.post.id, { body: '댓글', nickname: '댓글러' }, 'b'.repeat(64), { ipDisplay: '211.22.*.*' });
+  assert.equal(comment.ipDisplay, '211.22.*.*');
+  await store.adminReply(created.post.id, { body: '관리자 댓글' });
+  const detail = await store.getPost(created.post.id, 'a'.repeat(64));
+  assert.equal(detail.comments[1].ipDisplay, '');
+  await pool.end();
+});
+
+test('IP masking keeps only a partial display value', () => {
+  assert.equal(maskIp('123.45.67.89'), '123.45.*.*');
+  assert.equal(maskIp('::ffff:211.22.33.44'), '211.22.*.*');
+  assert.equal(maskIp('2001:db8:abcd:1234::1'), '2001:db8:*:*');
+  assert.equal(maskIp('999.1.2.3'), '');
 });
 
 test('phone or email-like personal data requires an explicit privacy confirmation', async () => {

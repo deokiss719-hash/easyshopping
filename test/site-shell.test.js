@@ -19,6 +19,12 @@ test('커뮤니티 관리자 댓글은 공개 화면에서 관리자 표시와 �
   assert.match(communityStyles, /\.admin-badge\{/);
 });
 
+test('커뮤니티 작성자 닉네임 옆에 마스킹 IP를 표시한다', () => {
+  assert.match(communityScript, /authorLabel\(post\.nickname,post\.ipDisplay\)/);
+  assert.match(communityScript, /comment\.ipDisplay/);
+  assert.match(communityStyles, /\.ip-display\{/);
+});
+
 test('공개 화면은 이지핫딜 브랜드명을 표시한다', () => {
   assert.match(html, /<title>실시간 핫딜 모음·오늘의 특가 \| 이지핫딜<\/title>/);
   assert.match(html, /<h1 id="hero-title">실시간 핫딜, 오늘 뭐가 싸지\?<\/h1>/);

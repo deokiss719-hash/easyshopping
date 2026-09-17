@@ -264,6 +264,7 @@ CREATE TABLE IF NOT EXISTS community_posts (
   body TEXT NOT NULL,
   nickname VARCHAR(24) NOT NULL DEFAULT 'ㅇㅇ',
   author_hash VARCHAR(64) NOT NULL,
+  ip_display VARCHAR(48),
   edit_password_hash TEXT,
   answer_requested BOOLEAN NOT NULL DEFAULT FALSE,
   answered_at TIMESTAMPTZ,
@@ -276,6 +277,7 @@ CREATE TABLE IF NOT EXISTS community_posts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS ip_display VARCHAR(48);
 CREATE INDEX IF NOT EXISTS community_posts_list_idx ON community_posts(is_hidden,is_deleted,created_at DESC,id DESC);
 CREATE INDEX IF NOT EXISTS community_posts_category_idx ON community_posts(category_id,created_at DESC,id DESC);
 CREATE INDEX IF NOT EXISTS community_posts_answer_idx ON community_posts(answer_requested,answered_at,created_at DESC);
@@ -288,6 +290,7 @@ CREATE TABLE IF NOT EXISTS community_comments (
   body TEXT NOT NULL,
   nickname VARCHAR(24) NOT NULL DEFAULT 'ㅇㅇ',
   author_hash VARCHAR(64) NOT NULL,
+  ip_display VARCHAR(48),
   edit_password_hash TEXT,
   is_admin BOOLEAN NOT NULL DEFAULT FALSE,
   upvotes INTEGER NOT NULL DEFAULT 0,
@@ -297,6 +300,7 @@ CREATE TABLE IF NOT EXISTS community_comments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE community_comments ADD COLUMN IF NOT EXISTS ip_display VARCHAR(48);
 CREATE INDEX IF NOT EXISTS community_comments_post_idx ON community_comments(post_id,created_at,id);
 
 CREATE TABLE IF NOT EXISTS community_votes (

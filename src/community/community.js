@@ -37,6 +37,22 @@ function anonymousIdentity(req, res, secret, production = false) {
   return hmac(secret, token);
 }
 
+function maskIp(address) {
+  let value = String(address || '').trim().split('%')[0];
+  if (value.startsWith('::ffff:')) value = value.slice(7);
+  const ipv4 = value.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const octets = ipv4.slice(1).map(Number);
+    if (octets.every((part) => part >= 0 && part <= 255)) return `${octets[0]}.${octets[1]}.*.*`;
+    return '';
+  }
+  if (value.includes(':')) {
+    const parts = value.split(':').filter(Boolean);
+    if (parts.length) return `${parts.slice(0, 2).join(':')}:*:*`;
+  }
+  return '';
+}
+
 function sameOrigin(req) {
   const origin = req.get('origin');
   if (!origin) return true;
@@ -62,7 +78,8 @@ function postRow(row, viewerHash) {
     title: row.title, body: row.body, nickname: row.nickname, answerRequested: row.answer_requested,
     answered: Boolean(row.answered_at), views: Number(row.views || 0), upvotes: Number(row.upvotes || 0),
     downvotes: Number(row.downvotes || 0), commentCount: Number(row.comment_count || 0),
-    createdAt: row.created_at, updatedAt: row.updated_at, isAuthor: Boolean(viewerHash && row.author_hash === viewerHash),
+    ipDisplay: row.ip_display || '', createdAt: row.created_at, updatedAt: row.updated_at,
+    isAuthor: Boolean(viewerHash && row.author_hash === viewerHash),
   };
 }
 
@@ -73,7 +90,7 @@ function commentRow(row, postAuthorHash, viewerHash) {
     nickname: row.is_admin ? '이지핫딜 관리자' : row.nickname,
     isAdmin: row.is_admin, isPostAuthor: !row.is_admin && row.author_hash === postAuthorHash,
     isAuthor: Boolean(viewerHash && row.author_hash === viewerHash), upvotes: Number(row.upvotes || 0),
-    downvotes: Number(row.downvotes || 0), deleted: row.is_deleted, createdAt: row.created_at,
+    downvotes: Number(row.downvotes || 0), deleted: row.is_deleted, ipDisplay: row.ip_display || '', createdAt: row.created_at,
   };
 }
 
@@ -122,7 +139,7 @@ function createCommunityStore(pool) {
     const comments = await pool.query('SELECT * FROM community_comments WHERE post_id=$1 AND is_hidden=FALSE ORDER BY created_at,id', [id]);
     return { post: postRow(rows[0], viewerHash), comments: comments.rows.map((r) => commentRow(r, rows[0].author_hash, viewerHash)) };
   }
-  async function createPost(input, authorHash) {
+  async function createPost(input, authorHash, ipDisplay = '') {
     if (await blocked(authorHash)) throw Object.assign(new Error('blocked'), { status: 403 });
     const title = safeText(input.title, 160); const body = safeText(input.body, 10000); const nickname = safeText(input.nickname || 'ㅇㅇ', 24, 'ㅇㅇ');
     if ((await banned(`${title} ${body} ${nickname}`))) throw new TypeError('사용할 수 없는 표현이 포함되어 있어요.');
@@ -131,7 +148,7 @@ function createCommunityStore(pool) {
     const category = await pool.query('SELECT id FROM community_categories WHERE id=$1 AND is_active=TRUE', [input.categoryId]);
     if (!category.rows[0]) throw new TypeError('카테고리를 확인해 주세요.');
     const passwordHash = input.password ? await bcrypt.hash(safeText(input.password, 32), 10) : null;
-    const { rows } = await pool.query(`INSERT INTO community_posts(category_id,title,body,nickname,author_hash,edit_password_hash,answer_requested) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`, [input.categoryId,title,body,nickname,authorHash,passwordHash,input.answerRequested === true]);
+    const { rows } = await pool.query(`INSERT INTO community_posts(category_id,title,body,nickname,author_hash,ip_display,edit_password_hash,answer_requested) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [input.categoryId,title,body,nickname,authorHash,ipDisplay || null,passwordHash,input.answerRequested === true]);
     return getPost(rows[0].id, authorHash, false);
   }
   async function canEdit(row, authorHash, password) {
@@ -151,7 +168,7 @@ function createCommunityStore(pool) {
     if (!row) return false; if (!(await canEdit(row,authorHash,password))) throw Object.assign(new Error('forbidden'),{status:403});
     await pool.query("UPDATE community_posts SET is_deleted=TRUE,title='삭제된 글',body='',updated_at=CURRENT_TIMESTAMP WHERE id=$1",[id]); return true;
   }
-  async function createComment(postId,input,authorHash,{ admin = false }={}) {
+  async function createComment(postId,input,authorHash,{ admin = false, ipDisplay = '' }={}) {
     if (!admin && await blocked(authorHash)) throw Object.assign(new Error('blocked'),{status:403});
     const body=safeText(input.body,3000); const nickname=admin?'이지핫딜 관리자':safeText(input.nickname||'ㅇㅇ',24,'ㅇㅇ');
     if (!admin && await banned(`${body} ${nickname}`)) throw new TypeError('사용할 수 없는 표현이 포함되어 있어요.');
@@ -160,7 +177,7 @@ function createCommunityStore(pool) {
     const post=await pool.query('SELECT * FROM community_posts WHERE id=$1 AND is_hidden=FALSE AND is_deleted=FALSE',[postId]); if(!post.rows[0]) return null;
     let parent=null; if(input.parentCommentId){ const p=await pool.query('SELECT id,parent_comment_id FROM community_comments WHERE id=$1 AND post_id=$2',[input.parentCommentId,postId]); if(!p.rows[0]||p.rows[0].parent_comment_id) throw new TypeError('답글은 한 단계까지만 작성할 수 있어요.'); parent=p.rows[0].id; }
     const passwordHash=!admin&&input.password?await bcrypt.hash(safeText(input.password,32),10):null;
-    const inserted=await pool.query('INSERT INTO community_comments(post_id,parent_comment_id,body,nickname,author_hash,edit_password_hash,is_admin) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *',[postId,parent,body,nickname,authorHash,passwordHash,admin]);
+    const inserted=await pool.query('INSERT INTO community_comments(post_id,parent_comment_id,body,nickname,author_hash,ip_display,edit_password_hash,is_admin) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',[postId,parent,body,nickname,authorHash,admin ? null : (ipDisplay || null),passwordHash,admin]);
     await pool.query('UPDATE community_posts SET comment_count=comment_count+1, answered_at=CASE WHEN $2=TRUE AND answer_requested=TRUE THEN COALESCE(answered_at,CURRENT_TIMESTAMP) ELSE answered_at END WHERE id=$1',[postId,admin]);
     return commentRow(inserted.rows[0],post.rows[0].author_hash,authorHash);
   }
@@ -201,15 +218,15 @@ function communityError(error,res,next){ if(error?.code==='privacy_warning')retu
 
 function createCommunityRouter({store,secret,production=false,consultationUrl=''}){
   if(!store||!secret)throw new TypeError('community store and secret are required'); const router=express.Router();
-  router.use((req,res,next)=>{ req.communityAuthorHash=anonymousIdentity(req,res,secret,production); next(); });
+  router.use((req,res,next)=>{ req.communityAuthorHash=anonymousIdentity(req,res,secret,production); req.communityIpDisplay=maskIp(req.ip || req.socket?.remoteAddress); next(); });
   const mutation=(req,res,next)=>{ if(!sameOrigin(req))return res.status(403).json({error:'origin_mismatch'}); if(!rateLimit(`${req.communityAuthorHash}:${req.path}`,30,60000))return res.status(429).json({error:'rate_limited'}); next(); };
   router.get('/api/community/categories',async(req,res,next)=>{try{res.json({categories:await store.categories()});}catch(e){next(e)}});
   router.get('/api/community/posts',async(req,res,next)=>{try{res.json(await store.listPosts(req.query,req.communityAuthorHash));}catch(e){communityError(e,res,next)}});
   router.get('/api/community/posts/:id',async(req,res,next)=>{try{const value=await store.getPost(req.params.id,req.communityAuthorHash,true);if(!value)return res.status(404).json({error:'not_found'});const configured=await store.publicSettings();return res.json({...value,consultationUrl:configured.consultationUrl||consultationUrl});}catch(e){communityError(e,res,next)}});
-  router.post('/api/community/posts',mutation,async(req,res,next)=>{try{if(!rateLimit(`post:${req.communityAuthorHash}`,3,10*60000))return res.status(429).json({error:'rate_limited'}); res.status(201).json(await store.createPost(req.body||{},req.communityAuthorHash));}catch(e){communityError(e,res,next)}});
+  router.post('/api/community/posts',mutation,async(req,res,next)=>{try{if(!rateLimit(`post:${req.communityAuthorHash}`,3,10*60000))return res.status(429).json({error:'rate_limited'}); res.status(201).json(await store.createPost(req.body||{},req.communityAuthorHash,req.communityIpDisplay));}catch(e){communityError(e,res,next)}});
   router.patch('/api/community/posts/:id',mutation,async(req,res,next)=>{try{const value=await store.updatePost(req.params.id,req.body||{},req.communityAuthorHash);return value?res.json(value):res.status(404).json({error:'not_found'});}catch(e){communityError(e,res,next)}});
   router.delete('/api/community/posts/:id',mutation,async(req,res,next)=>{try{return await store.deletePost(req.params.id,req.communityAuthorHash,req.body?.password)?res.sendStatus(204):res.status(404).json({error:'not_found'});}catch(e){communityError(e,res,next)}});
-  router.post('/api/community/posts/:id/comments',mutation,async(req,res,next)=>{try{if(!rateLimit(`comment:${req.communityAuthorHash}`,10,10*60000))return res.status(429).json({error:'rate_limited'}); const value=await store.createComment(req.params.id,req.body||{},req.communityAuthorHash);return value?res.status(201).json(value):res.status(404).json({error:'not_found'});}catch(e){communityError(e,res,next)}});
+  router.post('/api/community/posts/:id/comments',mutation,async(req,res,next)=>{try{if(!rateLimit(`comment:${req.communityAuthorHash}`,10,10*60000))return res.status(429).json({error:'rate_limited'}); const value=await store.createComment(req.params.id,req.body||{},req.communityAuthorHash,{ipDisplay:req.communityIpDisplay});return value?res.status(201).json(value):res.status(404).json({error:'not_found'});}catch(e){communityError(e,res,next)}});
   router.delete('/api/community/comments/:id',mutation,async(req,res,next)=>{try{return await store.deleteComment(req.params.id,req.communityAuthorHash,req.body?.password)?res.sendStatus(204):res.status(404).json({error:'not_found'});}catch(e){communityError(e,res,next)}});
   router.post('/api/community/votes',mutation,async(req,res,next)=>{try{const value=await store.vote(req.body?.targetType,req.body?.targetId,req.communityAuthorHash,Number(req.body?.value));return value?res.json(value):res.status(404).json({error:'not_found'});}catch(e){communityError(e,res,next)}});
   router.post('/api/community/reports',mutation,async(req,res,next)=>{try{const value=await store.report(req.body?.targetType,req.body?.targetId,req.communityAuthorHash,req.body?.reason);return value?res.status(201).json(value):res.status(404).json({error:'not_found'});}catch(e){communityError(e,res,next)}});
@@ -224,4 +241,4 @@ function createCommunityPagesRouter({store,publicDir}){const router=express.Rout
 
 function createCommunityAdminRouter({store,auth}){ if(!store||!auth?.requireAuth||!auth?.requireMutationProtection)throw new TypeError('community admin auth is required'); const router=express.Router(); router.use(auth.requireAuth); const asyncRoute=(fn)=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next); router.get('/posts',asyncRoute(async(req,res)=>res.json(await store.adminListPosts(req.query)))); router.patch('/posts/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminModeratePost(req.params.id,req.body||{});return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/posts/:id/comments',asyncRoute(async(req,res)=>res.json({comments:await store.adminComments(req.params.id)}))); router.post('/posts/:id/reply',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const value=await store.adminReply(req.params.id,req.body||{});return value?res.status(201).json(value):res.status(404).json({error:'not_found'});})); router.patch('/comments/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminModerateComment(req.params.id,req.body||{});return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/reports',asyncRoute(async(_req,res)=>res.json({reports:await store.adminReports()}))); router.patch('/reports/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminUpdateReport(req.params.id,req.body?.status);return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/categories',asyncRoute(async(_req,res)=>res.json({categories:await store.categories({all:true})}))); router.post('/categories',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminSaveCategory(req.body||{})))); router.put('/categories/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.json(await store.adminSaveCategory({...req.body,id:req.params.id})))); router.get('/banned-words',asyncRoute(async(_req,res)=>res.json({words:await store.adminBannedWords()}))); router.post('/banned-words',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminAddBannedWord(req.body?.word)))); router.delete('/banned-words/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>await store.adminDeleteBannedWord(req.params.id)?res.sendStatus(204):res.status(404).json({error:'not_found'}))); router.get('/blocks',asyncRoute(async(_req,res)=>res.json({blocks:await store.adminBlocks()}))); router.post('/blocks',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminBlock(req.body||{})))); router.delete('/blocks/:authorHash',auth.requireMutationProtection,asyncRoute(async(req,res)=>await store.adminDeleteBlock(req.params.authorHash)?res.sendStatus(204):res.status(404).json({error:'not_found'}))); router.get('/settings',asyncRoute(async(_req,res)=>res.json({settings:await store.settings()}))); router.put('/settings',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.json({settings:await store.adminSaveSettings(req.body||{})}))); router.use((error,_req,res,next)=>{if(error instanceof TypeError)return res.status(400).json({error:'invalid_request',message:error.message});return next(error)}); return router; }
 
-module.exports={createCommunityStore,createCommunityRouter,createCommunityPagesRouter,createCommunityAdminRouter,detailHtml};
+module.exports={createCommunityStore,createCommunityRouter,createCommunityPagesRouter,createCommunityAdminRouter,detailHtml,maskIp};
