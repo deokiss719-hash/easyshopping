@@ -37,6 +37,12 @@ const { createTrafficAnalyticsStore } = require('./src/traffic-analytics-store')
 const { createCtaEventStore, createCtaEventsRouter } = require('./src/cta-events');
 const { createSeoPagesRouter } = require('./src/seo-pages');
 const { createAdvertisingInquiryRouter } = require('./src/advertising-inquiries');
+const {
+  createCommunityStore,
+  createCommunityRouter,
+  createCommunityPagesRouter,
+  createCommunityAdminRouter,
+} = require('./src/community/community');
 const { readCoupangRuntime, runCoupangCollector } = require('./src/coupang-products');
 const {
   readFmkoreaRuntime,
@@ -164,6 +170,7 @@ app.get('/api/popular', (_req, res) => {
 
 async function start() {
   let store = null;
+  let communityStore = null;
   let adminAuth = null;
   const adminRuntime = readAdminRuntime(process.env);
   const {
@@ -201,6 +208,7 @@ async function start() {
       freshnessThresholdMs,
     });
     const adminStore = createAdminStore(pool);
+    communityStore = createCommunityStore(pool);
     const analyticsStore = createTrafficAnalyticsStore(pool);
     const purgeTrafficDetails = () => analyticsStore.purgeBefore(koreaDay(new Date()))
       .catch(() => console.warn('traffic analytics retention cleanup failed'));
@@ -230,6 +238,16 @@ async function start() {
         imageUrlValidator: manualImageUrlValidator,
       }),
     });
+    const communitySecret = adminRuntime.sessionSecret || process.env.COMMUNITY_SECRET;
+    if (!communitySecret) throw new Error('ADMIN_SESSION_SECRET or COMMUNITY_SECRET is required for community identity protection');
+    app.use(createCommunityRouter({
+      store: communityStore,
+      secret: communitySecret,
+      production: process.env.NODE_ENV === 'production',
+      consultationUrl: process.env.COMMUNITY_CONSULTATION_URL || '',
+    }));
+    app.use(createCommunityPagesRouter({ store: communityStore, publicDir: path.join(__dirname, 'public') }));
+    if (adminAuth) app.use('/api/admin/community', createCommunityAdminRouter({ store: communityStore, auth: adminAuth }));
     app.use('/api/advertising-inquiries', createAdvertisingInquiryRouter(adminStore));
     if (adminRuntime.sessionSecret) {
       app.use('/api/deal-clicks', createDealClicksRouter({ store: createDealClickStore(pool), secret: adminRuntime.sessionSecret }));
@@ -337,7 +355,7 @@ async function start() {
 
   app.use('/admin', createAdminUiRouter({ auth: adminAuth }));
   app.use(trafficAnalytics);
-  if (store) app.use(createSeoPagesRouter(store));
+  if (store) app.use(createSeoPagesRouter(store, communityStore));
   app.use(express.static(path.join(__dirname, 'public')));
 
   app.use('/api/live-deals', createLiveDealsRouter(store, {

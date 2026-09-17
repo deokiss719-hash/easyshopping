@@ -22,10 +22,12 @@ test('detail and category pages expose unique canonical metadata and crawlable i
 });
 
 test('dynamic sitemap contains home, category and active detail URLs', () => {
-  const xml = sitemapXml([deal]);
+  const xml = sitemapXml([deal], [{ id: '7', updatedAt: '2026-09-17T00:00:00.000Z' }]);
   assert.match(xml, /https:\/\/easyshoopping\.com\/<\/loc>/);
   assert.match(xml, /https:\/\/easyshoopping\.com\/hot-deals\/food/);
   assert.match(xml, /https:\/\/easyshoopping\.com\/deals\/42/);
+  assert.match(xml, /https:\/\/easyshoopping\.com\/community<\/loc>/);
+  assert.match(xml, /https:\/\/easyshoopping\.com\/community\/posts\/7/);
   assert.match(xml, /<lastmod>2026-09-16<\/lastmod>/);
 });
 

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="휴대폰 질문, 핫딜 제보, 구매후기와 자유 이야기를 익명으로 나누는 이지핫딜 커뮤니티입니다.">
+  <link rel="canonical" href="https://easyshoopping.com/community">
+  <meta property="og:title" content="이지핫딜 커뮤니티">
+  <meta property="og:description" content="익명으로 휴대폰 질문과 핫딜 정보를 나눠보세요.">
+  <meta property="og:url" content="https://easyshoopping.com/community">
+  <title>익명 커뮤니티 | 이지핫딜</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/community.css">
+</head>
+<body class="community-page">
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="wordmark" href="/" aria-label="이지핫딜 홈"><span class="wordmark-symbol">E</span><span class="wordmark-name">이지핫딜</span></a>
+      <nav class="desktop-nav" aria-label="주요 메뉴"><a href="/">핫딜</a><a class="active" href="/community">커뮤니티</a></nav>
+    </div>
+  </header>
+
+  <main class="community-shell">
+    <section class="community-hero">
+      <div><span class="section-kicker"><i></i> ANONYMOUS COMMUNITY</span><h1>이지핫딜 커뮤니티</h1><p>휴대폰 질문은 이지폰이 직접 답변해드려요.</p></div>
+      <button id="open-compose" class="community-primary" type="button">글쓰기</button>
+    </section>
+
+    <nav id="community-categories" class="community-tabs" aria-label="커뮤니티 카테고리"><button class="active" data-category="all">전체</button></nav>
+
+    <section class="community-tools" aria-label="게시글 검색 및 정렬">
+      <form id="community-search"><select id="search-scope"><option value="title">제목</option><option value="all">제목+내용</option></select><input id="community-q" maxlength="100" type="search" placeholder="게시글 검색"><button type="submit">검색</button></form>
+      <div class="community-sort"><button class="active" data-sort="latest" type="button">최신</button><button data-popular-period="realtime" type="button">실시간 인기</button><button data-popular-period="today" type="button">오늘</button><button data-popular-period="week" type="button">주간</button></div>
+    </section>
+
+    <section class="community-board" aria-labelledby="board-title">
+      <div class="community-board-head"><span>분류</span><h2 id="board-title">제목</h2><span>작성자</span><span>시간</span><span>조회</span><span>추천</span></div>
+      <div id="community-list" class="community-list" aria-live="polite"><p class="community-empty">게시글을 불러오는 중...</p></div>
+      <div class="community-pager"><button id="community-prev" type="button">이전</button><span id="community-page">1페이지</span><button id="community-next" type="button">다음</button></div>
+    </section>
+  </main>
+
+  <dialog id="compose-dialog" class="community-dialog">
+    <form id="compose-form" method="dialog">
+      <div class="dialog-head"><div><strong>익명 글쓰기</strong><small>기본 닉네임은 ㅇㅇ이며 원하는 경우 바꿀 수 있어요.</small></div><button id="close-compose" type="button" aria-label="닫기">×</button></div>
+      <label>카테고리<select id="compose-category" required></select></label>
+      <label>제목<input id="compose-title" maxlength="160" required></label>
+      <label>닉네임<input id="compose-nickname" maxlength="24" value="ㅇㅇ" required></label>
+      <label>내용<textarea id="compose-body" maxlength="10000" rows="9" required></textarea></label>
+      <label>삭제 비밀번호 <small>선택 · 쿠키가 사라졌을 때 수정/삭제용</small><input id="compose-password" type="password" minlength="4" maxlength="32" autocomplete="new-password"></label>
+      <label class="community-check"><input id="compose-answer" type="checkbox"> 이지폰에게 답변 요청</label>
+      <p class="privacy-note">전화번호 등 개인정보는 공개 게시글에 작성하지 마세요. 개인 상담이 필요한 경우 비공개 상담을 이용해주세요. 전화번호·이메일처럼 보이는 내용은 등록 전에 한 번 더 확인합니다.</p>
+      <p id="compose-message" class="community-message" role="status"></p>
+      <button class="community-primary wide" type="submit">등록하기</button>
+    </form>
+  </dialog>
+
+  <nav class="bottom-nav" aria-label="모바일 메뉴"><a href="/"><span>⌂</span>홈</a><a href="/#all-deals"><span>⚡</span>핫딜</a><a class="active" href="/community"><span>☷</span>커뮤니티</a><button id="mobile-compose" type="button"><span>＋</span>글쓰기</button></nav>
+  <script src="/community.js" defer></script>
+</body>
+</html>

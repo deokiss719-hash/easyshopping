@@ -14,6 +14,12 @@
     productTotal: 0,
     productSize: 30,
     inquiries: [],
+    communityPosts: [],
+    communityReports: [],
+    communityCategories: [],
+    communityBannedWords: [],
+    communityBlocks: [],
+    communitySettings: {},
   };
   const byId = (id) => document.getElementById(id);
   const normalizeHttpsUrlInput = window.AdminUrlUtils.normalizeHttpsUrlInput;
@@ -194,6 +200,243 @@
     const data = await api('/api/admin/advertising-inquiries');
     state.inquiries = Array.isArray(data?.inquiries) ? data.inquiries : [];
     renderInquiries();
+  }
+
+  function communityAction(label, handler, className = 'button secondary small') {
+    const button = textNode('button', label, className);
+    button.type = 'button';
+    button.addEventListener('click', handler);
+    return button;
+  }
+
+  function renderCommunityPosts() {
+    const list = byId('community-post-list');
+    if (!list) return;
+    list.replaceChildren();
+    if (!state.communityPosts.length) {
+      list.append(textNode('p', '조건에 맞는 게시글이 없습니다.', 'empty-copy'));
+      return;
+    }
+    state.communityPosts.forEach((post) => {
+      const item = document.createElement('article');
+      item.className = 'deal-item';
+      const body = document.createElement('div');
+      body.className = 'deal-content';
+      const title = textNode('strong', `${post.answerRequested && !post.answered ? '답변요청 · ' : ''}${post.title}`);
+      const meta = textNode('p', `${post.categoryName} · ${post.nickname} · 댓글 ${post.commentCount} · 조회 ${post.views} · ${new Date(post.createdAt).toLocaleString('ko-KR')}`, 'deal-meta');
+      const flags = [];
+      if (post.answered) flags.push('답변완료');
+      if (post.hidden) flags.push('숨김');
+      if (post.deleted) flags.push('삭제');
+      if (flags.length) body.append(textNode('span', flags.join(' · '), 'deal-meta'));
+      const actions = document.createElement('div');
+      actions.className = 'deal-actions';
+      const open = textNode('a', '게시글 보기', 'button secondary small');
+      open.href = `/community/posts/${encodeURIComponent(post.id)}`;
+      open.target = '_blank';
+      open.rel = 'noopener noreferrer';
+      actions.append(open);
+      if (!post.deleted) {
+        actions.append(communityAction('댓글 관리', async () => {
+          const data = await api(`/api/admin/community/posts/${post.id}/comments`);
+          const existing = item.querySelector('.community-comment-admin');
+          if (existing) { existing.remove(); return; }
+          const box = document.createElement('div');
+          box.className = 'community-comment-admin deal-list';
+          if (!data.comments?.length) box.append(textNode('p', '댓글이 없습니다.', 'empty-copy'));
+          (data.comments || []).forEach((comment) => {
+            const row = document.createElement('div');
+            row.className = 'compact-item';
+            const copy = document.createElement('div');
+            const label = comment.isAdmin ? '이지폰 ✓ 관리자' : `${comment.nickname}${comment.isPostAuthor ? ' · 글쓴이' : ''}`;
+            copy.append(textNode('strong', label));
+            copy.append(textNode('p', comment.body, 'deal-meta'));
+            if (comment.hidden || comment.deleted) copy.append(textNode('span', [comment.hidden ? '숨김' : '', comment.deleted ? '삭제' : ''].filter(Boolean).join(' · '), 'deal-meta'));
+            const commentActions = document.createElement('div');
+            commentActions.className = 'deal-actions';
+            commentActions.append(communityAction(comment.hidden ? '숨김 해제' : '숨기기', async () => {
+              await api(`/api/admin/community/comments/${comment.id}`, { method: 'PATCH', body: JSON.stringify({ hidden: !comment.hidden, deleted: comment.deleted }) });
+              actions.querySelector('button')?.click();
+              actions.querySelector('button')?.click();
+            }));
+            if (!comment.deleted) commentActions.append(communityAction('삭제', async () => {
+              await api(`/api/admin/community/comments/${comment.id}`, { method: 'PATCH', body: JSON.stringify({ hidden: true, deleted: true }) });
+              await loadCommunity();
+            }, 'text-button danger'));
+            row.append(copy, commentActions);
+            box.append(row);
+          });
+          item.append(box);
+        }));
+        actions.append(communityAction(post.hidden ? '숨김 해제' : '숨기기', async () => {
+          await api(`/api/admin/community/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ action: post.hidden ? 'show' : 'hide' }) });
+          await loadCommunity();
+        }));
+        actions.append(communityAction('삭제', async () => {
+          if (!window.confirm('이 게시글을 삭제 처리할까요?')) return;
+          await api(`/api/admin/community/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ action: 'delete' }) });
+          await loadCommunity();
+        }, 'text-button danger'));
+      } else {
+        actions.append(communityAction('복구', async () => {
+          await api(`/api/admin/community/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ action: 'restore' }) });
+          await loadCommunity();
+        }));
+      }
+      if (!post.deleted) {
+        actions.append(communityAction('관리자 답변', async () => {
+          const reply = window.prompt('이지폰 관리자 답변을 입력하세요.');
+          if (!reply?.trim()) return;
+          await api(`/api/admin/community/posts/${post.id}/reply`, { method: 'POST', body: JSON.stringify({ body: reply.trim() }) });
+          await loadCommunity();
+        }, 'button primary small'));
+      }
+      actions.append(communityAction('사용자 차단', async () => {
+        const reason = window.prompt('차단 사유를 입력하세요.', '스팸/운영정책 위반');
+        if (reason == null) return;
+        await api('/api/admin/community/blocks', { method: 'POST', body: JSON.stringify({ authorHash: post.authorHash, reason }) });
+        showMessage('community-admin-message', '해당 익명 사용자를 차단했습니다.', 'success');
+      }, 'text-button danger'));
+      body.prepend(title, meta);
+      body.append(actions);
+      item.append(body);
+      list.append(item);
+    });
+  }
+
+  function renderCommunityReports() {
+    const list = byId('community-report-list');
+    if (!list) return;
+    list.replaceChildren();
+    if (!state.communityReports.length) {
+      list.append(textNode('p', '접수된 신고가 없습니다.', 'empty-copy'));
+      return;
+    }
+    state.communityReports.forEach((report) => {
+      const item = document.createElement('article');
+      item.className = 'compact-item';
+      const body = document.createElement('div');
+      body.append(textNode('strong', `${report.targetType === 'post' ? '게시글' : '댓글'} #${report.targetId}`));
+      body.append(textNode('p', `${report.reason} · ${new Date(report.createdAt).toLocaleString('ko-KR')}`, 'deal-meta'));
+      const actions = document.createElement('div');
+      actions.className = 'deal-actions';
+      ['resolved', 'dismissed'].forEach((status) => actions.append(communityAction(status === 'resolved' ? '처리완료' : '기각', async () => {
+        await api(`/api/admin/community/reports/${report.id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+        await loadCommunity();
+      })));
+      body.append(actions);
+      item.append(body);
+      list.append(item);
+    });
+  }
+
+  function renderCommunityCategories() {
+    const list = byId('community-category-list');
+    if (!list) return;
+    list.replaceChildren();
+    state.communityCategories.forEach((category) => {
+      const item = document.createElement('div');
+      item.className = 'compact-item';
+      const copy = document.createElement('div');
+      copy.append(textNode('strong', category.name));
+      copy.append(textNode('span', `${category.slug} · ${category.active ? '사용 중' : '비활성'}`, 'deal-meta'));
+      const toggle = communityAction(category.active ? '비활성화' : '활성화', async () => {
+        await api(`/api/admin/community/categories/${category.id}`, { method: 'PUT', body: JSON.stringify({ name: category.name, slug: category.slug, sortOrder: category.sortOrder, active: !category.active }) });
+        await loadCommunity();
+      });
+      const edit = communityAction('수정', async () => {
+        const name = window.prompt('카테고리명을 입력하세요.', category.name);
+        if (!name?.trim()) return;
+        const slug = window.prompt('영문 식별자를 입력하세요.', category.slug);
+        if (!slug?.trim()) return;
+        const sortOrder = Number(window.prompt('정렬 순서를 입력하세요.', String(category.sortOrder ?? 0)));
+        await api(`/api/admin/community/categories/${category.id}`, { method: 'PUT', body: JSON.stringify({ name: name.trim(), slug: slug.trim(), sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0, active: category.active }) });
+        await loadCommunity();
+      });
+      const actions = document.createElement('div');
+      actions.className = 'deal-actions';
+      actions.append(edit, toggle);
+      item.append(copy, actions);
+      list.append(item);
+    });
+  }
+
+  function renderCommunityBannedWords() {
+    const list = byId('community-banned-list');
+    if (!list) return;
+    list.replaceChildren();
+    if (!state.communityBannedWords.length) list.append(textNode('p', '등록된 금칙어가 없습니다.', 'empty-copy'));
+    state.communityBannedWords.forEach((word) => {
+      const item = document.createElement('div');
+      item.className = 'compact-item';
+      item.append(textNode('strong', word.word), communityAction('삭제', async () => {
+        await api(`/api/admin/community/banned-words/${word.id}`, { method: 'DELETE' });
+        await loadCommunity();
+      }, 'text-button danger'));
+      list.append(item);
+    });
+  }
+
+  function renderCommunityBlocks() {
+    const list = byId('community-block-list');
+    if (!list) return;
+    list.replaceChildren();
+    if (!state.communityBlocks.length) {
+      list.append(textNode('p', '차단된 사용자가 없습니다.', 'empty-copy'));
+      return;
+    }
+    state.communityBlocks.forEach((block) => {
+      const item = document.createElement('div');
+      item.className = 'compact-item';
+      const copy = document.createElement('div');
+      copy.append(textNode('strong', `익명 ${block.authorKey}`));
+      copy.append(textNode('p', `${block.reason || '사유 없음'}${block.expiresAt ? ` · ${new Date(block.expiresAt).toLocaleString('ko-KR')}까지` : ' · 무기한'}`, 'deal-meta'));
+      item.append(copy, communityAction('차단 해제', async () => {
+        await api(`/api/admin/community/blocks/${encodeURIComponent(block.authorHash)}`, { method: 'DELETE' });
+        await loadCommunity();
+      }, 'text-button danger'));
+      list.append(item);
+    });
+  }
+
+  function renderCommunitySettings() {
+    const values = state.communitySettings || {};
+    const map = {
+      'community-rank-up': values.rank_upvote_weight ?? '8',
+      'community-rank-down': values.rank_downvote_weight ?? '5',
+      'community-rank-comment': values.rank_comment_weight ?? '4',
+      'community-rank-view': values.rank_view_weight ?? '0.125',
+      'community-rank-age': values.rank_age_power ?? '0.55',
+      'community-consultation-url': values.consultation_url ?? '',
+    };
+    Object.entries(map).forEach(([id, value]) => { if (byId(id)) byId(id).value = value; });
+  }
+
+  async function loadCommunity() {
+    const q = byId('community-post-q')?.value.trim() || '';
+    const answer = byId('community-answer-filter')?.value || '';
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (answer) params.set('answer', answer);
+    try {
+      const [posts, reports, categories, banned, blocks, settings] = await Promise.all([
+        api(`/api/admin/community/posts${params.size ? `?${params}` : ''}`),
+        api('/api/admin/community/reports'),
+        api('/api/admin/community/categories'),
+        api('/api/admin/community/banned-words'),
+        api('/api/admin/community/blocks'),
+        api('/api/admin/community/settings'),
+      ]);
+      state.communityPosts = posts.posts || [];
+      state.communityReports = reports.reports || [];
+      state.communityCategories = categories.categories || [];
+      state.communityBannedWords = banned.words || [];
+      state.communityBlocks = blocks.blocks || [];
+      state.communitySettings = settings.settings || {};
+      renderCommunityPosts(); renderCommunityReports(); renderCommunityCategories(); renderCommunityBannedWords(); renderCommunityBlocks(); renderCommunitySettings();
+    } catch (error) {
+      showMessage('community-admin-message', errorMessage(error, '커뮤니티 관리 데이터를 불러오지 못했습니다.'), 'error');
+    }
   }
 
   const trafficSourceLabels = Object.freeze({
@@ -773,6 +1016,39 @@
     byId('product-prev')?.addEventListener('click', () => { if (state.productPage > 1) { state.productPage -= 1; loadProducts(); } });
     byId('product-next')?.addEventListener('click', () => { if (state.productPage * state.productSize < state.productTotal) { state.productPage += 1; loadProducts(); } });
     byId('refresh-inquiries')?.addEventListener('click', loadInquiries);
+    byId('refresh-community')?.addEventListener('click', loadCommunity);
+    byId('community-post-filter')?.addEventListener('submit', (event) => { event.preventDefault(); loadCommunity(); });
+    byId('community-category-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        await api('/api/admin/community/categories', { method: 'POST', body: JSON.stringify({ name: byId('community-category-name').value.trim(), slug: byId('community-category-slug').value.trim() }) });
+        event.currentTarget.reset(); await loadCommunity();
+      } catch (error) { showMessage('community-admin-message', errorMessage(error, '카테고리를 추가하지 못했습니다.'), 'error'); }
+    });
+    byId('community-banned-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        await api('/api/admin/community/banned-words', { method: 'POST', body: JSON.stringify({ word: byId('community-banned-word').value.trim() }) });
+        event.currentTarget.reset(); await loadCommunity();
+      } catch (error) { showMessage('community-admin-message', errorMessage(error, '금칙어를 추가하지 못했습니다.'), 'error'); }
+    });
+    byId('community-settings-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const values = {
+        rank_upvote_weight: byId('community-rank-up').value,
+        rank_downvote_weight: byId('community-rank-down').value,
+        rank_comment_weight: byId('community-rank-comment').value,
+        rank_view_weight: byId('community-rank-view').value,
+        rank_age_power: byId('community-rank-age').value,
+        consultation_url: byId('community-consultation-url').value.trim(),
+      };
+      try {
+        const result = await api('/api/admin/community/settings', { method: 'PUT', body: JSON.stringify(values) });
+        state.communitySettings = result.settings || {};
+        renderCommunitySettings();
+        showMessage('community-admin-message', '커뮤니티 설정을 저장했습니다.', 'success');
+      } catch (error) { showMessage('community-admin-message', errorMessage(error, '커뮤니티 설정을 저장하지 못했습니다.'), 'error'); }
+    });
     byId('logout').addEventListener('click', logout);
     byId('menu-toggle').addEventListener('click', () => {
       const open = !byId('sidebar').classList.contains('open');
@@ -793,7 +1069,7 @@
       const session = await api('/api/admin/auth/session');
       state.csrfToken = session.csrfToken;
       byId('admin-user').textContent = session.username || '';
-      await Promise.all([loadDeals(), loadSettings(), loadTraffic(), loadDaily(), loadOperations(), loadProducts(), loadInquiries()]);
+      await Promise.all([loadDeals(), loadSettings(), loadTraffic(), loadDaily(), loadOperations(), loadProducts(), loadInquiries(), loadCommunity()]);
     } catch (error) {
       showMessage('status-message', errorMessage(error, '관리자 데이터를 불러오지 못했습니다.'), 'error');
     }

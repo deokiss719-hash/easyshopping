@@ -236,3 +236,124 @@ CREATE TABLE IF NOT EXISTS automation_status (
   payload JSONB NOT NULL,
   reported_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Anonymous community. Public identities are random cookie tokens; only their
+-- server-side HMAC values are persisted.
+CREATE TABLE IF NOT EXISTS community_categories (
+  id BIGSERIAL PRIMARY KEY,
+  slug VARCHAR(48) NOT NULL UNIQUE,
+  name VARCHAR(60) NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO community_categories(slug,name,sort_order) VALUES
+  ('phone','휴대폰 질문',10),
+  ('deal-report','핫딜 제보',20),
+  ('review','구매후기',30),
+  ('free','자유',40)
+ON CONFLICT(slug) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS community_posts (
+  id BIGSERIAL PRIMARY KEY,
+  category_id BIGINT NOT NULL REFERENCES community_categories(id),
+  title VARCHAR(160) NOT NULL,
+  body TEXT NOT NULL,
+  nickname VARCHAR(24) NOT NULL DEFAULT 'ㅇㅇ',
+  author_hash VARCHAR(64) NOT NULL,
+  edit_password_hash TEXT,
+  answer_requested BOOLEAN NOT NULL DEFAULT FALSE,
+  answered_at TIMESTAMPTZ,
+  views BIGINT NOT NULL DEFAULT 0 CHECK (views >= 0),
+  upvotes INTEGER NOT NULL DEFAULT 0,
+  downvotes INTEGER NOT NULL DEFAULT 0,
+  comment_count INTEGER NOT NULL DEFAULT 0 CHECK (comment_count >= 0),
+  is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS community_posts_list_idx ON community_posts(is_hidden,is_deleted,created_at DESC,id DESC);
+CREATE INDEX IF NOT EXISTS community_posts_category_idx ON community_posts(category_id,created_at DESC,id DESC);
+CREATE INDEX IF NOT EXISTS community_posts_answer_idx ON community_posts(answer_requested,answered_at,created_at DESC);
+CREATE INDEX IF NOT EXISTS community_posts_title_idx ON community_posts(title);
+
+CREATE TABLE IF NOT EXISTS community_comments (
+  id BIGSERIAL PRIMARY KEY,
+  post_id BIGINT NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+  parent_comment_id BIGINT REFERENCES community_comments(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  nickname VARCHAR(24) NOT NULL DEFAULT 'ㅇㅇ',
+  author_hash VARCHAR(64) NOT NULL,
+  edit_password_hash TEXT,
+  is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+  upvotes INTEGER NOT NULL DEFAULT 0,
+  downvotes INTEGER NOT NULL DEFAULT 0,
+  is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS community_comments_post_idx ON community_comments(post_id,created_at,id);
+
+CREATE TABLE IF NOT EXISTS community_votes (
+  target_type VARCHAR(12) NOT NULL CHECK (target_type IN ('post','comment')),
+  target_id BIGINT NOT NULL,
+  voter_hash VARCHAR(64) NOT NULL,
+  value SMALLINT NOT NULL CHECK (value IN (-1,1)),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(target_type,target_id,voter_hash)
+);
+CREATE INDEX IF NOT EXISTS community_votes_target_idx ON community_votes(target_type,target_id);
+
+CREATE TABLE IF NOT EXISTS community_post_views (
+  post_id BIGINT NOT NULL REFERENCES community_posts(id) ON DELETE CASCADE,
+  viewer_hash VARCHAR(64) NOT NULL,
+  viewed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY(post_id,viewer_hash)
+);
+
+CREATE TABLE IF NOT EXISTS community_reports (
+  id BIGSERIAL PRIMARY KEY,
+  target_type VARCHAR(12) NOT NULL CHECK (target_type IN ('post','comment')),
+  target_id BIGINT NOT NULL,
+  reporter_hash VARCHAR(64) NOT NULL,
+  reason VARCHAR(300) NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'open' CHECK (status IN ('open','resolved','dismissed')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(target_type,target_id,reporter_hash)
+);
+CREATE INDEX IF NOT EXISTS community_reports_status_idx ON community_reports(status,created_at DESC);
+
+CREATE TABLE IF NOT EXISTS community_banned_words (
+  id BIGSERIAL PRIMARY KEY,
+  word VARCHAR(100) NOT NULL UNIQUE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS community_blocks (
+  author_hash VARCHAR(64) PRIMARY KEY,
+  reason VARCHAR(300) NOT NULL DEFAULT '',
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS community_settings (
+  key VARCHAR(80) PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO community_settings(key,value) VALUES
+  ('rank_upvote_weight','8'),
+  ('rank_downvote_weight','5'),
+  ('rank_comment_weight','4'),
+  ('rank_view_weight','0.125'),
+  ('rank_age_power','0.55'),
+  ('consultation_url','')
+ON CONFLICT(key) DO NOTHING;

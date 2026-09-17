@@ -81,6 +81,7 @@
         <a href="#popular">실시간</a>
         <a href="#latest">최신</a>
         <a href="#categories">카테고리</a>
+        <a href="/community">커뮤니티</a>
       </nav>
       <div class="header-actions">
         <button class="icon-button search-trigger" type="button" aria-label="검색창으로 이동">
@@ -139,6 +140,14 @@
       <div id="popularList" class="popular-list skeleton-list" aria-live="polite">
         <div class="rank-skeleton"></div><div class="rank-skeleton"></div><div class="rank-skeleton"></div>
       </div>
+    </section>
+
+    <section class="section home-community" aria-labelledby="home-community-title">
+      <div class="section-head compact">
+        <div><span class="section-kicker"><i></i> COMMUNITY</span><h2 id="home-community-title">지금 커뮤니티에서 인기</h2></div>
+        <a href="/community" class="text-link">전체 보기 <span>→</span></a>
+      </div>
+      <div id="homeCommunityList" class="home-community-list"><p>인기 글을 불러오는 중...</p></div>
     </section>
 
     <section class="category-section section" id="categories" aria-labelledby="category-title">
@@ -218,7 +227,7 @@
         <a class="wordmark footer-wordmark" href="/"><span class="wordmark-symbol">E</span><span class="wordmark-name">이지핫딜</span></a>
         <p>어렵게 찾지 말고, 쉽게 비교하세요.</p>
       </div>
-      <div class="footer-links"><a href="/hot-deals/food">식품 핫딜</a><a href="/hot-deals/digital">디지털 핫딜</a><a href="/hot-deals/living">생활 핫딜</a><a href="/hot-deals/fashion">패션 핫딜</a><a href="/advertise.html">광고문의</a></div>
+      <div class="footer-links"><a href="/hot-deals/food">식품 핫딜</a><a href="/hot-deals/digital">디지털 핫딜</a><a href="/hot-deals/living">생활 핫딜</a><a href="/hot-deals/fashion">패션 핫딜</a><a href="/community">커뮤니티</a><a href="/advertise.html">광고문의</a></div>
       <div class="footer-note"><span>EASY HOT DEAL by EASY</span><p>상품 정보는 판매처 사정에 따라 변경될 수 있으며, 구매는 각 판매처에서 진행됩니다.</p><small>© 2026 EASY HOT DEAL</small></div>
     </div>
   </footer>
@@ -227,7 +236,7 @@
     <a class="active" href="/"><span>⌂</span>홈</a>
     <a href="#all-deals"><span>⚡</span>핫딜</a>
     <button class="mobile-search-trigger" type="button"><span>⌕</span>검색</button>
-    <a href="#popular"><span>♨</span>실시간</a>
+    <a href="/community"><span>☷</span>커뮤니티</a>
   </nav>
 
   <a class="kakao-mobile-cta" href="https://open.kakao.com/o/pQIoypNi" target="_blank" rel="noopener noreferrer" data-kakao-placement="mobile" aria-label="카카오톡으로 핫딜 알림받기 (새 창)">카톡으로 핫딜 알림받기</a>
@@ -241,6 +250,7 @@
   <script src="/merchant-events.js" defer></script>
   <script src="/deal-clicks.js" defer></script>
   <script src="/cta-events.js" defer></script>
+  <script src="/home-community.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

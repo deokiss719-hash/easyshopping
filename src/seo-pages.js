@@ -47,15 +47,29 @@ function categoryPage(slug, category, deals) {
   return layout({ title, description, canonical, body, structuredData });
 }
 
-function sitemapXml(deals) {
+function sitemapXml(deals, communityPosts = []) {
   const today = new Date().toISOString().slice(0, 10);
-  const urls = [{ loc: 'https://easyshoopping.com/', lastmod: today, priority: '1.0' }, ...Object.keys(CATEGORY_PATHS).map((slug) => ({ loc: `https://easyshoopping.com/hot-deals/${slug}`, lastmod: today, priority: '0.8' })), ...deals.map((deal) => ({ loc: `https://easyshoopping.com/deals/${deal.id}`, lastmod: deal.updatedAt.slice(0, 10), priority: '0.6' }))];
+  const urls = [
+    { loc: 'https://easyshoopping.com/', lastmod: today, priority: '1.0' },
+    { loc: 'https://easyshoopping.com/community', lastmod: today, priority: '0.8' },
+    ...Object.keys(CATEGORY_PATHS).map((slug) => ({ loc: `https://easyshoopping.com/hot-deals/${slug}`, lastmod: today, priority: '0.8' })),
+    ...deals.map((deal) => ({ loc: `https://easyshoopping.com/deals/${deal.id}`, lastmod: deal.updatedAt.slice(0, 10), priority: '0.6' })),
+    ...communityPosts.map((post) => ({ loc: `https://easyshoopping.com/community/posts/${post.id}`, lastmod: new Date(post.updatedAt).toISOString().slice(0, 10), priority: '0.5' })),
+  ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((entry) => `  <url><loc>${entry.loc}</loc><lastmod>${entry.lastmod}</lastmod><changefreq>${entry.priority === '1.0' ? 'hourly' : 'daily'}</changefreq><priority>${entry.priority}</priority></url>`).join('\n')}\n</urlset>\n`;
 }
 
-function createSeoPagesRouter(store) {
+function createSeoPagesRouter(store, communityStore = null) {
   const router = express.Router();
-  router.get('/sitemap.xml', async (_req, res, next) => { try { res.type('application/xml').send(sitemapXml(await store.listSitemapDeals())); } catch (error) { next(error); } });
+  router.get('/sitemap.xml', async (_req, res, next) => {
+    try {
+      const [deals, communityPosts] = await Promise.all([
+        store.listSitemapDeals(),
+        communityStore?.sitemapPosts ? communityStore.sitemapPosts() : [],
+      ]);
+      res.type('application/xml').send(sitemapXml(deals, communityPosts));
+    } catch (error) { next(error); }
+  });
   router.get('/deals/:id', async (req, res, next) => { try { const deal = await store.getPublicById(req.params.id); if (!deal) return next(); return res.type('html').send(dealPage(deal)); } catch (error) { return next(error); } });
   router.get('/hot-deals/:slug', async (req, res, next) => { try { const category = Object.hasOwn(CATEGORY_PATHS, req.params.slug) ? CATEGORY_PATHS[req.params.slug] : null; if (!category) return next(); const result = await store.list({ source: ['ppomppu', 'fmkorea', 'ruliweb', 'toss'], category, sort: 'latest', page: 1, size: 24 }); return res.type('html').send(categoryPage(req.params.slug, category, result.items)); } catch (error) { return next(error); } });
   return router;
