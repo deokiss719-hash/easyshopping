@@ -262,6 +262,7 @@ CREATE TABLE IF NOT EXISTS community_posts (
   category_id BIGINT NOT NULL REFERENCES community_categories(id),
   title VARCHAR(160) NOT NULL,
   body TEXT NOT NULL,
+  image_url TEXT,
   nickname VARCHAR(24) NOT NULL DEFAULT 'ㅇㅇ',
   author_hash VARCHAR(64) NOT NULL,
   ip_display VARCHAR(48),
@@ -280,6 +281,7 @@ CREATE TABLE IF NOT EXISTS community_posts (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS ip_display VARCHAR(48);
+ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS is_notice BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
 UPDATE community_posts SET is_pinned=TRUE WHERE is_notice=TRUE AND is_pinned=FALSE;

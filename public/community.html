@@ -47,10 +47,17 @@
       <label>제목<input id="compose-title" maxlength="160" required></label>
       <label>닉네임<input id="compose-nickname" maxlength="24" value="ㅇㅇ" required></label>
       <label>내용<textarea id="compose-body" maxlength="10000" rows="9" required></textarea></label>
+      <label class="compose-image-field">이미지 <small>선택 · JPG, PNG, WebP, GIF, AVIF · 최대 10MB</small>
+        <input id="compose-image" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif">
+      </label>
+      <div id="compose-image-preview-wrap" class="compose-image-preview" hidden>
+        <img id="compose-image-preview" alt="첨부 이미지 미리보기">
+        <div><button id="compose-image-clear" type="button">이미지 삭제</button><span id="compose-image-status" role="status"></span></div>
+      </div>
       <label>삭제 비밀번호 <small>선택 · 쿠키가 사라졌을 때 수정/삭제용</small><input id="compose-password" type="password" minlength="4" maxlength="32" autocomplete="new-password"></label>
       <p class="privacy-note">전화번호 등 개인정보는 공개 게시글에 작성하지 마세요. 개인 상담이 필요한 경우 비공개 상담을 이용해주세요. 전화번호·이메일처럼 보이는 내용은 등록 전에 한 번 더 확인합니다.</p>
       <p id="compose-message" class="community-message" role="status"></p>
-      <button class="community-primary wide" type="submit">등록하기</button>
+      <button id="compose-submit" class="community-primary wide" type="submit">등록하기</button>
     </form>
   </dialog>
 

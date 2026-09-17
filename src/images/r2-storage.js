@@ -55,7 +55,7 @@ function readR2Config(env = process.env) {
 
 function validObjectKey(key) {
   return typeof key === 'string'
-    && /^deals\/[a-z0-9_-]{1,64}\/[a-f0-9]{64}\.webp$/i.test(key)
+    && /^(?:deals\/[a-z0-9_-]{1,64}|community\/posts)\/[a-f0-9]{64}\.webp$/i.test(key)
     && !key.includes('..');
 }
 

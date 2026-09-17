@@ -1,8 +1,10 @@
 const express = require('express');
 const { createHmac, randomBytes, timingSafeEqual } = require('node:crypto');
 const bcrypt = require('bcryptjs');
+const { convertToWebp, MAX_SOURCE_BYTES } = require('../images/webp');
 
 const COOKIE = 'ehd_anon';
+const COMMUNITY_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 const PHONE_PATTERN = /(?:01[016789])[- .]?\d{3,4}[- .]?\d{4}/;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
 const URL_PATTERN = /https?:\/\//gi;
@@ -71,11 +73,38 @@ function rateLimit(key, limit, windowMs) {
   return true;
 }
 
+function exactCommunityImageUrl(imageStorage, key, uploadedUrl) {
+  if (typeof imageStorage?.publicUrlForKey !== 'function' || typeof uploadedUrl !== 'string') return null;
+  try {
+    const expected = imageStorage.publicUrlForKey(key);
+    if (uploadedUrl !== expected) return null;
+    const parsed = new URL(uploadedUrl);
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.search || parsed.hash) return null;
+    return parsed.href === expected ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function createCommunityImageUrlValidator(imageStorage) {
+  return (value) => {
+    if (value == null || value === '') return null;
+    if (!imageStorage?.enabled || typeof imageStorage.publicUrlForKey !== 'function') {
+      throw new TypeError('이미지 저장소를 사용할 수 없어요.');
+    }
+    const match = String(value).match(/\/community\/posts\/([a-f0-9]{64})\.webp$/i);
+    const key = match ? `community/posts/${match[1].toLowerCase()}.webp` : null;
+    const validated = key && exactCommunityImageUrl(imageStorage, key, String(value));
+    if (!validated) throw new TypeError('올바른 커뮤니티 이미지가 아니에요.');
+    return validated;
+  };
+}
+
 function postRow(row, viewerHash) {
   if (!row) return null;
   return {
     id: String(row.id), categoryId: String(row.category_id), categorySlug: row.category_slug, categoryName: row.category_name,
-    title: row.title, body: row.body, nickname: row.nickname, isNotice: Boolean(row.is_notice), isPinned: Boolean(row.is_pinned), answerRequested: row.answer_requested,
+    title: row.title, body: row.body, imageUrl: row.image_url || null, nickname: row.nickname, isNotice: Boolean(row.is_notice), isPinned: Boolean(row.is_pinned), answerRequested: row.answer_requested,
     answered: Boolean(row.answered_at), views: Number(row.views || 0), upvotes: Number(row.upvotes || 0),
     downvotes: Number(row.downvotes || 0), commentCount: Number(row.comment_count || 0),
     ipDisplay: row.ip_display || '', createdAt: row.created_at, updatedAt: row.updated_at,
@@ -94,7 +123,10 @@ function commentRow(row, postAuthorHash, viewerHash) {
   };
 }
 
-function createCommunityStore(pool) {
+function createCommunityStore(pool, { imageUrlValidator = (value) => {
+  if (value == null || value === '') return null;
+  throw new TypeError('이미지 저장소를 사용할 수 없어요.');
+} } = {}) {
   async function banned(text) {
     const { rows } = await pool.query('SELECT word FROM community_banned_words WHERE is_active=TRUE');
     const lower = text.toLowerCase();
@@ -148,7 +180,8 @@ function createCommunityStore(pool) {
     const category = await pool.query('SELECT id FROM community_categories WHERE id=$1 AND is_active=TRUE', [input.categoryId]);
     if (!category.rows[0]) throw new TypeError('카테고리를 확인해 주세요.');
     const passwordHash = input.password ? await bcrypt.hash(safeText(input.password, 32), 10) : null;
-    const { rows } = await pool.query(`INSERT INTO community_posts(category_id,title,body,nickname,author_hash,ip_display,edit_password_hash,answer_requested) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [input.categoryId,title,body,nickname,authorHash,ipDisplay || null,passwordHash,input.answerRequested === true]);
+    const imageUrl = imageUrlValidator(input.imageUrl);
+    const { rows } = await pool.query(`INSERT INTO community_posts(category_id,title,body,image_url,nickname,author_hash,ip_display,edit_password_hash,answer_requested) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`, [input.categoryId,title,body,imageUrl,nickname,authorHash,ipDisplay || null,passwordHash,input.answerRequested === true]);
     return getPost(rows[0].id, authorHash, false);
   }
   async function canEdit(row, authorHash, password) {
@@ -160,7 +193,8 @@ function createCommunityStore(pool) {
     if (!row) return null; if (!(await canEdit(row, authorHash, input.password))) throw Object.assign(new Error('forbidden'), { status: 403 });
     const title = safeText(input.title ?? row.title,160); const body = safeText(input.body ?? row.body,10000); const nickname = safeText(input.nickname ?? row.nickname,24);
     if (await banned(`${title} ${body} ${nickname}`)) throw new TypeError('사용할 수 없는 표현이 포함되어 있어요.');
-    await pool.query('UPDATE community_posts SET title=$1,body=$2,nickname=$3,updated_at=CURRENT_TIMESTAMP WHERE id=$4',[title,body,nickname,id]);
+    const imageUrl = Object.prototype.hasOwnProperty.call(input, 'imageUrl') ? imageUrlValidator(input.imageUrl) : row.image_url;
+    await pool.query('UPDATE community_posts SET title=$1,body=$2,nickname=$3,image_url=$4,updated_at=CURRENT_TIMESTAMP WHERE id=$5',[title,body,nickname,imageUrl,id]);
     return getPost(id, authorHash, false);
   }
   async function deletePost(id, authorHash, password) {
@@ -217,13 +251,29 @@ function createCommunityStore(pool) {
 
 function communityError(error,res,next){ if(error?.code==='privacy_warning')return res.status(409).json({error:'privacy_warning',message:'전화번호로 보이는 정보가 포함되어 있어요. 공개 게시판에 올려도 되는지 확인해 주세요.'}); if(error?.status)return res.status(error.status).json({error:error.message}); if(error instanceof TypeError)return res.status(400).json({error:'invalid_request',message:error.message}); return next(error); }
 
-function createCommunityRouter({store,secret,production=false,consultationUrl=''}){
+function createCommunityRouter({store,secret,production=false,consultationUrl='',imageStorage,convertImage=convertToWebp}){
   if(!store||!secret)throw new TypeError('community store and secret are required'); const router=express.Router();
   router.use((req,res,next)=>{ req.communityAuthorHash=anonymousIdentity(req,res,secret,production); req.communityIpDisplay=maskIp(req.ip || req.socket?.remoteAddress); next(); });
   const mutation=(req,res,next)=>{ if(!sameOrigin(req))return res.status(403).json({error:'origin_mismatch'}); if(!rateLimit(`${req.communityAuthorHash}:${req.path}`,30,60000))return res.status(429).json({error:'rate_limited'}); next(); };
   router.get('/api/community/categories',async(req,res,next)=>{try{res.json({categories:await store.categories()});}catch(e){next(e)}});
   router.get('/api/community/posts',async(req,res,next)=>{try{res.json(await store.listPosts(req.query,req.communityAuthorHash));}catch(e){communityError(e,res,next)}});
   router.get('/api/community/posts/:id',async(req,res,next)=>{try{const value=await store.getPost(req.params.id,req.communityAuthorHash,true);if(!value)return res.status(404).json({error:'not_found'});const configured=await store.publicSettings();return res.json({...value,consultationUrl:configured.consultationUrl||consultationUrl});}catch(e){communityError(e,res,next)}});
+  router.post('/api/community/images',mutation,(req,res,next)=>{
+    const contentType=String(req.get('content-type')||'').split(';',1)[0].trim().toLowerCase();
+    if(!COMMUNITY_IMAGE_TYPES.has(contentType))return res.status(415).json({error:'unsupported_image_type',message:'JPG, PNG, WebP, GIF, AVIF 이미지만 올릴 수 있어요.'});
+    return express.raw({type:()=>true,limit:MAX_SOURCE_BYTES})(req,res,next);
+  },async(req,res,next)=>{try{
+    if(!rateLimit(`image:${req.communityAuthorHash}`,10,10*60000))return res.status(429).json({error:'rate_limited'});
+    if(!imageStorage?.enabled||typeof imageStorage.uploadWebp!=='function')return res.status(503).json({error:'image_storage_unavailable',message:'이미지 업로드를 잠시 사용할 수 없어요.'});
+    if(!Buffer.isBuffer(req.body)||req.body.length===0||typeof convertImage!=='function')return res.status(422).json({error:'invalid_image',message:'이미지 파일을 확인해 주세요.'});
+    let body; try{body=await convertImage(req.body);}catch{return res.status(422).json({error:'invalid_image',message:'이미지 파일을 확인해 주세요.'});}
+    if(!Buffer.isBuffer(body)||body.length===0)return res.status(422).json({error:'invalid_image',message:'이미지 파일을 확인해 주세요.'});
+    const key=`community/posts/${randomBytes(32).toString('hex')}.webp`;
+    let uploadedUrl; try{uploadedUrl=await imageStorage.uploadWebp({key,body});}catch{return res.status(502).json({error:'image_upload_failed',message:'이미지 업로드에 실패했어요.'});}
+    const imageUrl=exactCommunityImageUrl(imageStorage,key,uploadedUrl);
+    if(!imageUrl)return res.status(502).json({error:'image_upload_failed',message:'이미지 업로드에 실패했어요.'});
+    return res.status(201).json({imageUrl});
+  }catch(e){communityError(e,res,next)}});
   router.post('/api/community/posts',mutation,async(req,res,next)=>{try{if(!rateLimit(`post:${req.communityAuthorHash}`,3,10*60000))return res.status(429).json({error:'rate_limited'}); res.status(201).json(await store.createPost(req.body||{},req.communityAuthorHash,req.communityIpDisplay));}catch(e){communityError(e,res,next)}});
   router.patch('/api/community/posts/:id',mutation,async(req,res,next)=>{try{const value=await store.updatePost(req.params.id,req.body||{},req.communityAuthorHash);return value?res.json(value):res.status(404).json({error:'not_found'});}catch(e){communityError(e,res,next)}});
   router.delete('/api/community/posts/:id',mutation,async(req,res,next)=>{try{return await store.deletePost(req.params.id,req.communityAuthorHash,req.body?.password)?res.sendStatus(204):res.status(404).json({error:'not_found'});}catch(e){communityError(e,res,next)}});
@@ -242,4 +292,4 @@ function createCommunityPagesRouter({store,publicDir}){const router=express.Rout
 
 function createCommunityAdminRouter({store,auth}){ if(!store||!auth?.requireAuth||!auth?.requireMutationProtection)throw new TypeError('community admin auth is required'); const router=express.Router(); router.use(auth.requireAuth); const asyncRoute=(fn)=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next); router.get('/posts',asyncRoute(async(req,res)=>res.json(await store.adminListPosts(req.query)))); router.post('/posts/notice',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminCreateNotice(req.body||{})))); router.patch('/posts/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminModeratePost(req.params.id,req.body||{});return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/posts/:id/comments',asyncRoute(async(req,res)=>res.json({comments:await store.adminComments(req.params.id)}))); router.post('/posts/:id/reply',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const value=await store.adminReply(req.params.id,req.body||{});return value?res.status(201).json(value):res.status(404).json({error:'not_found'});})); router.patch('/comments/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminModerateComment(req.params.id,req.body||{});return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/reports',asyncRoute(async(_req,res)=>res.json({reports:await store.adminReports()}))); router.patch('/reports/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminUpdateReport(req.params.id,req.body?.status);return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/categories',asyncRoute(async(_req,res)=>res.json({categories:await store.categories({all:true})}))); router.post('/categories',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminSaveCategory(req.body||{})))); router.put('/categories/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.json(await store.adminSaveCategory({...req.body,id:req.params.id})))); router.get('/banned-words',asyncRoute(async(_req,res)=>res.json({words:await store.adminBannedWords()}))); router.post('/banned-words',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminAddBannedWord(req.body?.word)))); router.delete('/banned-words/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>await store.adminDeleteBannedWord(req.params.id)?res.sendStatus(204):res.status(404).json({error:'not_found'}))); router.get('/blocks',asyncRoute(async(_req,res)=>res.json({blocks:await store.adminBlocks()}))); router.post('/blocks',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminBlock(req.body||{})))); router.delete('/blocks/:authorHash',auth.requireMutationProtection,asyncRoute(async(req,res)=>await store.adminDeleteBlock(req.params.authorHash)?res.sendStatus(204):res.status(404).json({error:'not_found'}))); router.get('/settings',asyncRoute(async(_req,res)=>res.json({settings:await store.settings()}))); router.put('/settings',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.json({settings:await store.adminSaveSettings(req.body||{})}))); router.use((error,_req,res,next)=>{if(error instanceof TypeError)return res.status(400).json({error:'invalid_request',message:error.message});return next(error)}); return router; }
 
-module.exports={createCommunityStore,createCommunityRouter,createCommunityPagesRouter,createCommunityAdminRouter,detailHtml,maskIp};
+module.exports={createCommunityStore,createCommunityRouter,createCommunityPagesRouter,createCommunityAdminRouter,createCommunityImageUrlValidator,detailHtml,maskIp};

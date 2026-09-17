@@ -7,6 +7,7 @@ const publicDir = path.join(__dirname, '..', 'public');
 const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
 const script = fs.readFileSync(path.join(publicDir, 'app.js'), 'utf8');
 const styles = fs.readFileSync(path.join(publicDir, 'styles.css'), 'utf8');
+const communityHtml = fs.readFileSync(path.join(publicDir, 'community.html'), 'utf8');
 const communityScript = fs.readFileSync(path.join(publicDir, 'community.js'), 'utf8');
 const communityStyles = fs.readFileSync(path.join(publicDir, 'community.css'), 'utf8');
 const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
@@ -41,6 +42,17 @@ test('커뮤니티 작성자 닉네임 옆에 마스킹 IP를 표시한다', () 
   assert.match(communityScript, /authorLabel\(post\.nickname,post\.ipDisplay\)/);
   assert.match(communityScript, /comment\.ipDisplay/);
   assert.match(communityStyles, /\.ip-display\{/);
+});
+
+test('커뮤니티 글 작성에서 이미지를 선택해 업로드하고 상세에서 반응형으로 표시한다', () => {
+  assert.match(communityHtml, /id="compose-image" type="file"/);
+  assert.match(communityHtml, /accept="image\/jpeg,image\/png,image\/webp,image\/gif,image\/avif"/);
+  assert.match(communityHtml, /id="compose-image-preview"/);
+  assert.match(communityScript, /fetch\('\/api\/community\/images'/);
+  assert.match(communityScript, /imageUrl:imageUrl\|\|undefined/);
+  assert.match(communityScript, /post\.imageUrl/);
+  assert.match(communityStyles, /\.post-image\{/);
+  assert.match(communityStyles, /max-width:100%/);
 });
 
 

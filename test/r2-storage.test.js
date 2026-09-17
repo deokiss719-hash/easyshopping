@@ -73,4 +73,6 @@ test('R2 adapter는 WebP와 장기 캐시 헤더로 업로드하고 자체 공�
   });
   await assert.rejects(() => storage.uploadWebp({ key: '../secret.webp', body: Buffer.from('x') }), /key/);
   assert.throws(() => storage.publicUrlForKey('../secret.webp'), /key/);
+  const communityKey = `community/posts/${'b'.repeat(64)}.webp`;
+  assert.equal(storage.publicUrlForKey(communityKey), `https://images.example.com/${communityKey}`);
 });

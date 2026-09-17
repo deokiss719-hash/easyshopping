@@ -42,6 +42,7 @@ const {
   createCommunityRouter,
   createCommunityPagesRouter,
   createCommunityAdminRouter,
+  createCommunityImageUrlValidator,
 } = require('./src/community/community');
 const { readCoupangRuntime, runCoupangCollector } = require('./src/coupang-products');
 const {
@@ -208,14 +209,14 @@ async function start() {
       freshnessThresholdMs,
     });
     const adminStore = createAdminStore(pool);
-    communityStore = createCommunityStore(pool);
+    const imageStorage = createR2Storage({ config: r2Config });
+    communityStore = createCommunityStore(pool, { imageUrlValidator: createCommunityImageUrlValidator(imageStorage) });
     const analyticsStore = createTrafficAnalyticsStore(pool);
     const purgeTrafficDetails = () => analyticsStore.purgeBefore(koreaDay(new Date()))
       .catch(() => console.warn('traffic analytics retention cleanup failed'));
     void purgeTrafficDetails();
     const trafficRetentionTimer = setInterval(purgeTrafficDetails, 60 * 60 * 1000);
     trafficRetentionTimer.unref();
-    const imageStorage = createR2Storage({ config: r2Config });
     const manualImageUrlValidator = createManualImageUrlValidator(imageStorage);
     adminAuth = await mountDatabaseApis({
       app,
@@ -245,6 +246,8 @@ async function start() {
       secret: communitySecret,
       production: process.env.NODE_ENV === 'production',
       consultationUrl: process.env.COMMUNITY_CONSULTATION_URL || '',
+      imageStorage,
+      convertImage: convertToWebp,
     }));
     app.use(createCommunityPagesRouter({ store: communityStore, publicDir: path.join(__dirname, 'public') }));
     if (adminAuth) app.use('/api/admin/community', createCommunityAdminRouter({ store: communityStore, auth: adminAuth }));

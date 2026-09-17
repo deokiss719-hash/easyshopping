@@ -1,16 +1,24 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const express = require('express');
 const { newDb } = require('pg-mem');
 
 const { migrate } = require('../src/deal-store');
-const { createCommunityStore, detailHtml, maskIp } = require('../src/community/community');
+const {
+  createCommunityStore,
+  createCommunityRouter,
+  createCommunityImageUrlValidator,
+  detailHtml,
+  maskIp,
+} = require('../src/community/community');
 
-async function makeStore() {
+async function makeStore({ imageStorage } = {}) {
   const memoryDb = newDb();
   const { Pool } = memoryDb.adapters.createPg();
   const pool = new Pool();
   await migrate(pool);
-  return { pool, store: createCommunityStore(pool) };
+  const options = imageStorage ? { imageUrlValidator: createCommunityImageUrlValidator(imageStorage) } : undefined;
+  return { pool, store: createCommunityStore(pool, options) };
 }
 
 async function freeCategory(store) {
@@ -35,6 +43,75 @@ test('anonymous author can create/read a post without exposing author hash publi
   assert.equal(listed.posts[0].isAuthor, false);
   assert.equal(listed.posts[0].authorHash, undefined);
   await pool.end();
+});
+
+test('community posts accept only app-owned image URLs and preserve them on text edits', async () => {
+  const imageStorage = {
+    enabled: true,
+    publicUrlForKey: (key) => `https://images.example.com/${key}`,
+  };
+  const { pool, store } = await makeStore({ imageStorage });
+  const category = await freeCategory(store);
+  const key = `community/posts/${'a'.repeat(64)}.webp`;
+  const imageUrl = imageStorage.publicUrlForKey(key);
+  const author = 'b'.repeat(64);
+  const created = await store.createPost({ categoryId: category.id, title: '이미지 글', body: '본문', imageUrl }, author);
+  assert.equal(created.post.imageUrl, imageUrl);
+  await assert.rejects(
+    () => store.createPost({ categoryId: category.id, title: '외부 이미지', body: '본문', imageUrl: 'https://evil.example/image.webp' }, author),
+    /올바른 커뮤니티 이미지/,
+  );
+  const updated = await store.updatePost(created.post.id, { title: '수정된 이미지 글' }, author);
+  assert.equal(updated.post.imageUrl, imageUrl);
+  await pool.end();
+});
+
+test('community image upload converts and stores an allowed image type in the community namespace', async () => {
+  const uploads = [];
+  const imageStorage = {
+    enabled: true,
+    publicUrlForKey: (key) => `https://images.example.com/${key}`,
+    uploadWebp: async ({ key, body }) => {
+      uploads.push({ key, body });
+      return `https://images.example.com/${key}`;
+    },
+  };
+  const app = express();
+  app.use(createCommunityRouter({
+    store: {},
+    secret: 'test-secret',
+    imageStorage,
+    convertImage: async (body) => {
+      assert.equal(body.toString(), 'fake-image');
+      return Buffer.from('converted-webp');
+    },
+  }));
+  const server = app.listen(0);
+  await new Promise((resolve) => server.once('listening', resolve));
+  try {
+    const { port } = server.address();
+    const base = `http://127.0.0.1:${port}`;
+    const response = await fetch(`${base}/api/community/images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/png' },
+      body: Buffer.from('fake-image'),
+    });
+    const body = await response.json();
+    assert.equal(response.status, 201);
+    assert.match(body.imageUrl, /^https:\/\/images\.example\.com\/community\/posts\/[a-f0-9]{64}\.webp$/);
+    assert.equal(uploads.length, 1);
+    assert.match(uploads[0].key, /^community\/posts\/[a-f0-9]{64}\.webp$/);
+    assert.equal(uploads[0].body.toString(), 'converted-webp');
+
+    const rejected = await fetch(`${base}/api/community/images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: 'not-an-image',
+    });
+    assert.equal(rejected.status, 415);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });
 
 
