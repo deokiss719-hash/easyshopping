@@ -189,7 +189,10 @@ test('hidden or deleted posts disappear from public reads and sitemap candidates
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: 'SEO 테스트', body: '<script>alert(1)</script>' }, 'a'.repeat(64));
-  assert.match(detailHtml(created.post), /&lt;script&gt;/);
+  const html = detailHtml(created.post);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /<a href="\/community" class="community-brand">EASY HOT DEAL<\/a>/);
+  assert.doesNotMatch(html, /<a href="\/" class="community-brand">EASY HOT DEAL<\/a>/);
   assert.equal((await store.sitemapPosts()).length, 1);
   await store.adminModeratePost(created.post.id, { action: 'hide' });
   assert.equal(await store.getPost(created.post.id, null), null);
