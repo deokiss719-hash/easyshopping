@@ -235,7 +235,7 @@
       open.rel = 'noopener noreferrer';
       actions.append(open);
       if (!post.deleted) {
-        actions.append(communityAction('댓글 관리', async () => {
+        actions.append(communityAction('댓글 등록', async () => {
           const data = await api(`/api/admin/community/posts/${post.id}/comments`);
           const existing = item.querySelector('.community-comment-admin');
           if (existing) { existing.remove(); return; }
