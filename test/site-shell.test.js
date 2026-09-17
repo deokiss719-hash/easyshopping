@@ -26,6 +26,11 @@ test('커뮤니티 공지글은 목록과 상세에서 공지 배지로 표시�
   assert.match(communityStyles, /\.notice-badge\{/);
 });
 
+test('관리자가 고정한 일반 글은 공개 화면에서 고정 배지로 표시한다', () => {
+  assert.match(communityScript, /post\.isPinned/);
+  assert.match(communityScript, /'고정','notice-badge'/);
+});
+
 test('커뮤니티 작성자 닉네임 옆에 마스킹 IP를 표시한다', () => {
   assert.match(communityScript, /authorLabel\(post\.nickname,post\.ipDisplay\)/);
   assert.match(communityScript, /comment\.ipDisplay/);

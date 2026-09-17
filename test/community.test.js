@@ -44,6 +44,7 @@ test('admin notices are identified, private from IP display, and pinned above no
   await store.createPost({ categoryId: category.id, title: '일반 글', body: '일반 본문' }, 'a'.repeat(64), '123.45.*.*');
   const notice = await store.adminCreateNotice({ title: '운영 공지', body: '공지 본문' });
   assert.equal(notice.post.isNotice, true);
+  assert.equal(notice.post.isPinned, true);
   assert.equal(notice.post.nickname, '이지핫딜 관리자');
   assert.equal(notice.post.ipDisplay, '');
   const latest = await store.listPosts({ sort: 'latest' });
@@ -51,9 +52,30 @@ test('admin notices are identified, private from IP display, and pinned above no
   assert.equal(latest.posts[0].isNotice, true);
   const popular = await store.listPosts({ sort: 'popular' });
   assert.equal(popular.posts[0].title, '운영 공지');
+  await store.adminModeratePost(notice.post.id, { action: 'unpin' });
+  assert.equal((await store.getPost(notice.post.id, null)).post.isPinned, true);
   await store.adminModeratePost(notice.post.id, { action: 'delete' });
   assert.equal(await store.getPost(notice.post.id, null), null);
   assert.equal((await store.listPosts({ sort: 'latest' })).posts.some((post) => post.id === notice.post.id), false);
+  await pool.end();
+});
+
+test('admin can pin and unpin a normal post at the top', async () => {
+  const { pool, store } = await makeStore();
+  const category = await freeCategory(store);
+  const older = await store.createPost({ categoryId: category.id, title: '고정할 글', body: '본문' }, 'a'.repeat(64));
+  const newer = await store.createPost({ categoryId: category.id, title: '새 글', body: '본문' }, 'b'.repeat(64));
+  assert.equal((await store.listPosts({ sort: 'latest' })).posts[0].id, newer.post.id);
+  await store.adminModeratePost(older.post.id, { action: 'pin' });
+  const pinned = await store.listPosts({ sort: 'latest' });
+  assert.equal(pinned.posts[0].id, older.post.id);
+  assert.equal(pinned.posts[0].isPinned, true);
+  const adminRows = await store.adminListPosts();
+  assert.equal(adminRows.posts[0].id, older.post.id);
+  await store.adminModeratePost(older.post.id, { action: 'unpin' });
+  const unpinned = await store.listPosts({ sort: 'latest' });
+  assert.equal(unpinned.posts[0].id, newer.post.id);
+  assert.equal(unpinned.posts.find((post) => post.id === older.post.id).isPinned, false);
   await pool.end();
 });
 

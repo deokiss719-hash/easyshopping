@@ -80,6 +80,9 @@ test('admin login is public and noindex while management HTML remains authentica
   assert.match(adminScript, /\/api\/admin\/community\/posts\/notice/);
   assert.match(adminScript, /function renderCommunityNotices\(\)/);
   assert.match(adminScript, /공지 삭제/);
+  assert.match(adminScript, /상단 고정/);
+  assert.match(adminScript, /고정 해제/);
+  assert.match(adminScript, /action: post\.isPinned \? 'unpin' : 'pin'/);
   assert.match(adminScript, /이 공지글을 삭제할까요\?/);
   assert.match(adminScript, /관리자 댓글 등록/);
   assert.match(adminScript, /\/api\/admin\/community\/posts\/\$\{post\.id\}\/reply/);

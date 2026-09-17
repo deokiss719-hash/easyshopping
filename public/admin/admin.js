@@ -225,6 +225,7 @@
       const meta = textNode('p', `${post.categoryName} · ${post.nickname} · 댓글 ${post.commentCount} · 조회 ${post.views} · ${new Date(post.createdAt).toLocaleString('ko-KR')}`, 'deal-meta');
       const flags = [];
       if (post.isNotice) flags.push('공지');
+      if (post.isPinned) flags.push('상단 고정');
       if (post.hidden) flags.push('숨김');
       if (post.deleted) flags.push('삭제');
       if (flags.length) body.append(textNode('span', flags.join(' · '), 'deal-meta'));
@@ -310,6 +311,11 @@
         }));
         actions.append(communityAction(post.hidden ? '숨김 해제' : '숨기기', async () => {
           await api(`/api/admin/community/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ action: post.hidden ? 'show' : 'hide' }) });
+          await loadCommunity();
+        }));
+        if (!post.isNotice) actions.append(communityAction(post.isPinned ? '고정 해제' : '상단 고정', async () => {
+          await api(`/api/admin/community/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ action: post.isPinned ? 'unpin' : 'pin' }) });
+          showMessage('community-admin-message', post.isPinned ? '게시글 고정을 해제했습니다.' : '게시글을 상단에 고정했습니다.', 'success');
           await loadCommunity();
         }));
         actions.append(communityAction(post.isNotice ? '공지 삭제' : '삭제', async () => {

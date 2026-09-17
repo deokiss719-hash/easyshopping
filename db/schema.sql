@@ -266,6 +266,7 @@ CREATE TABLE IF NOT EXISTS community_posts (
   author_hash VARCHAR(64) NOT NULL,
   ip_display VARCHAR(48),
   is_notice BOOLEAN NOT NULL DEFAULT FALSE,
+  is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
   edit_password_hash TEXT,
   answer_requested BOOLEAN NOT NULL DEFAULT FALSE,
   answered_at TIMESTAMPTZ,
@@ -280,6 +281,8 @@ CREATE TABLE IF NOT EXISTS community_posts (
 );
 ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS ip_display VARCHAR(48);
 ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS is_notice BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;
+UPDATE community_posts SET is_pinned=TRUE WHERE is_notice=TRUE AND is_pinned=FALSE;
 CREATE INDEX IF NOT EXISTS community_posts_list_idx ON community_posts(is_hidden,is_deleted,created_at DESC,id DESC);
 CREATE INDEX IF NOT EXISTS community_posts_category_idx ON community_posts(category_id,created_at DESC,id DESC);
 CREATE INDEX IF NOT EXISTS community_posts_answer_idx ON community_posts(answer_requested,answered_at,created_at DESC);
