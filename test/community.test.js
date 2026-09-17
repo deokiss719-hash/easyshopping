@@ -37,6 +37,23 @@ test('anonymous author can create/read a post without exposing author hash publi
   await pool.end();
 });
 
+
+test('admin notices are identified, private from IP display, and pinned above normal posts', async () => {
+  const { pool, store } = await makeStore();
+  const category = await freeCategory(store);
+  await store.createPost({ categoryId: category.id, title: '일반 글', body: '일반 본문' }, 'a'.repeat(64), '123.45.*.*');
+  const notice = await store.adminCreateNotice({ title: '운영 공지', body: '공지 본문' });
+  assert.equal(notice.post.isNotice, true);
+  assert.equal(notice.post.nickname, '이지핫딜 관리자');
+  assert.equal(notice.post.ipDisplay, '');
+  const latest = await store.listPosts({ sort: 'latest' });
+  assert.equal(latest.posts[0].title, '운영 공지');
+  assert.equal(latest.posts[0].isNotice, true);
+  const popular = await store.listPosts({ sort: 'popular' });
+  assert.equal(popular.posts[0].title, '운영 공지');
+  await pool.end();
+});
+
 test('community stores only masked IP display values for public posts and comments', async () => {
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);

@@ -224,6 +224,7 @@
       const title = textNode('strong', post.title);
       const meta = textNode('p', `${post.categoryName} · ${post.nickname} · 댓글 ${post.commentCount} · 조회 ${post.views} · ${new Date(post.createdAt).toLocaleString('ko-KR')}`, 'deal-meta');
       const flags = [];
+      if (post.isNotice) flags.push('공지');
       if (post.hidden) flags.push('숨김');
       if (post.deleted) flags.push('삭제');
       if (flags.length) body.append(textNode('span', flags.join(' · '), 'deal-meta'));
@@ -1013,6 +1014,15 @@
     byId('refresh-inquiries')?.addEventListener('click', loadInquiries);
     byId('refresh-community')?.addEventListener('click', loadCommunity);
     byId('community-post-filter')?.addEventListener('submit', (event) => { event.preventDefault(); loadCommunity(); });
+    byId('community-notice-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        await api('/api/admin/community/posts/notice', { method: 'POST', body: JSON.stringify({ title: byId('community-notice-title').value.trim(), body: byId('community-notice-body').value.trim() }) });
+        event.currentTarget.reset();
+        showMessage('community-admin-message', '공지글을 등록했습니다.', 'success');
+        await loadCommunity();
+      } catch (error) { showMessage('community-admin-message', errorMessage(error, '공지글을 등록하지 못했습니다.'), 'error'); }
+    });
     byId('community-banned-form')?.addEventListener('submit', async (event) => {
       event.preventDefault();
       try {
