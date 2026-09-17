@@ -249,12 +249,13 @@ CREATE TABLE IF NOT EXISTS community_categories (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO community_categories(slug,name,sort_order) VALUES
-  ('phone','휴대폰 질문',10),
-  ('deal-report','핫딜 제보',20),
-  ('review','구매후기',30),
-  ('free','자유',40)
-ON CONFLICT(slug) DO NOTHING;
+INSERT INTO community_categories(slug,name,sort_order,is_active) VALUES
+  ('free','자유',10,TRUE)
+ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name,sort_order=EXCLUDED.sort_order,is_active=TRUE,updated_at=CURRENT_TIMESTAMP;
+
+UPDATE community_categories
+SET is_active=FALSE,updated_at=CURRENT_TIMESTAMP
+WHERE slug IN ('phone','deal-report','review');
 
 CREATE TABLE IF NOT EXISTS community_posts (
   id BIGSERIAL PRIMARY KEY,

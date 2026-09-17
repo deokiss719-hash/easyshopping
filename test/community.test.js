@@ -13,20 +13,20 @@ async function makeStore() {
   return { pool, store: createCommunityStore(pool) };
 }
 
-async function phoneCategory(store) {
-  return (await store.categories()).find((category) => category.slug === 'phone');
+async function freeCategory(store) {
+  return (await store.categories()).find((category) => category.slug === 'free');
 }
 
 test('community migration is idempotent and exposes the initial categories', async () => {
   const { pool, store } = await makeStore();
   await migrate(pool);
-  assert.deepEqual((await store.categories()).map((item) => item.slug), ['phone', 'deal-report', 'review', 'free']);
+  assert.deepEqual((await store.categories()).map((item) => item.slug), ['free']);
   await pool.end();
 });
 
 test('anonymous author can create/read a post without exposing author hash publicly', async () => {
   const { pool, store } = await makeStore();
-  const category = await phoneCategory(store);
+  const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '아이폰 질문', body: '지금 사도 될까요?', nickname: 'ㅇㅇ' }, 'a'.repeat(64));
   assert.equal(created.post.isAuthor, true);
   assert.equal(created.post.authorHash, undefined);
@@ -39,7 +39,7 @@ test('anonymous author can create/read a post without exposing author hash publi
 
 test('phone or email-like personal data requires an explicit privacy confirmation', async () => {
   const { pool, store } = await makeStore();
-  const category = await phoneCategory(store);
+  const category = await freeCategory(store);
   await assert.rejects(
     () => store.createPost({ categoryId: category.id, title: '연락 주세요', body: '010-1234-5678 입니다' }, 'a'.repeat(64)),
     (error) => error.code === 'privacy_warning',
@@ -51,7 +51,7 @@ test('phone or email-like personal data requires an explicit privacy confirmatio
 
 test('cookie identity or bcrypt deletion password can authorize post deletion', async () => {
   const { pool, store } = await makeStore();
-  const category = await phoneCategory(store);
+  const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '삭제 테스트', body: '본문', password: 'safe1234' }, 'a'.repeat(64));
   await assert.rejects(() => store.deletePost(created.post.id, 'b'.repeat(64), 'wrong'), /forbidden/);
   assert.equal(await store.deletePost(created.post.id, 'b'.repeat(64), 'safe1234'), true);
@@ -61,7 +61,7 @@ test('cookie identity or bcrypt deletion password can authorize post deletion', 
 
 test('one-level replies work and a second-level reply is rejected', async () => {
   const { pool, store } = await makeStore();
-  const category = await phoneCategory(store);
+  const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '답글 테스트', body: '본문' }, 'a'.repeat(64));
   const first = await store.createComment(created.post.id, { body: '첫 댓글' }, 'b'.repeat(64));
   const reply = await store.createComment(created.post.id, { body: '답글', parentCommentId: first.id }, 'c'.repeat(64));
@@ -72,7 +72,7 @@ test('one-level replies work and a second-level reply is rejected', async () => 
 
 test('votes are unique per anonymous identity and switching direction adjusts totals', async () => {
   const { pool, store } = await makeStore();
-  const category = await phoneCategory(store);
+  const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '투표 테스트', body: '본문' }, 'a'.repeat(64));
   const first = await store.vote('post', created.post.id, 'b'.repeat(64), 1);
   assert.deepEqual(first, { upvotes: 1, downvotes: 0, value: 1 });
@@ -85,7 +85,7 @@ test('votes are unique per anonymous identity and switching direction adjusts to
 
 test('post views are deduplicated per anonymous identity', async () => {
   const { pool, store } = await makeStore();
-  const category = await phoneCategory(store);
+  const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '조회 테스트', body: '본문' }, 'a'.repeat(64));
   await store.getPost(created.post.id, 'b'.repeat(64), true);
   await store.getPost(created.post.id, 'b'.repeat(64), true);
@@ -96,7 +96,7 @@ test('post views are deduplicated per anonymous identity', async () => {
 
 test('admin reply automatically marks an answer-requested post as answered', async () => {
   const { pool, store } = await makeStore();
-  const category = await phoneCategory(store);
+  const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '관리자 답변', body: '본문', answerRequested: true }, 'a'.repeat(64));
   await store.adminReply(created.post.id, { body: '이지폰 답변입니다.' });
   const detail = await store.getPost(created.post.id, 'a'.repeat(64));
@@ -108,7 +108,7 @@ test('admin reply automatically marks an answer-requested post as answered', asy
 
 test('banned words, reports, blocks, and community settings are manageable', async () => {
   const { pool, store } = await makeStore();
-  const category = await phoneCategory(store);
+  const category = await freeCategory(store);
   await store.adminAddBannedWord('금칙테스트');
   await assert.rejects(() => store.createPost({ categoryId: category.id, title: '금칙테스트', body: '본문' }, 'a'.repeat(64)), /사용할 수 없는 표현/);
   const created = await store.createPost({ categoryId: category.id, title: '정상 글', body: '본문' }, 'b'.repeat(64));
@@ -124,7 +124,7 @@ test('banned words, reports, blocks, and community settings are manageable', asy
 
 test('hidden or deleted posts disappear from public reads and sitemap candidates', async () => {
   const { pool, store } = await makeStore();
-  const category = await phoneCategory(store);
+  const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: 'SEO 테스트', body: '<script>alert(1)</script>' }, 'a'.repeat(64));
   assert.match(detailHtml(created.post), /&lt;script&gt;/);
   assert.equal((await store.sitemapPosts()).length, 1);
