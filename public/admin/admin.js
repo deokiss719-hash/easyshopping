@@ -10,6 +10,9 @@
     uploadController: null,
     uploadPromise: null,
     savingDeal: false,
+    productPage: 1,
+    productTotal: 0,
+    productSize: 30,
   };
   const byId = (id) => document.getElementById(id);
   const normalizeHttpsUrlInput = window.AdminUrlUtils.normalizeHttpsUrlInput;
@@ -232,6 +235,156 @@
       renderTraffic(await api('/api/admin/analytics/today'));
     } catch (error) {
       showMessage('analytics-message', errorMessage(error, '트래픽을 불러오지 못했습니다.'), 'error');
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
+  function renderDaily(rows) {
+    const wrap = byId('daily-table');
+    wrap.replaceChildren();
+    const table = document.createElement('table');
+    table.className = 'data-table';
+    const head = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    ['날짜', '방문자', '조회수', '상품 노출', '상품 클릭', '카카오 클릭'].forEach((label) => headRow.append(textNode('th', label)));
+    head.append(headRow);
+    const body = document.createElement('tbody');
+    rows.slice().reverse().forEach((row) => {
+      const tr = document.createElement('tr');
+      [row.day, row.uniqueVisitors, row.pageViews, row.impressions, row.clicks, row.kakaoClicks]
+        .forEach((value, index) => tr.append(textNode('td', index === 0 ? String(value) : Number(value || 0).toLocaleString('ko-KR'))));
+      body.append(tr);
+    });
+    table.append(head, body);
+    wrap.append(table);
+  }
+
+  async function loadDaily(event) {
+    event?.preventDefault();
+    const params = new URLSearchParams();
+    const start = byId('daily-start')?.value;
+    const end = byId('daily-end')?.value;
+    if (start) params.set('start', start);
+    if (end) params.set('end', end);
+    try {
+      const data = await api(`/api/admin/analytics/daily${params.size ? `?${params}` : ''}`);
+      if (byId('daily-start') && !start) byId('daily-start').value = data.start || '';
+      if (byId('daily-end') && !end) byId('daily-end').value = data.end || '';
+      renderDaily(Array.isArray(data.rows) ? data.rows : []);
+    } catch (error) {
+      showMessage('analytics-message', errorMessage(error, '일자별 통계를 불러오지 못했습니다.'), 'error');
+    }
+  }
+
+  const sourceLabels = Object.freeze({ ppomppu: '뽐뿌', fmkorea: 'FM코리아', ruliweb: '루리웹', toss: '토스' });
+
+  function formatDateTime(value) {
+    if (!value) return '기록 없음';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '기록 없음' : date.toLocaleString('ko-KR');
+  }
+
+  function renderOperations(data) {
+    const list = byId('source-status');
+    list.replaceChildren();
+    (Array.isArray(data.sources) ? data.sources : []).forEach((item) => {
+      const card = document.createElement('article');
+      card.className = 'status-card';
+      card.append(textNode('strong', sourceLabels[item.source] || item.source));
+      card.append(textNode('span', `활성 ${Number(item.active_count || 0).toLocaleString('ko-KR')}개 · 오늘 ${Number(item.new_today || 0).toLocaleString('ko-KR')}개`));
+      card.append(textNode('span', `이미지 없음 ${Number(item.missing_images || 0).toLocaleString('ko-KR')}개`));
+      card.append(textNode('span', `최근 확인 ${formatDateTime(item.last_seen_at)}`));
+      const run = item.latestRun;
+      card.append(textNode('span', run ? `최근 수집 ${run.status || '-'} · ${formatDateTime(run.finished_at || run.started_at)}` : '수집 기록 없음'));
+      list.append(card);
+    });
+    const automation = byId('automation-status');
+    automation.replaceChildren();
+    const snapshots = Array.isArray(data.snapshots) ? data.snapshots : [];
+    if (!snapshots.length) automation.append(textNode('p', '아직 자동화 실행 기록이 없습니다.', 'empty-copy'));
+    snapshots.forEach((item) => {
+      const card = document.createElement('article');
+      card.className = 'status-card';
+      const payload = item?.payload && typeof item.payload === 'object' ? item.payload : {};
+      card.append(textNode('strong', item.name || '자동화'));
+      card.append(textNode('span', `상태 ${payload.status || payload.result || '-'}`));
+      if (payload.processed != null || payload.updated != null || payload.failed != null) {
+        card.append(textNode('span', `처리 ${Number(payload.processed || 0).toLocaleString('ko-KR')} · 반영 ${Number(payload.updated || 0).toLocaleString('ko-KR')} · 실패 ${Number(payload.failed || 0).toLocaleString('ko-KR')}`));
+      }
+      card.append(textNode('span', `최근 보고 ${formatDateTime(item.reported_at)}`));
+      automation.append(card);
+    });
+  }
+
+  function productStateText(product) {
+    if (product.is_hidden) return '숨김';
+    if (product.admin_ended) return '관리자 종료';
+    if (product.source_ended) return '수집 종료';
+    return '노출 중';
+  }
+
+  function productRow(product) {
+    const article = document.createElement('article');
+    article.className = 'operation-product';
+    const copy = document.createElement('div');
+    copy.className = 'operation-copy';
+    copy.append(textNode('strong', product.title || '제목 없음'));
+    copy.append(textNode('span', `${sourceLabels[product.source] || product.source} · ${priceText(product.price_amount)} · ${productStateText(product)}`));
+    copy.append(textNode('span', `최근 확인 ${formatDateTime(product.last_seen_at)}`));
+    const actions = document.createElement('div');
+    actions.className = 'deal-actions';
+    const hide = textNode('button', product.is_hidden ? '숨김 해제' : '숨기기', 'button secondary small');
+    hide.type = 'button';
+    hide.addEventListener('click', () => moderateProduct(product.id, product.is_hidden ? 'unhide' : 'hide'));
+    const end = textNode('button', product.admin_ended ? '종료 해제' : '종료', product.admin_ended ? 'button secondary small' : 'button danger small');
+    end.type = 'button';
+    end.addEventListener('click', () => moderateProduct(product.id, product.admin_ended ? 'restore' : 'end'));
+    actions.append(hide, end);
+    article.append(copy, actions);
+    return article;
+  }
+
+  async function loadProducts({ resetPage = false } = {}) {
+    if (resetPage) state.productPage = 1;
+    const params = new URLSearchParams({ page: String(state.productPage) });
+    const q = byId('product-q')?.value.trim();
+    const source = byId('product-source')?.value;
+    const status = byId('product-status')?.value;
+    if (q) params.set('q', q);
+    if (source) params.set('source', source);
+    if (status) params.set('status', status);
+    const data = await api(`/api/admin/products?${params}`);
+    state.productTotal = Number(data.total || 0);
+    state.productSize = Number(data.size || 30);
+    const list = byId('product-results');
+    list.replaceChildren();
+    const products = Array.isArray(data.products) ? data.products : [];
+    if (!products.length) list.append(textNode('p', '조건에 맞는 상품이 없습니다.', 'empty-copy'));
+    products.forEach((product) => list.append(productRow(product)));
+    byId('product-count').textContent = `총 ${state.productTotal.toLocaleString('ko-KR')}개`;
+    byId('product-page').textContent = `${state.productPage.toLocaleString('ko-KR')}페이지`;
+    byId('product-prev').disabled = state.productPage <= 1;
+    byId('product-next').disabled = state.productPage * state.productSize >= state.productTotal;
+  }
+
+  async function moderateProduct(id, action) {
+    try {
+      await api(`/api/admin/products/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ action }) });
+      await Promise.all([loadProducts(), loadOperations()]);
+      showMessage('operations-message', '상품 상태를 반영했습니다.', 'success');
+    } catch (error) {
+      showMessage('operations-message', errorMessage(error, '상품 상태를 변경하지 못했습니다.'), 'error');
+    }
+  }
+
+  async function loadOperations() {
+    const button = byId('refresh-operations');
+    if (button) button.disabled = true;
+    try {
+      renderOperations(await api('/api/admin/operations'));
+    } catch (error) {
+      showMessage('operations-message', errorMessage(error, '수집 상태를 불러오지 못했습니다.'), 'error');
     } finally {
       if (button) button.disabled = false;
     }
@@ -506,6 +659,11 @@
     byId('metadata-url').addEventListener('change', () => { if (byId('metadata-url').checkValidity()) fetchMetadata({ quiet: true }); });
     byId('settings-form')?.addEventListener('submit', saveSettings);
     byId('refresh-traffic')?.addEventListener('click', loadTraffic);
+    byId('daily-filter')?.addEventListener('submit', loadDaily);
+    byId('refresh-operations')?.addEventListener('click', () => Promise.all([loadOperations(), loadProducts()]));
+    byId('product-filter')?.addEventListener('submit', (event) => { event.preventDefault(); loadProducts({ resetPage: true }); });
+    byId('product-prev')?.addEventListener('click', () => { if (state.productPage > 1) { state.productPage -= 1; loadProducts(); } });
+    byId('product-next')?.addEventListener('click', () => { if (state.productPage * state.productSize < state.productTotal) { state.productPage += 1; loadProducts(); } });
     byId('logout').addEventListener('click', logout);
     byId('menu-toggle').addEventListener('click', () => {
       const open = !byId('sidebar').classList.contains('open');
@@ -526,7 +684,7 @@
       const session = await api('/api/admin/auth/session');
       state.csrfToken = session.csrfToken;
       byId('admin-user').textContent = session.username || '';
-      await Promise.all([loadDeals(), loadSettings(), loadTraffic()]);
+      await Promise.all([loadDeals(), loadSettings(), loadTraffic(), loadDaily(), loadOperations(), loadProducts()]);
     } catch (error) {
       showMessage('status-message', errorMessage(error, '관리자 데이터를 불러오지 못했습니다.'), 'error');
     }

@@ -87,6 +87,19 @@ async function runLocalImageBackfill({
     idleTimeoutMillis: 10_000,
   });
 
+  async function reportStatus(payload) {
+    try {
+      await pool.query(
+        `INSERT INTO automation_status (name, payload, reported_at)
+         VALUES ('image-backfill', $1::jsonb, CURRENT_TIMESTAMP)
+         ON CONFLICT (name) DO UPDATE SET payload = EXCLUDED.payload, reported_at = CURRENT_TIMESTAMP`,
+        [JSON.stringify(payload)],
+      );
+    } catch {
+      // Status reporting must not turn a successful backfill into a failure.
+    }
+  }
+
   try {
     const storage = deps.createR2Storage({ config: config.r2Config });
     if (!storage.enabled) throw new Error('R2 storage is not enabled');
@@ -116,7 +129,7 @@ async function runLocalImageBackfill({
     const breaker = new deps.ImageBackfillCircuitBreaker({
       failureCodes: STOP_FAILURE_CODES,
     });
-    return await deps.runGuardedImageBackfill({
+    const result = await deps.runGuardedImageBackfill({
       store,
       pipeline,
       breaker,
@@ -126,6 +139,15 @@ async function runLocalImageBackfill({
       delayMs: config.requestIntervalMs,
       stopOnFailureCodes: [...STOP_FAILURE_CODES],
     });
+    await reportStatus({ status: 'ok', ...result });
+    return result;
+  } catch (error) {
+    await reportStatus({
+      status: 'error',
+      reason: error?.detectedFailureCode || error?.code || 'image_backfill_error',
+      message: String(error?.message || 'image backfill failed').slice(0, 300),
+    });
+    throw error;
   } finally {
     await pool.end();
   }

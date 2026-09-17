@@ -83,3 +83,24 @@ test('traffic store validates bounded aggregate-only inputs', async () => {
   await assert.rejects(() => store.getDay('today'), /invalid/i);
   await pool.end();
 });
+
+test('daily analytics returns a continuous range with visitors, deal metrics, and kakao clicks', async () => {
+  const { pool, store } = await setup();
+  await store.recordPageView({ day: '2026-09-10', visitorHash: '1'.repeat(64), source: 'direct', domain: '', searchTerm: '', referrerUrl: '' });
+  await store.recordPageView({ day: '2026-09-10', visitorHash: '2'.repeat(64), source: 'search', domain: 'search.naver.com', searchTerm: '', referrerUrl: 'https://search.naver.com/' });
+  const deal = await pool.query("INSERT INTO deals(source,source_item_id,title,original_url) VALUES ('ppomppu','analytics-1','분석 상품','https://example.com/1') RETURNING id");
+  await pool.query("INSERT INTO deal_daily_metrics(day,deal_id,section,impressions,clicks) VALUES ('2026-09-10',$1,'latest',9,3)", [deal.rows[0].id]);
+  await pool.query("INSERT INTO cta_daily_events(day,visitor_hash,placement,event) VALUES ('2026-09-10',$1,'hero','click')", ['3'.repeat(64)]);
+
+  const result = await store.getRange('2026-09-10', '2026-09-12');
+  assert.equal(result.rows.length, 3);
+  assert.deepEqual(result.rows[0], {
+    day: '2026-09-10', hasData: true, uniqueVisitors: 2, pageViews: 2,
+    impressions: 9, clicks: 3, kakaoImpressions: 0, kakaoClicks: 1,
+    sources: { direct: 1, search: 1 },
+  });
+  assert.equal(result.rows[1].hasData, false);
+  assert.equal(result.rows[2].hasData, false);
+  await assert.rejects(() => store.getRange('2026-09-12', '2026-09-10'), /날짜 범위/);
+  await pool.end();
+});

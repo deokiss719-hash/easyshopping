@@ -48,7 +48,7 @@ function validatedManualInput(input, imageUrlValidator) {
 }
 
 function createAdminApiRouter({
-  store, auth, metadataFetcher, imageStorage, analyticsStore,
+  store, auth, metadataFetcher, imageStorage, analyticsStore, operationsStore,
   imageUrlValidator = createManualImageUrlValidator(imageStorage),
   convertImage = convertToWebp,
   now = () => new Date(),
@@ -93,6 +93,32 @@ function createAdminApiRouter({
   router.get('/analytics/today', asyncRoute(async (_req, res) => {
     if (!analyticsStore?.getDay) return res.status(503).json({ error: 'analytics_unavailable' });
     return res.json(await analyticsStore.getDay(koreaDay(now())));
+  }));
+  router.get('/analytics/daily', asyncRoute(async (req, res) => {
+    if (!analyticsStore?.getRange) return res.status(503).json({ error: 'analytics_unavailable' });
+    const today = koreaDay(now());
+    const end = req.query.end || today;
+    const start = req.query.start || new Date(Date.parse(today) - 6 * 86400000).toISOString().slice(0, 10);
+    if (typeof end !== 'string' || end > today) throw new TypeError('미래 날짜는 조회할 수 없어요.');
+    return res.json(await analyticsStore.getRange(start, end));
+  }));
+  router.get('/analytics/day', asyncRoute(async (req, res) => {
+    if (!analyticsStore?.getDay) return res.status(503).json({ error: 'analytics_unavailable' });
+    if (typeof req.query.day !== 'string' || req.query.day > koreaDay(now())) throw new TypeError('날짜를 확인해 주세요.');
+    return res.json(await analyticsStore.getDay(req.query.day));
+  }));
+  router.get('/operations', asyncRoute(async (_req, res) => {
+    if (!operationsStore) return res.status(503).json({ error: 'operations_unavailable' });
+    res.json(await operationsStore.getStatus());
+  }));
+  router.get('/products', asyncRoute(async (req, res) => {
+    if (!operationsStore) return res.status(503).json({ error: 'operations_unavailable' });
+    res.json(await operationsStore.listProducts(req.query));
+  }));
+  router.patch('/products/:id', auth.requireMutationProtection, asyncRoute(async (req, res) => {
+    if (!operationsStore) return res.status(503).json({ error: 'operations_unavailable' });
+    const result = await operationsStore.moderate(req.params.id, req.body);
+    return result ? res.json(result) : res.status(404).json({ error: 'not_found' });
   }));
   router.post('/manual-deals', auth.requireMutationProtection, asyncRoute(async (req, res) => (
     res.status(201).json(await store.createManualDeal(validatedManualInput(req.body, imageUrlValidator)))

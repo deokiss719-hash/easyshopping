@@ -135,9 +135,9 @@ function createTrafficAnalyticsStore(pool, { detailLimit = 200, resultLimit = 10
         timedQuery(
           pool,
           `WITH daily_stats AS (
-             SELECT daily.page_views, COUNT(visitor.visitor_hash) AS unique_visitors
+             SELECT daily.page_views, COALESCE(SUM(visitor.visitors), 0) AS unique_visitors
              FROM traffic_daily AS daily
-             LEFT JOIN traffic_daily_visitors AS visitor ON visitor.day = daily.day
+             LEFT JOIN traffic_daily_referrers AS visitor ON visitor.day = daily.day
              WHERE daily.day = $1::date
              GROUP BY daily.page_views
            )
@@ -201,6 +201,28 @@ function createTrafficAnalyticsStore(pool, { detailLimit = 200, resultLimit = 10
         })),
         referrerDetailLimit: resultLimit,
       };
+    },
+
+    async getRange(start, end) {
+      if (!validDay(start) || !validDay(end) || start > end) throw new TypeError('날짜 범위를 확인해 주세요.');
+      const days = Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1;
+      if (days > 366) throw new TypeError('최대 366일까지 조회할 수 있어요.');
+      const [views, refs, deals, ctas] = await Promise.all([
+        timedQuery(pool, 'SELECT day, page_views FROM traffic_daily WHERE day BETWEEN $1::date AND $2::date ORDER BY day', [start, end]),
+        timedQuery(pool, 'SELECT day, source, SUM(visitors) visitors FROM traffic_daily_referrers WHERE day BETWEEN $1::date AND $2::date GROUP BY day, source', [start, end]),
+        timedQuery(pool, 'SELECT day, SUM(impressions) impressions, SUM(clicks) clicks FROM deal_daily_metrics WHERE day BETWEEN $1::date AND $2::date GROUP BY day', [start, end]),
+        timedQuery(pool, "SELECT day, event, COUNT(*) count FROM cta_daily_events WHERE day BETWEEN $1::date AND $2::date GROUP BY day, event", [start, end]),
+      ]);
+      const rows = new Map(Array.from({ length: days }, (_, i) => {
+        const day = new Date(Date.parse(start) + i * 86400000).toISOString().slice(0, 10);
+        return [day, { day, hasData: false, uniqueVisitors: 0, pageViews: 0, impressions: 0, clicks: 0, kakaoImpressions: 0, kakaoClicks: 0, sources: {} }];
+      }));
+      const rowFor = (row) => rows.get(row.day instanceof Date ? row.day.toISOString().slice(0, 10) : String(row.day).slice(0, 10));
+      for (const r of views.rows) { const row = rowFor(r); row.hasData = true; row.pageViews = safeCount(r.page_views, 'pageViews'); }
+      for (const r of refs.rows) { const row = rowFor(r); row.hasData = true; const n = safeCount(r.visitors, 'visitors'); row.uniqueVisitors += n; row.sources[r.source] = n; }
+      for (const r of deals.rows) { const row = rowFor(r); row.hasData = true; row.impressions = safeCount(r.impressions, 'impressions'); row.clicks = safeCount(r.clicks, 'clicks'); }
+      for (const r of ctas.rows) { const row = rowFor(r); row.hasData = true; row[r.event === 'click' ? 'kakaoClicks' : 'kakaoImpressions'] = safeCount(r.count, 'ctaCount'); }
+      return { start, end, timeZone: 'Asia/Seoul', rows: [...rows.values()] };
     },
 
     async purgeBefore(day) {

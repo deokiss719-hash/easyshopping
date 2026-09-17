@@ -187,6 +187,23 @@ test('listing supports keyword search, source filtering, and bounded pagination'
   await pool.end();
 });
 
+test('admin moderation hides or ends a deal from public reads and survives source refreshes', async () => {
+  const { pool, store } = await makeStore();
+  const deal = await store.upsert({
+    ...firstDeal, source: 'ppomppu', sourceItemId: 'moderated-1',
+  });
+  await pool.query('INSERT INTO deal_moderation(deal_id,is_hidden) VALUES ($1,TRUE)', [deal.id]);
+  assert.equal((await store.list({ source: 'ppomppu' })).total, 0);
+  assert.equal(await store.getPublicById(deal.id), null);
+
+  await store.upsert({ ...firstDeal, source: 'ppomppu', sourceItemId: 'moderated-1', title: '갱신된 제목' });
+  assert.equal((await store.list({ source: 'ppomppu' })).total, 0);
+
+  await pool.query('UPDATE deal_moderation SET is_hidden=FALSE,is_ended=TRUE WHERE deal_id=$1', [deal.id]);
+  assert.equal((await store.list({ source: 'ppomppu' })).total, 0);
+  await pool.end();
+});
+
 test('listing source 배열은 community 소스만 정확히 count/filter/sort/paginate한다', async () => {
   const { pool, store } = await makeStore();
   await store.upsert({ ...firstDeal, source: 'ppomppu', sourceItemId: 'p1', publishedAt: '2026-09-12T10:00:00Z' });

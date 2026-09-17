@@ -1,3 +1,4 @@
+const { createAdminOperationsStore } = require('./src/admin/admin-operations-store');
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
@@ -220,6 +221,7 @@ async function start() {
         imageUrlValidator: manualImageUrlValidator,
         convertImage: convertToWebp,
         analyticsStore,
+        operationsStore: createAdminOperationsStore(pool),
       }),
       createPublicSettings: () => createPublicSettingsRouter(adminStore),
       createManualImages: () => createManualDealImageRouter({

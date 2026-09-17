@@ -33,6 +33,10 @@
           <div class="traffic-sources"><h3>클릭 상위 상품</h3><div id="deal-performance" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
           <div class="traffic-sources"><h3>유입 경로 · 사이트</h3><div id="referrer-breakdown" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
           <div class="traffic-sources"><h3>검색어 · 유입 URL <small>(최대 100개)</small></h3><div id="referrer-details" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
+          <div class="traffic-sources"><div class="panel-title"><div><h3>일자별 방문·클릭</h3><p class="panel-subtitle">최대 366일까지 조회할 수 있어요.</p></div></div>
+            <form id="daily-filter" class="filter-row"><label>시작일<input id="daily-start" type="date"></label><label>종료일<input id="daily-end" type="date"></label><button class="button secondary" type="submit">조회</button></form>
+            <div id="daily-table" class="table-wrap"><p class="empty-copy">최근 7일 통계를 불러오는 중...</p></div>
+          </div>
         </section>
         <div class="stat-grid"><article><span>전체 핫딜</span><strong id="stat-total">-</strong></article><article><span>게시 중</span><strong id="stat-published">-</strong></article><article><span>메인 노출</span><strong id="stat-home">-</strong></article></div>
         <div class="panel"><div class="panel-title"><h2>최근 휴대폰 핫딜</h2><button class="text-button" type="button" data-open-deals>전체 보기</button></div><div id="recent-deals" class="compact-list"></div></div>
@@ -67,7 +71,30 @@
         </div>
       </section>
 
-      <section id="products" class="view scaffold"><p class="eyebrow">COMING SOON</p><h1>상품 관리</h1><p>일반 상품 관리 기능을 준비하고 있어요. 현재 사용할 수 있는 작업은 없습니다.</p></section>
+      <section id="products" class="view" aria-labelledby="products-title">
+        <div class="page-heading"><div><p class="eyebrow">OPERATIONS</p><h1 id="products-title">상품 · 자동화 관리</h1><p>수집 상태와 상품 노출 상태를 한 번에 확인하고 조정하세요.</p></div><button id="refresh-operations" class="button secondary" type="button">새로고침</button></div>
+        <div id="operations-message" class="message notice" role="status" aria-live="polite"></div>
+        <section class="panel">
+          <div class="panel-title"><div><h2>수집 상태</h2><p class="panel-subtitle">소스별 최근 수집과 이미지 누락 현황</p></div></div>
+          <div id="source-status" class="status-grid"><p class="empty-copy">불러오는 중...</p></div>
+        </section>
+        <section class="panel">
+          <div class="panel-title"><div><h2>자동화 상태</h2><p class="panel-subtitle">백필 등 자동 작업의 마지막 실행 결과</p></div></div>
+          <div id="automation-status" class="status-grid"><p class="empty-copy">불러오는 중...</p></div>
+        </section>
+        <section class="panel">
+          <div class="panel-title"><div><h2>상품 찾기</h2><p class="panel-subtitle">숨기기와 종료 처리는 다음 수집 후에도 유지됩니다.</p></div></div>
+          <form id="product-filter" class="filter-row">
+            <input id="product-q" type="search" maxlength="100" placeholder="상품명 검색">
+            <select id="product-source"><option value="">전체 소스</option><option value="ppomppu">뽐뿌</option><option value="fmkorea">FM코리아</option><option value="ruliweb">루리웹</option><option value="toss">토스</option></select>
+            <select id="product-status"><option value="">전체 상태</option><option value="active">노출 중</option><option value="hidden">숨김</option><option value="ended">종료</option><option value="missing-image">이미지 없음</option></select>
+            <button class="button primary" type="submit">조회</button>
+          </form>
+          <div id="product-count" class="panel-subtitle"></div>
+          <div id="product-results" class="deal-list"><p class="empty-copy">조건을 선택해 조회하세요.</p></div>
+          <div class="pager"><button id="product-prev" class="button secondary" type="button">이전</button><span id="product-page">1페이지</span><button id="product-next" class="button secondary" type="button">다음</button></div>
+        </section>
+      </section>
       <section id="home-display" class="view scaffold"><p class="eyebrow">COMING SOON</p><h1>메인 노출 관리</h1><p>통합 메인 편집 기능을 준비하고 있어요. 휴대폰 핫딜의 메인 노출은 핫딜 편집에서 설정해 주세요.</p></section>
       <section id="settings" class="view" aria-labelledby="settings-title">
         <div class="page-heading"><div><p class="eyebrow">SITE SETTINGS</p><h1 id="settings-title">사이트 설정</h1><p>공개 화면의 문구와 수동 핫딜 노출 수를 관리하세요.</p></div></div>

@@ -207,3 +207,16 @@ CREATE TABLE IF NOT EXISTS cta_daily_events (
   PRIMARY KEY (day, visitor_hash, placement, event)
 );
 CREATE INDEX IF NOT EXISTS cta_daily_events_day_idx ON cta_daily_events(day);
+
+-- Operator choices survive subsequent source refreshes.
+CREATE TABLE IF NOT EXISTS deal_moderation (
+  deal_id BIGINT PRIMARY KEY REFERENCES deals(id) ON DELETE CASCADE,
+  is_hidden BOOLEAN NOT NULL DEFAULT FALSE,
+  is_ended BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS automation_status (
+  name TEXT PRIMARY KEY,
+  payload JSONB NOT NULL,
+  reported_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
