@@ -15,6 +15,7 @@
     productSize: 30,
     inquiries: [],
     communityPosts: [],
+    communityDeletedPosts: [],
     communityReports: [],
     communityBannedWords: [],
     communityBlocks: [],
@@ -343,6 +344,36 @@
     });
   }
 
+  function renderDeletedCommunityPosts() {
+    const list = byId('community-deleted-post-list');
+    const count = byId('community-deleted-count');
+    if (!list) return;
+    list.replaceChildren();
+    if (count) count.textContent = `${state.communityDeletedPosts.length}개`;
+    if (!state.communityDeletedPosts.length) {
+      list.append(textNode('p', '삭제된 게시글이 없습니다.', 'empty-copy'));
+      return;
+    }
+    state.communityDeletedPosts.forEach((post) => {
+      const item = document.createElement('article');
+      item.className = 'deal-item community-post-item';
+      const body = document.createElement('div');
+      body.className = 'deal-content';
+      body.append(textNode('strong', post.title));
+      body.append(textNode('p', `${post.categoryName} · ${post.nickname} · 삭제 ${new Date(post.updatedAt).toLocaleString('ko-KR')}`, 'deal-meta'));
+      const actions = document.createElement('div');
+      actions.className = 'deal-actions';
+      actions.append(communityAction('복구', async () => {
+        await api(`/api/admin/community/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ action: 'restore' }) });
+        showMessage('community-admin-message', '게시글을 복구했습니다.', 'success');
+        await loadCommunity();
+      }));
+      body.append(actions);
+      item.append(body);
+      list.append(item);
+    });
+  }
+
   function renderCommunityNotices() {
     const list = byId('community-notice-list');
     if (!list) return;
@@ -457,19 +488,21 @@
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     try {
-      const [posts, reports, banned, blocks, settings] = await Promise.all([
+      const [posts, deletedPosts, reports, banned, blocks, settings] = await Promise.all([
         api(`/api/admin/community/posts${params.size ? `?${params}` : ''}`),
+        api(`/api/admin/community/posts?deleted=only${q ? `&q=${encodeURIComponent(q)}` : ''}`),
         api('/api/admin/community/reports'),
         api('/api/admin/community/banned-words'),
         api('/api/admin/community/blocks'),
         api('/api/admin/community/settings'),
       ]);
       state.communityPosts = posts.posts || [];
+      state.communityDeletedPosts = deletedPosts.posts || [];
       state.communityReports = reports.reports || [];
       state.communityBannedWords = banned.words || [];
       state.communityBlocks = blocks.blocks || [];
       state.communitySettings = settings.settings || {};
-      renderCommunityNotices(); renderCommunityPosts(); renderCommunityReports(); renderCommunityBannedWords(); renderCommunityBlocks(); renderCommunitySettings();
+      renderCommunityNotices(); renderCommunityPosts(); renderDeletedCommunityPosts(); renderCommunityReports(); renderCommunityBannedWords(); renderCommunityBlocks(); renderCommunitySettings();
     } catch (error) {
       showMessage('community-admin-message', errorMessage(error, '커뮤니티 관리 데이터를 불러오지 못했습니다.'), 'error');
     }

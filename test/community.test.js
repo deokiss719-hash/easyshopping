@@ -79,6 +79,22 @@ test('admin can pin and unpin a normal post at the top', async () => {
   await pool.end();
 });
 
+test('admin post list separates deleted posts from active posts', async () => {
+  const { pool, store } = await makeStore();
+  const category = await freeCategory(store);
+  const active = await store.createPost({ categoryId: category.id, title: '활성 글', body: '본문' }, 'a'.repeat(64));
+  const deleted = await store.createPost({ categoryId: category.id, title: '삭제 보관 글', body: '본문' }, 'b'.repeat(64));
+  await store.adminModeratePost(deleted.post.id, { action: 'delete' });
+  const activeRows = await store.adminListPosts();
+  const deletedRows = await store.adminListPosts({ deleted: 'only' });
+  assert.deepEqual(activeRows.posts.map((post) => post.id), [active.post.id]);
+  assert.deepEqual(deletedRows.posts.map((post) => post.id), [deleted.post.id]);
+  await store.adminModeratePost(deleted.post.id, { action: 'restore' });
+  assert.equal((await store.adminListPosts({ deleted: 'only' })).total, 0);
+  assert.equal((await store.adminListPosts()).total, 2);
+  await pool.end();
+});
+
 test('community stores only masked IP display values for public posts and comments', async () => {
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);

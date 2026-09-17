@@ -8,8 +8,8 @@
 .inquiry-item{display:grid;gap:14px;margin-bottom:14px}.inquiry-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.inquiry-header>div{display:grid;gap:4px}.inquiry-header select{width:auto;min-width:110px}.inquiry-contact{margin:0;color:var(--gray-700);font-size:13px;word-break:break-all}.inquiry-message{margin:0;padding:14px;border-radius:12px;background:var(--gray-100);white-space:pre-wrap;line-height:1.6}.inquiry-item textarea{min-height:82px}.inquiry-item .button{justify-self:start}@media(max-width:720px){.inquiry-header{display:grid}.inquiry-header select{width:100%}.inquiry-item .button{width:100%}}
 
 /* Community post management uses the full panel width on desktop. */
-#community-post-list .community-post-item{grid-template-columns:minmax(0,1fr);gap:0;padding:18px 0}
-#community-post-list .community-post-item .deal-content{width:100%}
+#community-post-list .community-post-item,#community-deleted-post-list .community-post-item{grid-template-columns:minmax(0,1fr);gap:0;padding:18px 0}
+#community-post-list .community-post-item .deal-content,#community-deleted-post-list .community-post-item .deal-content{width:100%}
 #community-post-list .community-post-item>.community-comment-admin{grid-column:1;width:100%;margin-top:14px;padding:12px 14px;border-radius:12px;background:#f8fafc}
 #community-post-list .community-post-item .deal-actions{align-items:center}
 #community-post-list .community-admin-reply-form{display:grid;gap:10px;margin:0 0 12px;padding:14px;border:1px solid #dbeafe;border-radius:12px;background:#fff}
