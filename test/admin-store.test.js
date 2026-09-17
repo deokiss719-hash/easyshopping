@@ -29,7 +29,7 @@ const deal = {
 test('migration is idempotent and creates all admin tables', async () => {
   const { pool } = await setup();
   await migrate(pool);
-  for (const table of ['admin_users', 'admin_sessions', 'manual_deals', 'site_settings', 'traffic_daily', 'traffic_daily_visitors', 'traffic_daily_referrers', 'cta_daily_events']) {
+  for (const table of ['admin_users', 'admin_sessions', 'manual_deals', 'site_settings', 'advertising_inquiries', 'traffic_daily', 'traffic_daily_visitors', 'traffic_daily_referrers', 'cta_daily_events']) {
     const result = await pool.query(`SELECT * FROM ${table} LIMIT 1`);
     assert.equal(result.rowCount, 0);
   }
@@ -100,5 +100,20 @@ test('site settings enforce an allowlist and expose only public definitions', as
   await store.setSetting('home_manual_limit', 6);
   await assert.rejects(() => store.setSetting('database_url', 'secret'), /not allowed/i);
   assert.deepEqual(await store.getPublicSettings(), { home_manual_limit: 6 });
+  await pool.end();
+});
+
+test('advertising inquiries can be created, listed and updated by the admin store', async () => {
+  const { pool, store } = await setup();
+  const created = await store.createAdvertisingInquiry({
+    companyName: '테스트브랜드', contactName: '홍길동', phone: '010-1234-5678',
+    email: 'hello@example.com', adType: 'deal', message: '핫딜 노출 문의입니다.',
+  });
+  assert.equal(created.status, 'new');
+  assert.equal((await store.listAdvertisingInquiries())[0].email, 'hello@example.com');
+  const updated = await store.updateAdvertisingInquiry(created.id, { status: 'done', adminNote: '통화 완료' });
+  assert.equal(updated.status, 'done');
+  assert.equal(updated.adminNote, '통화 완료');
+  await assert.rejects(() => store.createAdvertisingInquiry({}), /companyName/i);
   await pool.end();
 });

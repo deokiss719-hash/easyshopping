@@ -36,6 +36,7 @@ const { createDealClickStore, createDealClicksRouter } = require('./src/deal-cli
 const { createTrafficAnalyticsStore } = require('./src/traffic-analytics-store');
 const { createCtaEventStore, createCtaEventsRouter } = require('./src/cta-events');
 const { createSeoPagesRouter } = require('./src/seo-pages');
+const { createAdvertisingInquiryRouter } = require('./src/advertising-inquiries');
 const { readCoupangRuntime, runCoupangCollector } = require('./src/coupang-products');
 const {
   readFmkoreaRuntime,
@@ -229,6 +230,7 @@ async function start() {
         imageUrlValidator: manualImageUrlValidator,
       }),
     });
+    app.use('/api/advertising-inquiries', createAdvertisingInquiryRouter(adminStore));
     if (adminRuntime.sessionSecret) {
       app.use('/api/deal-clicks', createDealClicksRouter({ store: createDealClickStore(pool), secret: adminRuntime.sessionSecret }));
       app.use('/api/cta-events', createCtaEventsRouter({ store: createCtaEventStore(pool), secret: adminRuntime.sessionSecret }));

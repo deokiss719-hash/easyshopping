@@ -18,6 +18,7 @@
         <button type="button" class="nav-item" data-view="phone-deals">휴대폰 핫딜 관리</button>
         <button type="button" class="nav-item" data-view="products">상품 관리</button>
         <button type="button" class="nav-item" data-view="home-display">메인 노출 관리</button>
+        <button type="button" class="nav-item" data-view="advertising-inquiries">광고문의</button>
         <button type="button" class="nav-item" data-view="settings">사이트 설정</button>
       </nav>
       <div class="sidebar-footer"><span id="admin-user"></span><button id="logout" class="text-button" type="button">로그아웃</button></div>
@@ -100,6 +101,11 @@
         </section>
       </section>
       <section id="home-display" class="view scaffold"><p class="eyebrow">COMING SOON</p><h1>메인 노출 관리</h1><p>통합 메인 편집 기능을 준비하고 있어요. 휴대폰 핫딜의 메인 노출은 핫딜 편집에서 설정해 주세요.</p></section>
+      <section id="advertising-inquiries" class="view" aria-labelledby="inquiries-title">
+        <div class="page-heading"><div><p class="eyebrow">ADVERTISING</p><h1 id="inquiries-title">광고문의</h1><p>홈페이지에서 접수된 광고 및 제휴 문의를 확인하고 처리 상태를 관리하세요.</p></div><button id="refresh-inquiries" class="button secondary" type="button">새로고침</button></div>
+        <div id="inquiries-message" class="message notice" role="status" aria-live="polite"></div>
+        <div id="inquiry-list" class="deal-list"></div>
+      </section>
       <section id="settings" class="view" aria-labelledby="settings-title">
         <div class="page-heading"><div><p class="eyebrow">SITE SETTINGS</p><h1 id="settings-title">사이트 설정</h1><p>공개 화면의 문구와 수동 핫딜 노출 수를 관리하세요.</p></div></div>
         <div id="settings-message" class="message notice" role="status" aria-live="polite"></div>

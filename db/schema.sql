@@ -123,6 +123,22 @@ CREATE TABLE IF NOT EXISTS site_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS advertising_inquiries (
+  id BIGSERIAL PRIMARY KEY,
+  company_name VARCHAR(120) NOT NULL,
+  contact_name VARCHAR(80) NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  email VARCHAR(254) NOT NULL,
+  ad_type VARCHAR(40) NOT NULL CHECK (ad_type IN ('banner', 'deal', 'partnership', 'other')),
+  message TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'in_progress', 'done')),
+  admin_note VARCHAR(1000) NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS advertising_inquiries_status_created_idx
+  ON advertising_inquiries (status, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS traffic_daily (
   day DATE PRIMARY KEY,
   page_views BIGINT NOT NULL DEFAULT 0 CHECK (page_views >= 0),

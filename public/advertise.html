@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="이지핫딜 광고, 핫딜 노출, 제휴 협업 문의를 접수하세요.">
+  <title>광고문의 | 이지핫딜</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/advertise.css">
+</head>
+<body>
+  <main class="advertise-page">
+    <a class="wordmark advertise-brand" href="/"><span class="wordmark-symbol">E</span><span class="wordmark-name">이지핫딜</span></a>
+    <section class="advertise-hero">
+      <p class="advertise-eyebrow">ADVERTISING</p>
+      <h1>이지핫딜 광고문의</h1>
+      <p>배너 광고, 상품·핫딜 노출, 제휴 및 협업 문의를 남겨주세요. 확인 후 입력하신 연락처로 안내드려요.</p>
+    </section>
+    <form id="advertise-form" class="advertise-card">
+      <div class="advertise-grid">
+        <label>업체명 · 브랜드명<input name="companyName" maxlength="120" autocomplete="organization" required></label>
+        <label>담당자명<input name="contactName" maxlength="80" autocomplete="name" required></label>
+        <label>연락처<input name="phone" maxlength="30" inputmode="tel" autocomplete="tel" placeholder="010-1234-5678" required></label>
+        <label>이메일<input name="email" type="email" maxlength="254" autocomplete="email" placeholder="name@company.com" required></label>
+        <label class="wide">광고 유형<select name="adType" required><option value="">선택해 주세요</option><option value="banner">배너 광고</option><option value="deal">핫딜·상품 노출</option><option value="partnership">제휴·협업</option><option value="other">기타</option></select></label>
+        <label class="wide">문의 내용<textarea name="message" maxlength="3000" rows="8" placeholder="희망 광고 방식, 일정, 상품 또는 서비스 정보를 적어주세요." required></textarea></label>
+      </div>
+      <label class="privacy-check"><input name="privacyConsent" type="checkbox" required><span>광고문의 처리를 위해 업체명, 담당자명, 연락처, 이메일, 문의 내용을 수집·이용하는 것에 동의합니다.</span></label>
+      <label class="website-field" aria-hidden="true">웹사이트<input name="website" tabindex="-1" autocomplete="off"></label>
+      <button id="advertise-submit" type="submit">광고문의 보내기</button>
+      <p id="advertise-message" class="advertise-message" role="status" aria-live="polite"></p>
+    </form>
+    <p class="advertise-back"><a href="/">← 이지핫딜로 돌아가기</a></p>
+  </main>
+  <script src="/advertise.js" defer></script>
+</body>
+</html>

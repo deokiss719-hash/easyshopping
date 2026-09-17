@@ -13,6 +13,7 @@
     productPage: 1,
     productTotal: 0,
     productSize: 30,
+    inquiries: [],
   };
   const byId = (id) => document.getElementById(id);
   const normalizeHttpsUrlInput = window.AdminUrlUtils.normalizeHttpsUrlInput;
@@ -133,6 +134,66 @@
     const data = await api('/api/admin/manual-deals');
     state.deals = Array.isArray(data?.deals) ? data.deals : [];
     renderDeals();
+  }
+
+  const inquiryTypeLabels = Object.freeze({ banner: '배너 광고', deal: '핫딜·상품 노출', partnership: '제휴·협업', other: '기타' });
+  const inquiryStatusLabels = Object.freeze({ new: '신규', in_progress: '확인중', done: '처리완료' });
+
+  function renderInquiries() {
+    const list = byId('inquiry-list');
+    if (!list) return;
+    list.replaceChildren();
+    if (!state.inquiries.length) {
+      list.append(textNode('p', '접수된 광고문의가 없습니다.', 'empty'));
+      return;
+    }
+    state.inquiries.forEach((inquiry) => {
+      const article = document.createElement('article');
+      article.className = 'inquiry-item panel';
+      const header = document.createElement('div');
+      header.className = 'inquiry-header';
+      const heading = document.createElement('div');
+      heading.append(textNode('strong', inquiry.companyName || '업체명 없음'));
+      heading.append(textNode('span', `${inquiryTypeLabels[inquiry.adType] || inquiry.adType} · ${new Date(inquiry.createdAt).toLocaleString('ko-KR')}`, 'deal-meta'));
+      const status = document.createElement('select');
+      ['new', 'in_progress', 'done'].forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = inquiryStatusLabels[value];
+        option.selected = inquiry.status === value;
+        status.append(option);
+      });
+      header.append(heading, status);
+      const contact = textNode('p', `${inquiry.contactName} · ${inquiry.phone} · ${inquiry.email}`, 'inquiry-contact');
+      const body = textNode('p', inquiry.message, 'inquiry-message');
+      const note = document.createElement('textarea');
+      note.rows = 3;
+      note.maxLength = 1000;
+      note.placeholder = '관리자 메모';
+      note.value = inquiry.adminNote || '';
+      const save = textNode('button', '상태·메모 저장', 'button primary small');
+      save.type = 'button';
+      save.addEventListener('click', async () => {
+        save.disabled = true;
+        try {
+          const updated = await api(`/api/admin/advertising-inquiries/${encodeURIComponent(inquiry.id)}`, {
+            method: 'PATCH', body: JSON.stringify({ status: status.value, adminNote: note.value.trim() }),
+          });
+          Object.assign(inquiry, updated);
+          showMessage('inquiries-message', '광고문의 상태를 저장했습니다.', 'success');
+        } catch (error) {
+          showMessage('inquiries-message', errorMessage(error, '광고문의 상태를 저장하지 못했습니다.'), 'error');
+        } finally { save.disabled = false; }
+      });
+      article.append(header, contact, body, note, save);
+      list.append(article);
+    });
+  }
+
+  async function loadInquiries() {
+    const data = await api('/api/admin/advertising-inquiries');
+    state.inquiries = Array.isArray(data?.inquiries) ? data.inquiries : [];
+    renderInquiries();
   }
 
   const trafficSourceLabels = Object.freeze({
@@ -711,6 +772,7 @@
     byId('product-filter')?.addEventListener('submit', (event) => { event.preventDefault(); loadProducts({ resetPage: true }); });
     byId('product-prev')?.addEventListener('click', () => { if (state.productPage > 1) { state.productPage -= 1; loadProducts(); } });
     byId('product-next')?.addEventListener('click', () => { if (state.productPage * state.productSize < state.productTotal) { state.productPage += 1; loadProducts(); } });
+    byId('refresh-inquiries')?.addEventListener('click', loadInquiries);
     byId('logout').addEventListener('click', logout);
     byId('menu-toggle').addEventListener('click', () => {
       const open = !byId('sidebar').classList.contains('open');
@@ -731,7 +793,7 @@
       const session = await api('/api/admin/auth/session');
       state.csrfToken = session.csrfToken;
       byId('admin-user').textContent = session.username || '';
-      await Promise.all([loadDeals(), loadSettings(), loadTraffic(), loadDaily(), loadOperations(), loadProducts()]);
+      await Promise.all([loadDeals(), loadSettings(), loadTraffic(), loadDaily(), loadOperations(), loadProducts(), loadInquiries()]);
     } catch (error) {
       showMessage('status-message', errorMessage(error, '관리자 데이터를 불러오지 못했습니다.'), 'error');
     }

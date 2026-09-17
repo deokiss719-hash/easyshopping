@@ -64,6 +64,33 @@ function mapManual(row) {
   };
 }
 
+const INQUIRY_STATUSES = new Set(['new', 'in_progress', 'done']);
+const INQUIRY_TYPES = new Set(['banner', 'deal', 'partnership', 'other']);
+
+function normalizeInquiry(input) {
+  const companyName = String(input?.companyName || '').trim();
+  const contactName = String(input?.contactName || '').trim();
+  const phone = String(input?.phone || '').trim();
+  const email = String(input?.email || '').trim().toLowerCase();
+  const adType = String(input?.adType || '').trim();
+  const message = String(input?.message || '').trim();
+  if (!companyName || companyName.length > 120) throw new TypeError('companyName is required and must be at most 120 characters');
+  if (!contactName || contactName.length > 80) throw new TypeError('contactName is required and must be at most 80 characters');
+  if (!/^[0-9+()\-\s]{7,30}$/.test(phone)) throw new TypeError('phone is invalid');
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new TypeError('email is invalid');
+  if (!INQUIRY_TYPES.has(adType)) throw new TypeError('adType is invalid');
+  if (!message || message.length > 3000) throw new TypeError('message is required and must be at most 3000 characters');
+  return { companyName, contactName, phone, email, adType, message };
+}
+
+function mapInquiry(row) {
+  return {
+    id: String(row.id), companyName: row.company_name, contactName: row.contact_name,
+    phone: row.phone, email: row.email, adType: row.ad_type, message: row.message,
+    status: row.status, adminNote: row.admin_note || '', createdAt: row.created_at, updatedAt: row.updated_at,
+  };
+}
+
 function manualValues(deal) {
   return [deal.title, deal.productUrl, deal.imageUrl, deal.merchant, deal.priceAmount,
     deal.originalPriceAmount, deal.description, deal.badge, deal.category, deal.isPublished, deal.showOnHome, deal.priority];
@@ -232,7 +259,31 @@ function createAdminStore(pool) {
       const all = await this.getSettings();
       return Object.fromEntries(Object.entries(all).filter(([key]) => SITE_SETTING_DEFINITIONS[key]?.public));
     },
+    async createAdvertisingInquiry(input) {
+      const value = normalizeInquiry(input);
+      const result = await pool.query(
+        `INSERT INTO advertising_inquiries(company_name,contact_name,phone,email,ad_type,message)
+         VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [value.companyName, value.contactName, value.phone, value.email, value.adType, value.message],
+      );
+      return mapInquiry(result.rows[0]);
+    },
+    async listAdvertisingInquiries() {
+      return (await pool.query('SELECT * FROM advertising_inquiries ORDER BY created_at DESC,id DESC')).rows.map(mapInquiry);
+    },
+    async updateAdvertisingInquiry(id, input) {
+      if (!/^\d+$/.test(String(id))) throw new TypeError('inquiry id is invalid');
+      const status = String(input?.status || '').trim();
+      const adminNote = String(input?.adminNote || '').trim();
+      if (!INQUIRY_STATUSES.has(status)) throw new TypeError('status is invalid');
+      if (adminNote.length > 1000) throw new TypeError('adminNote must be at most 1000 characters');
+      const result = await pool.query(
+        `UPDATE advertising_inquiries SET status=$1,admin_note=$2,updated_at=CURRENT_TIMESTAMP WHERE id=$3 RETURNING *`,
+        [status, adminNote, id],
+      );
+      return result.rows[0] ? mapInquiry(result.rows[0]) : null;
+    },
   };
 }
 
-module.exports = { createAdminStore, SITE_SETTING_DEFINITIONS, normalizeManualDeal };
+module.exports = { createAdminStore, SITE_SETTING_DEFINITIONS, normalizeManualDeal, normalizeInquiry };

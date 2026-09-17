@@ -90,6 +90,11 @@ function createAdminApiRouter({
   }));
 
   router.get('/manual-deals', asyncRoute(async (_req, res) => res.json({ deals: await store.listManualDeals() })));
+  router.get('/advertising-inquiries', asyncRoute(async (_req, res) => res.json({ inquiries: await store.listAdvertisingInquiries() })));
+  router.patch('/advertising-inquiries/:id', auth.requireMutationProtection, asyncRoute(async (req, res) => {
+    const inquiry = await store.updateAdvertisingInquiry(req.params.id, req.body);
+    return inquiry ? res.json(inquiry) : res.status(404).json({ error: 'not_found' });
+  }));
   router.get('/analytics/today', asyncRoute(async (_req, res) => {
     if (!analyticsStore?.getDay) return res.status(503).json({ error: 'analytics_unavailable' });
     return res.json(await analyticsStore.getDay(koreaDay(now())));
