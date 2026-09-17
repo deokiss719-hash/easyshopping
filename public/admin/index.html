@@ -31,8 +31,12 @@
           <div class="stat-grid traffic-stats"><article><span>오늘 방문자</span><strong id="stat-visitors-today">-</strong></article><article><span>페이지 조회수</span><strong id="stat-pageviews-today">-</strong></article><article><span>상품 노출</span><strong id="stat-impressions-today">-</strong></article><article><span>상품 클릭률</span><strong id="stat-ctr-today">-</strong></article><article><span>카카오 클릭</span><strong id="stat-kakao-clicks">-</strong></article><article><span>카카오 버튼 클릭률</span><strong id="stat-kakao-ctr">-</strong></article></div>
           <div class="traffic-sources"><h3>카카오 버튼 위치별 성과</h3><div id="kakao-performance" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
           <div class="traffic-sources"><h3>클릭 상위 상품</h3><div id="deal-performance" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
-          <div class="traffic-sources"><h3>유입 경로 · 사이트</h3><div id="referrer-breakdown" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
-          <div class="traffic-sources"><h3>검색어 · 유입 URL <small>(최대 100개)</small></h3><div id="referrer-details" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
+          <div class="traffic-sources"><h3>유입 경로 요약</h3><div id="referrer-breakdown" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
+          <details id="referrer-all" class="traffic-details">
+            <summary><span>전체 유입경로·세부 URL 보기</span><small id="referrer-detail-count"></small></summary>
+            <div class="traffic-sources compact"><h3>전체 유입 사이트</h3><div id="referrer-all-sites" class="referrer-list"></div></div>
+            <div class="traffic-sources compact"><h3>검색어 · 유입 URL <small>(최대 100개)</small></h3><div id="referrer-details" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
+          </details>
           <div class="traffic-sources"><div class="panel-title"><div><h3>일자별 방문·클릭</h3><p class="panel-subtitle">최대 366일까지 조회할 수 있어요.</p></div></div>
             <form id="daily-filter" class="filter-row"><label>시작일<input id="daily-start" type="date"></label><label>종료일<input id="daily-end" type="date"></label><button class="button secondary" type="submit">조회</button></form>
             <div id="daily-table" class="table-wrap"><p class="empty-copy">최근 7일 통계를 불러오는 중...</p></div>

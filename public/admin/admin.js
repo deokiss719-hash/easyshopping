@@ -143,6 +143,52 @@
     referral: '외부 사이트',
   });
 
+  function referrerGroup(row) {
+    const domain = String(row?.domain || '').toLowerCase();
+    if (row?.source === 'direct') return '직접 방문';
+    if (row?.source === 'internal') return '사이트 내부';
+    if (/(^|\.)naver\.com$/.test(domain)) return '네이버';
+    if (/(^|\.)google\./.test(domain)) return '구글';
+    if (/(^|\.)(kakao\.com|kakaocdn\.net|daum\.net)$/.test(domain)) return '카카오·다음';
+    if (/(^|\.)(instagram\.com|facebook\.com|threads\.net)$/.test(domain)) return 'Meta SNS';
+    if (/(^|\.)(youtube\.com|youtu\.be)$/.test(domain)) return '유튜브';
+    if (row?.source === 'search') return '기타 검색';
+    if (row?.source === 'social') return '기타 SNS';
+    return domain || trafficSourceLabels[row?.source] || '기타';
+  }
+
+  function summarizeReferrers(rows) {
+    const grouped = new Map();
+    rows.forEach((row) => {
+      const label = referrerGroup(row);
+      grouped.set(label, (grouped.get(label) || 0) + Number(row.visitors || 0));
+    });
+    const sorted = [...grouped.entries()]
+      .map(([label, visitors]) => ({ label, visitors }))
+      .sort((a, b) => b.visitors - a.visitors || a.label.localeCompare(b.label, 'ko'));
+    if (sorted.length <= 5) return sorted;
+    return [...sorted.slice(0, 5), { label: '기타', visitors: sorted.slice(5).reduce((sum, row) => sum + row.visitors, 0) }];
+  }
+
+  function renderReferrerSummary(list, rows, totalVisitors) {
+    list.replaceChildren();
+    const summary = summarizeReferrers(rows);
+    if (!summary.length) {
+      list.append(textNode('p', '아직 오늘 유입 기록이 없습니다.', 'empty-copy'));
+      return;
+    }
+    summary.forEach((row) => {
+      const item = document.createElement('div');
+      item.className = 'referrer-item';
+      const copy = document.createElement('div');
+      copy.append(textNode('strong', row.label));
+      const ratio = totalVisitors ? row.visitors / totalVisitors * 100 : 0;
+      copy.append(textNode('span', `${ratio.toFixed(1)}%`));
+      item.append(copy, textNode('b', `${row.visitors.toLocaleString('ko-KR')}명`));
+      list.append(item);
+    });
+  }
+
   function renderTrafficRows(list, rows, emptyCopy, showDetails = false) {
     list.replaceChildren();
     if (!rows.length) {
@@ -214,17 +260,18 @@
       item.append(copy, textNode('b', `${Number(row.clicks || 0).toLocaleString('ko-KR')}회`));
       performance.append(item);
     });
-    renderTrafficRows(
-      byId('referrer-breakdown'),
-      Array.isArray(data.referrers) ? data.referrers : [],
-      '아직 오늘 유입 기록이 없습니다.',
-    );
+    const referrers = Array.isArray(data.referrers) ? data.referrers : [];
+    const referrerDetails = Array.isArray(data.referrerDetails) ? data.referrerDetails : [];
+    renderReferrerSummary(byId('referrer-breakdown'), referrers, Number(data.uniqueVisitors || 0));
+    renderTrafficRows(byId('referrer-all-sites'), referrers, '아직 오늘 유입 기록이 없습니다.');
     renderTrafficRows(
       byId('referrer-details'),
-      Array.isArray(data.referrerDetails) ? data.referrerDetails : [],
+      referrerDetails,
       '아직 검색어나 유입 URL 기록이 없습니다.',
       true,
     );
+    const detailCount = byId('referrer-detail-count');
+    if (detailCount) detailCount.textContent = `${referrers.length + referrerDetails.length}개 항목`;
   }
 
   async function loadTraffic() {

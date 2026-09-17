@@ -39,7 +39,9 @@ test('admin login is public and noindex while management HTML remains authentica
   assert.equal(shell.status, 200);
   const html = await shell.text();
   for (const text of ['대시보드', '오늘 트래픽', '오늘 방문자', '페이지 조회수', '유입 경로', '휴대폰 핫딜 관리', '상품 관리', '메인 노출 관리', '사이트 설정']) assert.match(html, new RegExp(text));
-  for (const control of ['stat-visitors-today', 'stat-pageviews-today', 'analytics-day', 'referrer-breakdown', 'analytics-message']) assert.match(html, new RegExp(`id="${control}"`));
+  for (const control of ['stat-visitors-today', 'stat-pageviews-today', 'analytics-day', 'referrer-breakdown', 'referrer-all', 'referrer-all-sites', 'referrer-detail-count', 'analytics-message']) assert.match(html, new RegExp(`id="${control}"`));
+  assert.match(html, /유입 경로 요약/);
+  assert.match(html, /전체 유입경로·세부 URL 보기/);
   for (const control of ['deal-form', 'metadata-fetch', 'current-price', 'original-price', 'image-file', 'image-preview', 'image-upload-status', 'image-url', 'target-url', 'category', 'is-published', 'show-on-home', 'priority']) assert.match(html, new RegExp(`id="${control}"`));
   assert.match(html, /id="image-file"[^>]+type="file"[^>]+accept="image\/jpeg,image\/png,image\/webp,image\/gif,image\/avif"/);
   const adminScript = await (await fetch(`${origin}/admin/admin.js`)).text();
@@ -66,6 +68,9 @@ test('admin login is public and noindex while management HTML remains authentica
   assert.match(adminScript, /productUrl,\s*\n/);
   assert.match(adminScript, /\/api\/admin\/analytics\/today/);
   assert.match(adminScript, /referrer-breakdown/);
+  assert.match(adminScript, /summarizeReferrers/);
+  assert.match(adminScript, /네이버/);
+  assert.match(adminScript, /카카오·다음/);
   assert.match(adminScript, /row\.searchTerm/);
   assert.match(adminScript, /row\.referrerUrl/);
   assert.match(adminScript, /textContent/);
