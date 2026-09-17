@@ -121,14 +121,17 @@ test('cookie identity or bcrypt deletion password can authorize post deletion', 
   await pool.end();
 });
 
-test('one-level replies work and a second-level reply is rejected', async () => {
+test('nested replies can continue beyond one level', async () => {
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '답글 테스트', body: '본문' }, 'a'.repeat(64));
   const first = await store.createComment(created.post.id, { body: '첫 댓글' }, 'b'.repeat(64));
   const reply = await store.createComment(created.post.id, { body: '답글', parentCommentId: first.id }, 'c'.repeat(64));
+  const nested = await store.createComment(created.post.id, { body: '2단계 답글', parentCommentId: reply.id }, 'd'.repeat(64));
+  const deeper = await store.createComment(created.post.id, { body: '3단계 답글', parentCommentId: nested.id }, 'e'.repeat(64));
   assert.equal(reply.parentCommentId, first.id);
-  await assert.rejects(() => store.createComment(created.post.id, { body: '2단계', parentCommentId: reply.id }, 'd'.repeat(64)), /한 단계/);
+  assert.equal(nested.parentCommentId, reply.id);
+  assert.equal(deeper.parentCommentId, nested.id);
   await pool.end();
 });
 
