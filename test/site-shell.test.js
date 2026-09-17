@@ -22,6 +22,12 @@ test('검색봇에 대표 URL, 사이트맵, 이지핫딜 구조화 데이터를
   const sitemap = fs.readFileSync(path.join(publicDir, 'sitemap.xml'), 'utf8');
 
   assert.match(html, /<link rel="canonical" href="https:\/\/easyshoopping\.com\/"\s*\/?>/);
+  assert.match(html, /<link rel="icon" type="image\/png" sizes="512x512" href="\/favicon\.png"\s*\/?>/);
+  assert.match(html, /<link rel="apple-touch-icon" sizes="180x180" href="\/apple-touch-icon\.png"\s*\/?>/);
+  assert.match(html, /"logo":\s*"https:\/\/easyshoopping\.com\/favicon\.png"/);
+  for (const asset of ['favicon.png', 'favicon.ico', 'apple-touch-icon.png']) {
+    assert.equal(fs.existsSync(path.join(publicDir, asset)), true);
+  }
   assert.match(html, /<script type="application\/ld\+json">/);
   assert.match(html, /"@type":\s*"WebSite"/);
   assert.match(html, /"@type":\s*"Organization"/);

@@ -13,6 +13,8 @@ test('detail and category pages expose unique canonical metadata and crawlable i
   const { server, origin } = await listen(app); t.after(() => new Promise((resolve) => server.close(resolve)));
   const detail = await (await fetch(`${origin}/deals/42`)).text();
   assert.match(detail, /<link rel="canonical" href="https:\/\/easyshoopping\.com\/deals\/42">/);
+  assert.match(detail, /<link rel="icon" type="image\/png" sizes="512x512" href="\/favicon\.png">/);
+  assert.match(detail, /<link rel="apple-touch-icon" sizes="180x180" href="\/apple-touch-icon\.png">/);
   assert.match(detail, /"@type":"Product"/); assert.match(detail, /신라면 20봉 특가/);
   const category = await (await fetch(`${origin}/hot-deals/food`)).text();
   assert.match(category, /<h1>식품 실시간 핫딜<\/h1>/); assert.match(category, /href="\/deals\/42"/); assert.match(category, /"@type":"ItemList"/);
