@@ -218,7 +218,7 @@
     }
     state.communityPosts.forEach((post) => {
       const item = document.createElement('article');
-      item.className = 'deal-item';
+      item.className = 'deal-item community-post-item';
       const body = document.createElement('div');
       body.className = 'deal-content';
       const title = textNode('strong', post.title);
