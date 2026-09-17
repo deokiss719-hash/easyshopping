@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const fs = require('node:fs');
 const express = require('express');
 const { createAdminUiRouter } = require('../src/admin/admin-ui');
 
@@ -87,6 +88,14 @@ test('admin login is public and noindex while management HTML remains authentica
   assert.match(adminScript, /관리자 댓글 등록/);
   assert.match(adminScript, /\/api\/admin\/community\/posts\/\$\{post\.id\}\/reply/);
   assert.match(adminScript, /이지핫딜 관리자/);
+});
+
+test('community admin stays within the mobile viewport', () => {
+  const adminStyles = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin', 'admin.css'), 'utf8');
+  assert.match(adminStyles, /#community \.page-heading\{align-items:stretch;flex-direction:column/);
+  assert.match(adminStyles, /#community \.compact-item\{align-items:stretch;flex-direction:column/);
+  assert.match(adminStyles, /#community-post-list \.community-post-item \.deal-actions \.button/);
+  assert.match(adminStyles, /flex:1 1 calc\(50% - 7px\)/);
 });
 
 test('admin assets are public with noindex headers but cannot expose management document', async (t) => {
