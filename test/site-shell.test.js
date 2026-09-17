@@ -37,6 +37,17 @@ test('커뮤니티 작성자 닉네임 옆에 마스킹 IP를 표시한다', () 
   assert.match(communityStyles, /\.ip-display\{/);
 });
 
+
+test('커뮤니티 공개 화면은 모바일 폭에서 목록·검색·상세·댓글이 가로로 넘치지 않게 배치한다', () => {
+  assert.match(communityStyles, /\.community-hero\{align-items:stretch;flex-direction:column/);
+  assert.match(communityStyles, /\.community-tools form\{display:grid;grid-template-columns:92px minmax\(0,1fr\)/);
+  assert.match(communityStyles, /\.community-row\{grid-template-columns:64px minmax\(0,1fr\) auto/);
+  assert.match(communityStyles, /\.post-actions\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(communityStyles, /\.community-dialog\{width:calc\(100% - 20px\);max-height:calc\(100dvh - 20px\)/);
+  assert.match(communityStyles, /\.comment-head\{flex-wrap:wrap/);
+  assert.match(communityStyles, /\.comment-body\{overflow-wrap:anywhere/);
+});
+
 test('공개 화면은 이지핫딜 브랜드명을 표시한다', () => {
   assert.match(html, /<title>실시간 핫딜 모음·오늘의 특가 \| 이지핫딜<\/title>/);
   assert.match(html, /<h1 id="hero-title">실시간 핫딜, 오늘 뭐가 싸지\?<\/h1>/);
