@@ -280,6 +280,17 @@ test('admin reply is stored as a clearly identified admin comment', async () => 
   await pool.end();
 });
 
+test('admin reply marks a regular post as answered', async () => {
+  const { pool, store } = await makeStore();
+  const category = await freeCategory(store);
+  const created = await store.createPost({ categoryId: category.id, title: '일반 글', body: '본문' }, 'a'.repeat(64));
+  assert.equal(created.post.answered, false);
+  await store.adminReply(created.post.id, { body: '관리자 답변입니다.' });
+  const detail = await store.getPost(created.post.id, 'a'.repeat(64));
+  assert.equal(detail.post.answered, true);
+  await pool.end();
+});
+
 test('banned words, reports, blocks, and community settings are manageable', async () => {
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);

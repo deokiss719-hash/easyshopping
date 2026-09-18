@@ -30,6 +30,8 @@ test('커뮤니티 공지글은 목록과 상세에서 공지 배지로 표시�
 test('관리자가 고정한 일반 글은 공개 화면에서 고정 배지로 표시한다', () => {
   assert.match(communityScript, /post\.isPinned/);
   assert.match(communityScript, /'고정','notice-badge'/);
+  assert.match(communityScript, /post\.answered/);
+  assert.match(communityScript, /'관리자 답변','answer-badge'/);
 });
 
 test('커뮤니티 대댓글에도 계속 답글을 달고 깊이를 표시한다', () => {

@@ -211,7 +211,7 @@ function createCommunityStore(pool, { imageUrlValidator = (value) => {
     let parent=null; if(input.parentCommentId){ const p=await pool.query('SELECT id FROM community_comments WHERE id=$1 AND post_id=$2',[input.parentCommentId,postId]); if(!p.rows[0]) throw new TypeError('답글 대상을 찾을 수 없어요.'); parent=p.rows[0].id; }
     const passwordHash=!admin&&input.password?await bcrypt.hash(safeText(input.password,32),10):null;
     const inserted=await pool.query('INSERT INTO community_comments(post_id,parent_comment_id,body,nickname,author_hash,ip_display,edit_password_hash,is_admin) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',[postId,parent,body,nickname,authorHash,admin ? null : (ipDisplay || null),passwordHash,admin]);
-    await pool.query('UPDATE community_posts SET comment_count=comment_count+1, answered_at=CASE WHEN $2=TRUE AND answer_requested=TRUE THEN COALESCE(answered_at,CURRENT_TIMESTAMP) ELSE answered_at END WHERE id=$1',[postId,admin]);
+    await pool.query('UPDATE community_posts SET comment_count=comment_count+1, answered_at=CASE WHEN $2=TRUE THEN COALESCE(answered_at,CURRENT_TIMESTAMP) ELSE answered_at END WHERE id=$1',[postId,admin]);
     return commentRow(inserted.rows[0],post.rows[0].author_hash,authorHash);
   }
   async function deleteComment(id,authorHash,password){ const found=await pool.query('SELECT * FROM community_comments WHERE id=$1 AND is_deleted=FALSE',[id]); const row=found.rows[0]; if(!row)return false; if(!(await canEdit(row,authorHash,password)))throw Object.assign(new Error('forbidden'),{status:403}); await pool.query("UPDATE community_comments SET is_deleted=TRUE,body='',updated_at=CURRENT_TIMESTAMP WHERE id=$1",[id]); return true; }
