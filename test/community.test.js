@@ -10,6 +10,7 @@ const {
   createCommunityImageUrlValidator,
   detailHtml,
   normalizeIp,
+  dcIpDisplay,
 } = require('../src/community/community');
 
 async function makeStore({ imageStorage } = {}) {
@@ -176,9 +177,9 @@ test('community stores full client IP display values for public posts and commen
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '아이피 표시', body: '본문', nickname: 'ㅇㅇ' }, 'a'.repeat(64), '123.45.67.89');
-  assert.equal(created.post.ipDisplay, '123.45.67.89');
+  assert.equal(created.post.ipDisplay, '123.45');
   const comment = await store.createComment(created.post.id, { body: '댓글', nickname: '댓글러' }, 'b'.repeat(64), { ipDisplay: '211.22.33.44' });
-  assert.equal(comment.ipDisplay, '211.22.33.44');
+  assert.equal(comment.ipDisplay, '211.22');
   await store.adminReply(created.post.id, { body: '관리자 댓글' });
   const detail = await store.getPost(created.post.id, 'a'.repeat(64));
   assert.equal(detail.comments[1].ipDisplay, '');
@@ -190,6 +191,13 @@ test('IP normalization keeps the real client address', () => {
   assert.equal(normalizeIp('::ffff:211.22.33.44'), '211.22.33.44');
   assert.equal(normalizeIp('2001:db8:abcd:1234::1'), '2001:db8:abcd:1234::1');
   assert.equal(normalizeIp('999.1.2.3'), '');
+});
+
+test('DC-style public IP display uses a real IP prefix only', () => {
+  assert.equal(dcIpDisplay('123.45.67.89'), '123.45');
+  assert.equal(dcIpDisplay('::ffff:211.22.33.44'), '211.22');
+  assert.equal(dcIpDisplay('2001:db8:abcd:1234::1'), '2001:db8');
+  assert.equal(dcIpDisplay('invalid'), '');
 });
 
 test('phone or email-like personal data requires an explicit privacy confirmation', async () => {

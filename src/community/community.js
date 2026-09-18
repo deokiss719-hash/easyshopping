@@ -46,6 +46,14 @@ function normalizeIp(address) {
   return net.isIP(value) ? value : '';
 }
 
+function dcIpDisplay(address) {
+  const value = normalizeIp(address);
+  const kind = net.isIP(value);
+  if (kind === 4) return value.split('.').slice(0, 2).join('.');
+  if (kind === 6) return value.split(':').filter(Boolean).slice(0, 2).join(':');
+  return '';
+}
+
 function sameOrigin(req) {
   const origin = req.get('origin');
   if (!origin) return true;
@@ -98,7 +106,7 @@ function postRow(row, viewerHash) {
     title: row.title, body: row.body, imageUrl: row.image_url || null, nickname: row.nickname, isNotice: Boolean(row.is_notice), isPinned: Boolean(row.is_pinned), answerRequested: row.answer_requested,
     answered: Boolean(row.answered_at), views: Number(row.views || 0), upvotes: Number(row.upvotes || 0),
     downvotes: Number(row.downvotes || 0), commentCount: Number(row.comment_count || 0),
-    ipDisplay: row.ip_display || '', createdAt: row.created_at, updatedAt: row.updated_at,
+    ipDisplay: dcIpDisplay(row.ip_display), createdAt: row.created_at, updatedAt: row.updated_at,
     isAuthor: Boolean(viewerHash && row.author_hash === viewerHash),
   };
 }
@@ -110,7 +118,7 @@ function commentRow(row, postAuthorHash, viewerHash) {
     nickname: row.is_admin ? '이지핫딜 관리자' : row.nickname,
     isAdmin: row.is_admin, isPostAuthor: !row.is_admin && row.author_hash === postAuthorHash,
     isAuthor: Boolean(viewerHash && row.author_hash === viewerHash), upvotes: Number(row.upvotes || 0),
-    downvotes: Number(row.downvotes || 0), deleted: row.is_deleted, ipDisplay: row.ip_display || '', createdAt: row.created_at,
+    downvotes: Number(row.downvotes || 0), deleted: row.is_deleted, ipDisplay: dcIpDisplay(row.ip_display), createdAt: row.created_at,
   };
 }
 
@@ -283,4 +291,4 @@ function createCommunityPagesRouter({store,publicDir}){const router=express.Rout
 
 function createCommunityAdminRouter({store,auth}){ if(!store||!auth?.requireAuth||!auth?.requireMutationProtection)throw new TypeError('community admin auth is required'); const router=express.Router(); router.use(auth.requireAuth); const asyncRoute=(fn)=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next); router.get('/posts',asyncRoute(async(req,res)=>res.json(await store.adminListPosts(req.query)))); router.post('/posts/notice',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminCreateNotice(req.body||{})))); router.patch('/posts/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminModeratePost(req.params.id,req.body||{});return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/posts/:id/comments',asyncRoute(async(req,res)=>res.json({comments:await store.adminComments(req.params.id)}))); router.post('/posts/:id/reply',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const value=await store.adminReply(req.params.id,req.body||{});return value?res.status(201).json(value):res.status(404).json({error:'not_found'});})); router.patch('/comments/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminModerateComment(req.params.id,req.body||{});return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/reports',asyncRoute(async(_req,res)=>res.json({reports:await store.adminReports()}))); router.patch('/reports/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminUpdateReport(req.params.id,req.body?.status);return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/categories',asyncRoute(async(_req,res)=>res.json({categories:await store.categories({all:true})}))); router.post('/categories',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminSaveCategory(req.body||{})))); router.put('/categories/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.json(await store.adminSaveCategory({...req.body,id:req.params.id})))); router.get('/banned-words',asyncRoute(async(_req,res)=>res.json({words:await store.adminBannedWords()}))); router.post('/banned-words',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminAddBannedWord(req.body?.word)))); router.delete('/banned-words/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>await store.adminDeleteBannedWord(req.params.id)?res.sendStatus(204):res.status(404).json({error:'not_found'}))); router.get('/blocks',asyncRoute(async(_req,res)=>res.json({blocks:await store.adminBlocks()}))); router.post('/blocks',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminBlock(req.body||{})))); router.delete('/blocks/:authorHash',auth.requireMutationProtection,asyncRoute(async(req,res)=>await store.adminDeleteBlock(req.params.authorHash)?res.sendStatus(204):res.status(404).json({error:'not_found'}))); router.get('/settings',asyncRoute(async(_req,res)=>res.json({settings:await store.settings()}))); router.put('/settings',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.json({settings:await store.adminSaveSettings(req.body||{})}))); router.use((error,_req,res,next)=>{if(error instanceof TypeError)return res.status(400).json({error:'invalid_request',message:error.message});return next(error)}); return router; }
 
-module.exports={createCommunityStore,createCommunityRouter,createCommunityPagesRouter,createCommunityAdminRouter,createCommunityImageUrlValidator,detailHtml,normalizeIp};
+module.exports={createCommunityStore,createCommunityRouter,createCommunityPagesRouter,createCommunityAdminRouter,createCommunityImageUrlValidator,detailHtml,normalizeIp,dcIpDisplay};

@@ -41,8 +41,9 @@ test('커뮤니티 대댓글에도 계속 답글을 달고 깊이를 표시한�
   assert.match(communityStyles, /--reply-depth/);
 });
 
-test('커뮤니티 작성자 닉네임 옆에 실제 IP를 표시한다', () => {
+test('커뮤니티 작성자 닉네임 옆에 디시 스타일 IP 괄호 표기를 표시한다', () => {
   assert.match(communityScript, /authorLabel\(post\.nickname,post\.ipDisplay\)/);
+  assert.match(communityScript, /`\(\$\{ipDisplay\}\)`/);
   assert.match(communityScript, /comment\.ipDisplay/);
   assert.match(communityStyles, /\.ip-display\{/);
 });
