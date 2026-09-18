@@ -241,14 +241,14 @@ test('votes are unique per anonymous identity and switching direction adjusts to
   await pool.end();
 });
 
-test('post views are deduplicated per anonymous identity', async () => {
+test('post views increase on every counted detail entry', async () => {
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);
   const created = await store.createPost({ categoryId: category.id, title: '조회 테스트', body: '본문' }, 'a'.repeat(64));
   await store.getPost(created.post.id, 'b'.repeat(64), true);
   await store.getPost(created.post.id, 'b'.repeat(64), true);
   await store.getPost(created.post.id, 'c'.repeat(64), true);
-  assert.equal((await store.getPost(created.post.id, 'a'.repeat(64))).post.views, 2);
+  assert.equal((await store.getPost(created.post.id, 'a'.repeat(64))).post.views, 3);
   await pool.end();
 });
 

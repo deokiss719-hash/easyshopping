@@ -162,9 +162,9 @@ function createCommunityStore(pool, { imageUrlValidator = (value) => {
     return { posts: rows.map((r) => postRow(r, viewerHash)), total: Number(count.rows[0]?.total || 0), page: safePage, size: safeSize };
   }
   async function getPost(id, viewerHash, countView = false) {
-    if (countView && viewerHash) {
-      const inserted = await pool.query('INSERT INTO community_post_views(post_id,viewer_hash) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING post_id', [id, viewerHash]);
-      if (inserted.rowCount) await pool.query('UPDATE community_posts SET views=views+1 WHERE id=$1', [id]);
+    if (countView) {
+      if (viewerHash) await pool.query('INSERT INTO community_post_views(post_id,viewer_hash) VALUES($1,$2) ON CONFLICT DO NOTHING', [id, viewerHash]);
+      await pool.query('UPDATE community_posts SET views=views+1 WHERE id=$1', [id]);
     }
     const { rows } = await pool.query(`SELECT p.*,c.slug category_slug,c.name category_name FROM community_posts p JOIN community_categories c ON c.id=p.category_id WHERE p.id=$1 AND p.is_hidden=FALSE AND p.is_deleted=FALSE`, [id]);
     if (!rows[0]) return null;

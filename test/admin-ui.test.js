@@ -88,6 +88,8 @@ test('admin login is public and noindex while management HTML remains authentica
   assert.match(adminScript, /관리자 댓글 등록/);
   assert.match(adminScript, /대댓글 등록/);
   assert.match(adminScript, /parentCommentId: comment\.id/);
+  assert.match(adminScript, /계속 작성할 수 있어요/);
+  assert.match(adminScript, /nestedArea\.focus\(\)/);
   assert.match(adminScript, /--admin-reply-depth/);
   assert.match(adminScript, /\/api\/admin\/community\/posts\/\$\{post\.id\}\/reply/);
   assert.match(adminScript, /이지핫딜 관리자/);

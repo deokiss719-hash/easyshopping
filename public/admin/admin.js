@@ -309,8 +309,10 @@
                     nestedMessage.textContent = '등록 중...';
                     try {
                       await api(`/api/admin/community/posts/${post.id}/reply`, { method: 'POST', body: JSON.stringify({ body, parentCommentId: comment.id }) });
-                      const refreshed = await api(`/api/admin/community/posts/${post.id}/comments`);
-                      renderComments(refreshed.comments || []);
+                      nestedArea.value = '';
+                      nestedMessage.textContent = '대댓글이 등록됐어요. 계속 작성할 수 있어요.';
+                      nestedButton.disabled = false;
+                      nestedArea.focus();
                     } catch (error) {
                       nestedMessage.textContent = error.message || '대댓글 등록에 실패했어요.';
                       nestedButton.disabled = false;

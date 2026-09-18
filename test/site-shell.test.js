@@ -34,6 +34,9 @@ test('관리자가 고정한 일반 글은 공개 화면에서 고정 배지로 
 
 test('커뮤니티 대댓글에도 계속 답글을 달고 깊이를 표시한다', () => {
   assert.match(communityScript, /actions\.append\(actionButton\('답글'/);
+  assert.match(communityScript, /inline-reply-form/);
+  assert.match(communityScript, /replyComment\(postId,comment\.id,article\)/);
+  assert.doesNotMatch(communityScript, /prompt\('답글을 입력하세요\.'/);
   assert.match(communityScript, /--reply-depth/);
   assert.match(communityStyles, /--reply-depth/);
 });
