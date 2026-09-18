@@ -1,5 +1,6 @@
 const express = require('express');
 const { createHmac, randomBytes, timingSafeEqual } = require('node:crypto');
+const net = require('node:net');
 const bcrypt = require('bcryptjs');
 const { convertToWebp, MAX_SOURCE_BYTES } = require('../images/webp');
 
@@ -39,20 +40,10 @@ function anonymousIdentity(req, res, secret, production = false) {
   return hmac(secret, token);
 }
 
-function maskIp(address) {
+function normalizeIp(address) {
   let value = String(address || '').trim().split('%')[0];
   if (value.startsWith('::ffff:')) value = value.slice(7);
-  const ipv4 = value.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (ipv4) {
-    const octets = ipv4.slice(1).map(Number);
-    if (octets.every((part) => part >= 0 && part <= 255)) return `${octets[0]}.${octets[1]}.*.*`;
-    return '';
-  }
-  if (value.includes(':')) {
-    const parts = value.split(':').filter(Boolean);
-    if (parts.length) return `${parts.slice(0, 2).join(':')}:*:*`;
-  }
-  return '';
+  return net.isIP(value) ? value : '';
 }
 
 function sameOrigin(req) {
@@ -253,7 +244,7 @@ function communityError(error,res,next){ if(error?.code==='privacy_warning')retu
 
 function createCommunityRouter({store,secret,production=false,consultationUrl='',imageStorage,convertImage=convertToWebp}){
   if(!store||!secret)throw new TypeError('community store and secret are required'); const router=express.Router();
-  router.use((req,res,next)=>{ req.communityAuthorHash=anonymousIdentity(req,res,secret,production); req.communityIpDisplay=maskIp(req.ip || req.socket?.remoteAddress); next(); });
+  router.use((req,res,next)=>{ req.communityAuthorHash=anonymousIdentity(req,res,secret,production); req.communityIpDisplay=normalizeIp(req.ip || req.socket?.remoteAddress); next(); });
   const mutation=(req,res,next)=>{ if(!sameOrigin(req))return res.status(403).json({error:'origin_mismatch'}); if(!rateLimit(`${req.communityAuthorHash}:${req.path}`,30,60000))return res.status(429).json({error:'rate_limited'}); next(); };
   router.get('/api/community/categories',async(req,res,next)=>{try{res.json({categories:await store.categories()});}catch(e){next(e)}});
   router.get('/api/community/posts',async(req,res,next)=>{try{res.json(await store.listPosts(req.query,req.communityAuthorHash));}catch(e){communityError(e,res,next)}});
@@ -292,4 +283,4 @@ function createCommunityPagesRouter({store,publicDir}){const router=express.Rout
 
 function createCommunityAdminRouter({store,auth}){ if(!store||!auth?.requireAuth||!auth?.requireMutationProtection)throw new TypeError('community admin auth is required'); const router=express.Router(); router.use(auth.requireAuth); const asyncRoute=(fn)=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next); router.get('/posts',asyncRoute(async(req,res)=>res.json(await store.adminListPosts(req.query)))); router.post('/posts/notice',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminCreateNotice(req.body||{})))); router.patch('/posts/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminModeratePost(req.params.id,req.body||{});return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/posts/:id/comments',asyncRoute(async(req,res)=>res.json({comments:await store.adminComments(req.params.id)}))); router.post('/posts/:id/reply',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const value=await store.adminReply(req.params.id,req.body||{});return value?res.status(201).json(value):res.status(404).json({error:'not_found'});})); router.patch('/comments/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminModerateComment(req.params.id,req.body||{});return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/reports',asyncRoute(async(_req,res)=>res.json({reports:await store.adminReports()}))); router.patch('/reports/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>{const row=await store.adminUpdateReport(req.params.id,req.body?.status);return row?res.json(row):res.status(404).json({error:'not_found'});})); router.get('/categories',asyncRoute(async(_req,res)=>res.json({categories:await store.categories({all:true})}))); router.post('/categories',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminSaveCategory(req.body||{})))); router.put('/categories/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.json(await store.adminSaveCategory({...req.body,id:req.params.id})))); router.get('/banned-words',asyncRoute(async(_req,res)=>res.json({words:await store.adminBannedWords()}))); router.post('/banned-words',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminAddBannedWord(req.body?.word)))); router.delete('/banned-words/:id',auth.requireMutationProtection,asyncRoute(async(req,res)=>await store.adminDeleteBannedWord(req.params.id)?res.sendStatus(204):res.status(404).json({error:'not_found'}))); router.get('/blocks',asyncRoute(async(_req,res)=>res.json({blocks:await store.adminBlocks()}))); router.post('/blocks',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.status(201).json(await store.adminBlock(req.body||{})))); router.delete('/blocks/:authorHash',auth.requireMutationProtection,asyncRoute(async(req,res)=>await store.adminDeleteBlock(req.params.authorHash)?res.sendStatus(204):res.status(404).json({error:'not_found'}))); router.get('/settings',asyncRoute(async(_req,res)=>res.json({settings:await store.settings()}))); router.put('/settings',auth.requireMutationProtection,asyncRoute(async(req,res)=>res.json({settings:await store.adminSaveSettings(req.body||{})}))); router.use((error,_req,res,next)=>{if(error instanceof TypeError)return res.status(400).json({error:'invalid_request',message:error.message});return next(error)}); return router; }
 
-module.exports={createCommunityStore,createCommunityRouter,createCommunityPagesRouter,createCommunityAdminRouter,createCommunityImageUrlValidator,detailHtml,maskIp};
+module.exports={createCommunityStore,createCommunityRouter,createCommunityPagesRouter,createCommunityAdminRouter,createCommunityImageUrlValidator,detailHtml,normalizeIp};

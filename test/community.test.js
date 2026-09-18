@@ -9,7 +9,7 @@ const {
   createCommunityRouter,
   createCommunityImageUrlValidator,
   detailHtml,
-  maskIp,
+  normalizeIp,
 } = require('../src/community/community');
 
 async function makeStore({ imageStorage } = {}) {
@@ -118,7 +118,7 @@ test('community image upload converts and stores an allowed image type in the co
 test('admin notices are identified, private from IP display, and pinned above normal posts', async () => {
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);
-  await store.createPost({ categoryId: category.id, title: '일반 글', body: '일반 본문' }, 'a'.repeat(64), '123.45.*.*');
+  await store.createPost({ categoryId: category.id, title: '일반 글', body: '일반 본문' }, 'a'.repeat(64), '123.45.67.89');
   const notice = await store.adminCreateNotice({ title: '운영 공지', body: '공지 본문' });
   assert.equal(notice.post.isNotice, true);
   assert.equal(notice.post.isPinned, true);
@@ -172,24 +172,24 @@ test('admin post list separates deleted posts from active posts', async () => {
   await pool.end();
 });
 
-test('community stores only masked IP display values for public posts and comments', async () => {
+test('community stores full client IP display values for public posts and comments', async () => {
   const { pool, store } = await makeStore();
   const category = await freeCategory(store);
-  const created = await store.createPost({ categoryId: category.id, title: '아이피 표시', body: '본문', nickname: 'ㅇㅇ' }, 'a'.repeat(64), '123.45.*.*');
-  assert.equal(created.post.ipDisplay, '123.45.*.*');
-  const comment = await store.createComment(created.post.id, { body: '댓글', nickname: '댓글러' }, 'b'.repeat(64), { ipDisplay: '211.22.*.*' });
-  assert.equal(comment.ipDisplay, '211.22.*.*');
+  const created = await store.createPost({ categoryId: category.id, title: '아이피 표시', body: '본문', nickname: 'ㅇㅇ' }, 'a'.repeat(64), '123.45.67.89');
+  assert.equal(created.post.ipDisplay, '123.45.67.89');
+  const comment = await store.createComment(created.post.id, { body: '댓글', nickname: '댓글러' }, 'b'.repeat(64), { ipDisplay: '211.22.33.44' });
+  assert.equal(comment.ipDisplay, '211.22.33.44');
   await store.adminReply(created.post.id, { body: '관리자 댓글' });
   const detail = await store.getPost(created.post.id, 'a'.repeat(64));
   assert.equal(detail.comments[1].ipDisplay, '');
   await pool.end();
 });
 
-test('IP masking keeps only a partial display value', () => {
-  assert.equal(maskIp('123.45.67.89'), '123.45.*.*');
-  assert.equal(maskIp('::ffff:211.22.33.44'), '211.22.*.*');
-  assert.equal(maskIp('2001:db8:abcd:1234::1'), '2001:db8:*:*');
-  assert.equal(maskIp('999.1.2.3'), '');
+test('IP normalization keeps the real client address', () => {
+  assert.equal(normalizeIp('123.45.67.89'), '123.45.67.89');
+  assert.equal(normalizeIp('::ffff:211.22.33.44'), '211.22.33.44');
+  assert.equal(normalizeIp('2001:db8:abcd:1234::1'), '2001:db8:abcd:1234::1');
+  assert.equal(normalizeIp('999.1.2.3'), '');
 });
 
 test('phone or email-like personal data requires an explicit privacy confirmation', async () => {
