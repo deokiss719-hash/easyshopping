@@ -14,7 +14,7 @@ const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
 
 test('커뮤니티 관리자 댓글은 공개 화면에서 관리자 표시와 전용 스타일로 구분한다', () => {
   assert.match(communityScript, /comment\.isAdmin\?'이지핫딜 관리자'/);
-  assert.match(communityScript, /text\('span','관리자','admin-badge'\)/);
+  assert.match(communityScript, /text\('span','공식 답변','admin-badge'\)/);
   assert.match(communityScript, /comment\.isAdmin\?' is-admin'/);
   assert.match(communityStyles, /\.comment\.is-admin\{/);
   assert.match(communityStyles, /\.admin-badge\{/);
