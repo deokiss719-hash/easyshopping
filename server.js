@@ -51,6 +51,7 @@ const {
   startFmkoreaScheduler,
 } = require('./src/fmkorea-collector');
 const { readRuliwebRuntime, runRuliwebCollector } = require('./src/ruliweb-collector');
+const { securityHeaders } = require('./src/security-headers');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -63,6 +64,7 @@ let trafficAnalytics = (_req, _res, next) => next();
 // Render terminates requests at one controlled proxy hop. Direct deployments
 // must not let clients choose req.ip through X-Forwarded-For.
 app.set('trust proxy', process.env.RENDER === 'true' ? 1 : false);
+app.use(securityHeaders);
 app.use(express.json({ limit: '32kb' }));
 
 const deals = [

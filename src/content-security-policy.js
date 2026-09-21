@@ -30,6 +30,8 @@ function buildContentSecurityPolicy(r2Config = { enabled: false }, naverShopping
     "script-src 'self' https://connect.facebook.net",
     "connect-src 'self' https://www.facebook.com",
     "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
     "object-src 'none'",
   ].join('; ');
 }

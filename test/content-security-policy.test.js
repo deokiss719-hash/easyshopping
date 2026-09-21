@@ -59,8 +59,14 @@ test('CSP는 FMKorea 이미지와 리다이렉트 CDN의 정확한 origin만 추
     + "font-src 'self' https://cdn.jsdelivr.net; "
     + "script-src 'self' https://connect.facebook.net; "
     + "connect-src 'self' https://www.facebook.com; "
-    + "base-uri 'self'; object-src 'none'");
+    + "base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'");
   assert.doesNotMatch(policy, /\*\.fmkorea\.com/);
+});
+
+test('CSP는 외부 페이지 삽입과 외부 폼 전송을 차단한다', () => {
+  const policy = buildContentSecurityPolicy({ enabled: false }, { enabled: false });
+  assert.match(policy, /(?:^|; )frame-ancestors 'none'(?:;|$)/);
+  assert.match(policy, /(?:^|; )form-action 'self'(?:;|$)/);
 });
 
 test('CSP는 루리웹 RSS thumbnail의 i1/i2/i3 정확한 origin만 허용한다', () => {
