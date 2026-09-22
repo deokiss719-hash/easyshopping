@@ -1135,7 +1135,7 @@
   function bindEvents() {
     byId('refresh-phone').addEventListener('click',loadPhoneInquiries);
     byId('phone-status-filter').addEventListener('change',renderPhoneInquiries);
-    byId('phone-channel-form').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/admin/settings',{method:'PUT',body:JSON.stringify({values:{phone_consultation_url:byId('phone-channel-url').value.trim()}})});showMessage('phone-admin-message','카카오 상담 주소를 저장했습니다.','success');}catch(err){showMessage('phone-admin-message',err.message,'error');}});
+    byId('phone-channel-form').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/admin/settings',{method:'PUT',body:JSON.stringify({values:{phone_consultation_url:byId('phone-channel-url').value.trim()}})});const saved=await api('/api/admin/settings');byId('phone-channel-url').value=(saved.settings||saved).phone_consultation_url||'';showMessage('phone-admin-message','카카오 상담 주소를 저장했습니다.','success');}catch(err){showMessage('phone-admin-message',err.message,'error');}});
     document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
     document.querySelectorAll('[data-open-deals]').forEach((button) => button.addEventListener('click', () => setView('phone-deals')));
     byId('new-deal').addEventListener('click', () => { resetForm(); setView('phone-deals'); byId('title').focus(); });

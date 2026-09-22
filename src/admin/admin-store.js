@@ -1,9 +1,10 @@
+const { normalizeKakaoChannelUrl } = require('../kakao-channel-url');
 const BCRYPT_HASH = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 const SHA256_HASH = /^[a-f0-9]{64}$/;
 const { isCategory } = require('../deal-category');
 
 const SITE_SETTING_DEFINITIONS = Object.freeze({
-  phone_consultation_url: { public: true, validate: (value) => typeof value === 'string' && (value === '' || /^https:\/\/pf\.kakao\.com\/_[A-Za-z0-9]+\/chat$/.test(value)) },
+  phone_consultation_url: { public: true, validate: (value) => typeof value === 'string' && (value === '' || /^https:\/\/pf\.kakao\.com\/_[A-Za-z0-9-]+\/chat$/.test(value)) },
   home_manual_limit: { public: true, validate: (value) => Number.isInteger(value) && value >= 0 && value <= 20 },
   recommended_searches: { public: true, validate: (value) => Array.isArray(value) && value.length <= 12 && value.every((item) => typeof item === 'string' && item.trim().length >= 1 && item.length <= 30) },
   main_copy: { public: true, validate: (value) => typeof value === 'string' && value.trim().length >= 1 && value.length <= 300 },
@@ -116,6 +117,7 @@ function createAdminStore(pool) {
     return Object.entries(values).map(([key, value]) => {
       const definition = SITE_SETTING_DEFINITIONS[key];
       if (!definition) throw new TypeError('site setting is not allowed');
+      if (key === 'phone_consultation_url') value = normalizeKakaoChannelUrl(value);
       if (!definition.validate(value)) throw new TypeError('site setting value is invalid');
       return [key, value];
     });
@@ -231,7 +233,7 @@ function createAdminStore(pool) {
       return result.rows[0] ? { imageUrl: result.rows[0].image_url } : null;
     },
     async setSetting(key, value) {
-      validatedSettings({ [key]: value });
+      [[key, value]] = validatedSettings({ [key]: value });
       const result = await pool.query(
         `INSERT INTO site_settings(key,value) VALUES($1,$2::jsonb) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value,updated_at=CURRENT_TIMESTAMP RETURNING key,value`,
         [key, JSON.stringify(value)],
