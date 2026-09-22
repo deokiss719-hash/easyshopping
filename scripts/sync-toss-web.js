@@ -28,8 +28,14 @@ async function main(args = process.argv.slice(2), env = process.env) {
     return result;
   } finally { db.close(); if (pool) await pool.end(); }
 }
-if (require.main === module) main().catch(() => {
-  console.error(JSON.stringify({ status: 'error', reason: 'toss_web_sync_failed' }));
+const SAFE_FAILURE_CODES = new Set(['toss_transport_malformed', 'toss_transport_error', 'toss_api_rate_limited',
+  'toss_api_unavailable', 'toss_api_rejected', 'toss_api_malformed', 'toss_api_unsuccessful',
+  'toss_oauth_malformed', 'toss_link_malformed', 'toss_link_invalid_url']);
+function safeFailureCode(error) {
+  return SAFE_FAILURE_CODES.has(error?.code) ? error.code : 'unknown';
+}
+if (require.main === module) main().catch((error) => {
+  console.error(JSON.stringify({ status: 'error', reason: 'toss_web_sync_failed', code: safeFailureCode(error) }));
   process.exitCode = 1;
 });
-module.exports = { main };
+module.exports = { main, safeFailureCode };

@@ -4,7 +4,8 @@ const { createHash } = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { newDb, DataType } = require('pg-mem');
 const { migrate, createDealStore } = require('../src/deal-store');
-const { buildTossWebSnapshot, applyTossWebSnapshot, readSentTossPublications, syncTossWeb, safeTossImage } = require('../src/toss-web-sync');
+const { buildTossWebSnapshot, applyTossWebSnapshot, readSentTossPublications, syncTossWeb, safeTossImage,
+  MAX_NEW_LINKS_PER_SYNC, LINK_REQUEST_INTERVAL_MS } = require('../src/toss-web-sync');
 const SCHEMA = `CREATE TABLE kakao_auto_publications (deal_id TEXT PRIMARY KEY, source TEXT, title TEXT, price_text TEXT, price_amount INTEGER, original_url TEXT, first_seen_at TEXT, generated_message TEXT, message_hash TEXT, status TEXT, confirmation_proof TEXT, confirmed_at TEXT)`;
 const { TOSS_SHARELINK_DISCLOSURE } = require('../src/kakao-message');
 const now = new Date();
@@ -165,4 +166,19 @@ test('new popular product gets one link, uses fresh price, and reuses link on re
  assert.equal(issued,1);
  const rows=(await pool.query("SELECT * FROM deals WHERE source='toss'")).rows;
  assert.equal(rows.length,1);assert.equal(Number(rows[0].price_amount),9900);
+});
+
+test('link requests are paced and failed attempts remain inside the daily request budget',async(t)=>{
+ const {pool}=await database(t);
+ const connect=pool.connect.bind(pool);
+ pool.connect=async()=>{const c=await connect();const q=c.query.bind(c);c.query=(sql,args)=>/pg_try_advisory_lock/.test(sql)?Promise.resolve({rows:[{acquired:true}]}):/pg_advisory_unlock/.test(sql)?Promise.resolve({rows:[{unlocked:true}]}):q(sql,args);return c;};
+ const db={prepare:()=>({all:()=>[]})};let attempts=0;const delays=[];
+ const items=Array.from({length:50},(_,index)=>product({rank:index+1,tacaItemId:20000+index}));
+ const api={fetchBestSelling:async()=>ranking(items),createLink:async()=>{attempts++;throw new Error('unknown outcome');}};
+ const result=await syncTossWeb({pool,db,tossClient:api,dryRun:false,now:()=>now,sleep:async(ms)=>delays.push(ms)});
+ assert.equal(attempts,MAX_NEW_LINKS_PER_SYNC);
+ assert.equal(result.linkAttempts,MAX_NEW_LINKS_PER_SYNC);
+ assert.equal(result.uncertainLinks,MAX_NEW_LINKS_PER_SYNC);
+ assert.equal(delays.length,MAX_NEW_LINKS_PER_SYNC-1);
+ assert.equal(delays.every((ms)=>ms===LINK_REQUEST_INTERVAL_MS),true);
 });

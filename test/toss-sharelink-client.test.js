@@ -103,5 +103,35 @@ test('share links require the exact https://toss.im origin without a nonstandard
     return response({ resultType: 'SUCCESS', success: { shortUrl: 'https://toss.im:444/_m/abc', originUrl: 'https://toss.shopping/product/1' } });
   };
   const client = createTossSharelinkClient({ accessKey: 'a', secretKey: 's', publisherId: 'p', transport });
-  await assert.rejects(() => client.createLink({ tacaItemId: 1 }), /invalid short URL/i);
+  await assert.rejects(() => client.createLink({ tacaItemId: 1 }), { code: 'toss_link_invalid_url' });
+});
+
+test('safe ranking reads retry rate limits using Retry-After without exposing response data', async () => {
+  const calls = [], delays = [];
+  const transport = async (options) => {
+    calls.push(options.url);
+    if (options.url === TOKEN_URL) return response({ access_token: 'token', expires_in: 3600 });
+    if (calls.filter((url) => url.startsWith(BEST_SELLING_URL)).length === 1) {
+      return { statusCode: 429, headers: { 'retry-after': '0.25' }, body: { secret: 'must-not-leak' } };
+    }
+    return response({ resultType: 'SUCCESS', success: { items: [], hasNext: false, nextCursor: null } });
+  };
+  const client = createTossSharelinkClient({ accessKey: 'a', secretKey: 's', publisherId: 'p', transport,
+    sleep: async (ms) => delays.push(ms) });
+  await client.fetchBestSelling({ size: 100 });
+  assert.deepEqual(delays, [250]);
+  assert.equal(calls.filter((url) => url.startsWith(BEST_SELLING_URL)).length, 2);
+});
+
+test('link creation is never retried when its outcome is uncertain', async () => {
+  let linkCalls = 0;
+  const transport = async (options) => {
+    if (options.url === TOKEN_URL) return response({ access_token: 'token', expires_in: 3600 });
+    linkCalls++;
+    return { statusCode: 429, headers: { 'retry-after': '0' }, body: {} };
+  };
+  const client = createTossSharelinkClient({ accessKey: 'a', secretKey: 's', publisherId: 'p', transport,
+    sleep: async () => { throw new Error('must not retry'); } });
+  await assert.rejects(() => client.createLink({ tacaItemId: 1 }), { code: 'toss_api_rate_limited' });
+  assert.equal(linkCalls, 1);
 });

@@ -40,6 +40,7 @@ function validatePublication(row) {
 const POPULAR_POLICY = Object.freeze({ maxRank: 30, minScore: 4.5, minReviews: 100, minClicks24h: 3 });
 const WEB_PRODUCT_LIMIT = 50;
 const MAX_NEW_LINKS_PER_SYNC = 48;
+const LINK_REQUEST_INTERVAL_MS = 150;
 function isPopularProduct(product, clicks = 0) {
   return product.reviewScore >= POPULAR_POLICY.minScore && product.reviewCount >= POPULAR_POLICY.minReviews
     && (product.rank <= POPULAR_POLICY.maxRank || clicks >= POPULAR_POLICY.minClicks24h);
@@ -137,7 +138,8 @@ async function readTossWebSignals(pool, now) {
   return { links, clickCounts: Object.fromEntries(clicks.map((r) => [r.source_item_id, Number(r.clicks)])) };
 }
 
-async function syncTossWeb({ pool, db, tossClient, dryRun = true, now = () => new Date() }) {
+async function syncTossWeb({ pool, db, tossClient, dryRun = true, now = () => new Date(),
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) }) {
   const run = async () => {
     const ranking = await tossClient.fetchBestSelling({ size: 100 });
     const at = now();
@@ -151,15 +153,17 @@ async function syncTossWeb({ pool, db, tossClient, dryRun = true, now = () => ne
     const existing = new Set(snapshot.deals.map((d) => d.sourceItemId));
     const kakaoIds = new Set(db.prepare("SELECT deal_id FROM kakao_auto_publications WHERE source = 'toss'").all().map((r) => r.deal_id));
     const reserved = new Set(links.map((r) => r.source_item_id));
-    let issued = 0, uncertain = 0;
+    let issued = 0, uncertain = 0, attempted = 0;
     for (const product of snapshot.popularCandidates) {
-      if (issued >= MAX_NEW_LINKS_PER_SYNC) break;
+      if (attempted >= MAX_NEW_LINKS_PER_SYNC) break;
       const id = String(product.tacaItemId);
       if (existing.has(id) || reserved.has(id) || kakaoIds.has(product.id)) continue;
       // Persist the reservation BEFORE the external API call. Unknown outcomes never auto-retry.
       const claim = await pool.query(`INSERT INTO toss_web_links (source_item_id, status)
         VALUES ($1, 'pending') ON CONFLICT (source_item_id) DO NOTHING RETURNING source_item_id`, [id]);
       if (!claim.rowCount) continue;
+      if (attempted > 0) await sleep(LINK_REQUEST_INTERVAL_MS);
+      attempted++;
       try {
         const link = await tossClient.createLink({ tacaItemId: product.tacaItemId });
         if (!validShortUrl(link.shortUrl)) throw new Error('Invalid short URL');
@@ -175,10 +179,12 @@ async function syncTossWeb({ pool, db, tossClient, dryRun = true, now = () => ne
     // Re-read rank/price/availability after link issuance to avoid publishing stale products.
     const freshRanking = issued ? await tossClient.fetchBestSelling({ size: 100 }) : ranking;
     snapshot = buildTossWebSnapshot({ publications, ranking: freshRanking, webLinks: links, clickCounts, now: now() });
-    return { ...await applyTossWebSnapshot(pool, snapshot), popular: snapshot.deals.filter((d) => d.isPopular).length, linksIssued: issued, uncertainLinks: uncertain };
+    return { ...await applyTossWebSnapshot(pool, snapshot), popular: snapshot.deals.filter((d) => d.isPopular).length,
+      linkAttempts: attempted, linksIssued: issued, uncertainLinks: uncertain };
   };
   if (dryRun) return run();
   const result = await createDealStore(pool).withCollectionLease('toss', run);
   return result || { status: 'skipped', reason: 'already_running' };
 }
-module.exports = { safeTossImage, readSentTossPublications, buildTossWebSnapshot, applyTossWebSnapshot, syncTossWeb, isPopularProduct, isWebProduct, POPULAR_POLICY, WEB_PRODUCT_LIMIT, MAX_NEW_LINKS_PER_SYNC, readTossWebSignals };
+module.exports = { safeTossImage, readSentTossPublications, buildTossWebSnapshot, applyTossWebSnapshot, syncTossWeb,
+  isPopularProduct, isWebProduct, POPULAR_POLICY, WEB_PRODUCT_LIMIT, MAX_NEW_LINKS_PER_SYNC, LINK_REQUEST_INTERVAL_MS, readTossWebSignals };

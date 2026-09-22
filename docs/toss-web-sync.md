@@ -25,7 +25,7 @@ macOS 키체인의 기존 `easyshopping-toss-sharelink-{access-key,secret-key,me
 
 기본 DB: `~/Library/Application Support/EasyHotDeal/kakao-auto.sqlite`. 직접 CLI 실행 시 `KAKAO_AUTO_DB_PATH`로 바꿀 수 있다.
 
-설치할 때는 테스트가 끝난 고정된 릴리스 폴더에서 실행한다. 별도 LaunchAgent `com.easyhotdeal.toss-web-sync`가 설치 직후 및 하루마다 실행된다. 한 번에 순위 조회 1회, 신규 링크 최대 48회, 링크 발급 뒤 확인 조회 1회로 토스 OpenAPI 사용량을 하루 최대 50회로 제한한다. Mac이 켜져 있고 사용자 세션이 살아 있어야 한다.
+설치할 때는 테스트가 끝난 고정된 릴리스 폴더에서 실행한다. 별도 LaunchAgent `com.easyhotdeal.toss-web-sync`가 설치 직후 및 하루마다 실행된다. 정상 실행은 순위 조회 1회, 신규 링크 최대 48회, 링크 발급 뒤 확인 조회 1회로 토스 OpenAPI 사용량을 50회로 제한한다. 링크 요청은 API의 순간 요청 제한을 넘지 않도록 간격을 두며, 순위 조회가 일시적으로 실패하면 제한된 횟수만 자동 재시도한다. Mac이 켜져 있고 사용자 세션이 살아 있어야 한다.
 
 로그: `~/Library/Logs/EasyHotDeal/toss-web-sync.log`, `toss-web-sync.error.log`.
 

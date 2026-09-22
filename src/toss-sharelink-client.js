@@ -9,6 +9,8 @@ const LINK_URL = 'https://sharelink.toss.im/openapi/links';
 const TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_BYTES = 512 * 1024;
 const SCOPE = 'sharelink:read sharelink:write';
+const MAX_SAFE_RETRIES = 2;
+const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 function required(value, name) {
   if (typeof value !== 'string' || !value.trim() || /[\r\n]/u.test(value)) throw new TypeError(`${name} is required`);
@@ -79,38 +81,68 @@ function createFileTokenCache(filename) {
   });
 }
 
-function assertTransportResponse(response) {
-  if (!response || !Number.isInteger(response.statusCode)) throw new Error('Toss API returned a malformed transport response');
-  if (response.statusCode < 200 || response.statusCode >= 300) throw new Error('Toss API request failed');
-  if (!response.body || typeof response.body !== 'object' || Array.isArray(response.body)) throw new Error('Toss API returned malformed JSON');
+function safeError(code, { statusCode = null, retryAfterMs = null, retryable = false } = {}) {
+  const error = new Error('Toss API request failed safely');
+  error.code = code;
+  error.statusCode = statusCode;
+  error.retryAfterMs = retryAfterMs;
+  error.retryable = retryable;
+  return error;
+}
+
+function retryAfterMs(headers, now = new Date()) {
+  const value = headers?.['retry-after'];
+  if (Array.isArray(value)) return retryAfterMs({ 'retry-after': value[0] }, now);
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(5_000, Math.ceil(seconds * 1000));
+  const timestamp = new Date(String(value)).getTime();
+  return Number.isFinite(timestamp) ? Math.min(5_000, Math.max(0, timestamp - new Date(now).getTime())) : null;
+}
+
+function assertTransportResponse(response, now) {
+  if (!response || !Number.isInteger(response.statusCode)) throw safeError('toss_transport_malformed');
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    const retryable = RETRYABLE_STATUS_CODES.has(response.statusCode);
+    const code = response.statusCode === 429 ? 'toss_api_rate_limited'
+      : response.statusCode >= 500 ? 'toss_api_unavailable' : 'toss_api_rejected';
+    throw safeError(code, { statusCode: response.statusCode, retryAfterMs: retryAfterMs(response.headers, now), retryable });
+  }
+  if (!response.body || typeof response.body !== 'object' || Array.isArray(response.body)) throw safeError('toss_api_malformed');
   return response.body;
 }
 
 function successEnvelope(body) {
   if (body.resultType !== 'SUCCESS' || !body.success || typeof body.success !== 'object' || Array.isArray(body.success)) {
-    throw new Error('Toss API did not return SUCCESS');
+    throw safeError('toss_api_unsuccessful');
   }
   return body.success;
 }
 
-function createTossSharelinkClient({ accessKey, secretKey, publisherId, tokenCache = null, transport = defaultTransport, now = () => new Date() } = {}) {
+function createTossSharelinkClient({ accessKey, secretKey, publisherId, tokenCache = null, transport = defaultTransport,
+  now = () => new Date(), sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) } = {}) {
   const access = required(accessKey, 'accessKey');
   const secret = required(secretKey, 'secretKey');
   const publisher = required(publisherId, 'publisherId');
-  if (typeof transport !== 'function' || typeof now !== 'function') throw new TypeError('transport and now are required');
+  if (typeof transport !== 'function' || typeof now !== 'function' || typeof sleep !== 'function') throw new TypeError('transport, now, and sleep are required');
   const credentialKey = crypto.createHash('sha256').update(access).digest('hex');
   let memoryToken = null;
 
-  async function call(options) {
-    try {
-      return assertTransportResponse(await transport({
-        timeoutMs: TIMEOUT_MS,
-        maxResponseBytes: MAX_RESPONSE_BYTES,
-        followRedirects: false,
-        ...options,
-      }));
-    } catch (_) {
-      throw new Error('Toss API request failed safely');
+  async function call(options, { retry = false } = {}) {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return assertTransportResponse(await transport({
+          timeoutMs: TIMEOUT_MS,
+          maxResponseBytes: MAX_RESPONSE_BYTES,
+          followRedirects: false,
+          ...options,
+        }), now());
+      } catch (caught) {
+        const error = caught?.code?.startsWith?.('toss_') ? caught : safeError('toss_transport_error', { retryable: true });
+        if (!retry || !error.retryable || attempt >= MAX_SAFE_RETRIES) throw error;
+        const delay = error.retryAfterMs ?? Math.min(5_000, 1000 * (attempt + 1));
+        await sleep(delay);
+      }
     }
   }
 
@@ -139,19 +171,19 @@ function createTossSharelinkClient({ accessKey, secretKey, publisherId, tokenCac
         'content-length': Buffer.byteLength(form),
       },
       body: form,
-    });
+    }, { retry: true });
     const accessToken = body.access_token ?? body.accessToken;
     const expiresIn = Number(body.expires_in ?? body.expiresIn);
     const maximumExpiresIn = 366 * 24 * 60 * 60;
     if (typeof accessToken !== 'string' || !accessToken || !Number.isFinite(expiresIn) || expiresIn <= 60 || expiresIn > maximumExpiresIn) {
-      throw new Error('Toss OAuth returned malformed credentials');
+      throw safeError('toss_oauth_malformed');
     }
     memoryToken = { accessToken, expiresAt: new Date(now()).getTime() + expiresIn * 1000, credentialKey, scope: SCOPE };
     tokenCache?.save?.(memoryToken);
     return accessToken;
   }
 
-  async function authorized(url, method, bodyObject) {
+  async function authorized(url, method, bodyObject, retry = false) {
     const accessToken = await token();
     const serialized = bodyObject === undefined ? undefined : JSON.stringify(bodyObject);
     const headers = { authorization: `Bearer ${accessToken}`, accept: 'application/json' };
@@ -159,13 +191,13 @@ function createTossSharelinkClient({ accessKey, secretKey, publisherId, tokenCac
       headers['content-type'] = 'application/json';
       headers['content-length'] = Buffer.byteLength(serialized);
     }
-    return call({ url, method, headers, body: serialized });
+    return call({ url, method, headers, body: serialized }, { retry });
   }
 
   return Object.freeze({
     async fetchBestSelling({ size = 100 } = {}) {
       if (!Number.isInteger(size) || size < 1 || size > 100) throw new RangeError('size must be an integer from 1 through 100');
-      const body = await authorized(`${BEST_SELLING_URL}?size=${size}`, 'GET');
+      const body = await authorized(`${BEST_SELLING_URL}?size=${size}`, 'GET', undefined, true);
       return successEnvelope(body);
     },
     async createLink({ tacaItemId } = {}) {
@@ -173,9 +205,9 @@ function createTossSharelinkClient({ accessKey, secretKey, publisherId, tokenCac
       const id = tacaItemId;
       const body = successEnvelope(await authorized(LINK_URL, 'POST', { tacaItemId: id, publisherId: publisher }));
       let short;
-      try { short = new URL(required(body.shortUrl, 'shortUrl')); } catch (_) { throw new Error('Toss link response was malformed'); }
+      try { short = new URL(required(body.shortUrl, 'shortUrl')); } catch (_) { throw safeError('toss_link_malformed'); }
       if (short.protocol !== 'https:' || short.hostname !== 'toss.im' || short.port || short.username || short.password || !short.pathname.startsWith('/_m/')) {
-        throw new Error('Toss link response had an invalid short URL');
+        throw safeError('toss_link_invalid_url');
       }
       return { shortUrl: short.href, originUrl: typeof body.originUrl === 'string' ? body.originUrl : null };
     },
@@ -186,6 +218,7 @@ module.exports = {
   BEST_SELLING_URL,
   LINK_URL,
   MAX_RESPONSE_BYTES,
+  MAX_SAFE_RETRIES,
   TIMEOUT_MS,
   TOKEN_URL,
   createFileTokenCache,
