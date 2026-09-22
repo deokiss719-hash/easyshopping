@@ -38,3 +38,5 @@
   #community-post-list .community-admin-reply-footer{align-items:stretch;flex-direction:column}
   #community-post-list .community-admin-reply-footer .button{width:100%}
 }
+
+#phone-inquiry-list article{display:grid;gap:12px;overflow-wrap:anywhere;margin-top:16px}#phone-inquiry-list textarea,#phone-channel-url{width:100%;box-sizing:border-box}#phone-channel-form{display:grid;gap:12px}

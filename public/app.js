@@ -81,6 +81,7 @@ function productCard(deal, { section = 'all-deals', position = 1 } = {}) {
   const manualBadge = deal.isManual
     ? '<span class="manual-deal-badge">실시간 핫딜</span>'
     : '';
+  if (section === 'phone') deal = { ...deal, url: `${location.origin}/phone.html?model=${encodeURIComponent(deal.title)}` };
   return DealCardLink.renderCardContainer('deal-card', deal.url, `
       <div class="product-media tone-${escapeHtml(deal.imageTone)}">
         <span class="badge ${badgeClass(deal.badge)}">${escapeHtml(deal.badge)}</span>

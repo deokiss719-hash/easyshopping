@@ -369,3 +369,12 @@ INSERT INTO community_settings(key,value) VALUES
   ('rank_age_power','0.55'),
   ('consultation_url','')
 ON CONFLICT(key) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS phone_inquiries (
+ id TEXT PRIMARY KEY, model TEXT NOT NULL, carrier TEXT NOT NULL, change_type TEXT NOT NULL,
+ method TEXT NOT NULL, phone TEXT NOT NULL DEFAULT '', preferred_time TEXT NOT NULL DEFAULT '',
+ status TEXT NOT NULL DEFAULT 'new', admin_note TEXT NOT NULL DEFAULT '',
+ consent_version TEXT NOT NULL DEFAULT '2026-09-22', created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS phone_inquiries_created ON phone_inquiries(created_at DESC);

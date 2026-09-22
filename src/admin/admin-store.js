@@ -3,6 +3,7 @@ const SHA256_HASH = /^[a-f0-9]{64}$/;
 const { isCategory } = require('../deal-category');
 
 const SITE_SETTING_DEFINITIONS = Object.freeze({
+  phone_consultation_url: { public: true, validate: (value) => typeof value === 'string' && (value === '' || /^https:\/\/pf\.kakao\.com\/_[A-Za-z0-9]+\/chat$/.test(value)) },
   home_manual_limit: { public: true, validate: (value) => Number.isInteger(value) && value >= 0 && value <= 20 },
   recommended_searches: { public: true, validate: (value) => Array.isArray(value) && value.length <= 12 && value.every((item) => typeof item === 'string' && item.trim().length >= 1 && item.length <= 30) },
   main_copy: { public: true, validate: (value) => typeof value === 'string' && value.trim().length >= 1 && value.length <= 300 },

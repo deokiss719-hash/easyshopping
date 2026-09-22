@@ -61,6 +61,7 @@
     byId('sidebar')?.classList.remove('open');
     byId('scrim')?.classList.remove('open');
     byId('menu-toggle')?.setAttribute('aria-expanded', 'false');
+    if (viewId === 'phone-inquiries' && state.csrfToken) void loadPhoneInquiries();
     if (viewId === 'community' && state.csrfToken) void loadCommunity();
   }
 
@@ -1106,11 +1107,35 @@
     }
   }
 
+
+  const phoneStatuses = {new:'신규',consulting:'상담 중',reserved:'방문 예약',completed:'개통 완료',absent:'부재중',closed:'상담 종료'};
+  let phoneRows=[];
+  function renderPhoneInquiries(){
+    const list=byId('phone-inquiry-list');list.replaceChildren();
+    const counts=Object.keys(phoneStatuses).map(k=>`${phoneStatuses[k]} ${phoneRows.filter(r=>r.status===k).length}건`);byId('phone-summary').textContent=counts.join(' · ')+' (최근 500건, 최대 90일)';
+    const days=new Map();for(const row of phoneRows){const day=new Date(row.created_at).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});const count=days.get(day)||{all:0,reserved:0,completed:0};count.all++;if(row.status==='reserved')count.reserved++;if(row.status==='completed')count.completed++;days.set(day,count);}
+    const daily=byId('phone-daily');daily.replaceChildren();for(const [day,count] of days){daily.append(textNode('p',`${day} 접수 ${count.all}건 · 현재 방문 예약 ${count.reserved}건 · 개통 완료 ${count.completed}건`));}
+    const rows=phoneRows.filter(r=>!byId('phone-status-filter').value||r.status===byId('phone-status-filter').value);
+    if(!rows.length)list.append(textNode('p','해당 상담이 없습니다.'));
+    for(const r of rows){const card=textNode('article','','panel');card.append(textNode('h3',r.model),textNode('p',`${new Date(r.created_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})} · ${r.id}`),textNode('p',`${r.carrier} · ${r.change_type} · ${r.method==='phone'?'전화 상담':(r.status==='new'?'카카오 상담 시작 미확인 — 채널에서 견적번호 확인':'카카오 상담')}`));
+      if(r.phone){const a=textNode('a',r.phone+' 전화 걸기');a.href='tel:'+r.phone;card.append(a,textNode('p','통화 가능: '+r.preferred_time));}
+      const select=document.createElement('select');select.setAttribute('aria-label','상담 상태');for(const [value,label] of Object.entries(phoneStatuses)){const o=textNode('option',label);o.value=value;select.append(o);}select.value=r.status;
+      const note=document.createElement('textarea');note.value=r.admin_note;note.maxLength=2000;note.rows=3;note.placeholder='상담 메모';note.setAttribute('aria-label','상담 메모');
+      const save=textNode('button','상태·메모 저장','button primary');save.type='button';save.onclick=async()=>{save.disabled=true;try{const updated=await api('/api/admin/phone-inquiries/'+r.id,{method:'PATCH',body:JSON.stringify({status:select.value,note:note.value})});Object.assign(r,updated);showMessage('phone-admin-message','저장했습니다.','success');}catch(e){showMessage('phone-admin-message',e.message,'error');}finally{save.disabled=false;}};
+      const remove=textNode('button','문의 삭제','button secondary');remove.type='button';remove.onclick=async()=>{if(!confirm('이 상담 문의와 개인정보를 삭제할까요?'))return;try{await api('/api/admin/phone-inquiries/'+r.id,{method:'DELETE'});phoneRows=phoneRows.filter(x=>x.id!==r.id);renderPhoneInquiries();}catch(e){showMessage('phone-admin-message',e.message,'error');}};
+      card.append(select,note,save,remove);list.append(card);
+    }
+  }
+  async function loadPhoneInquiries(){try{const data=await api('/api/admin/phone-inquiries');phoneRows=data.inquiries;renderPhoneInquiries();const settings=await api('/api/admin/settings');byId('phone-channel-url').value=(settings.settings||settings).phone_consultation_url||'';}catch(e){showMessage('phone-admin-message',e.message,'error');}}
+
   async function logout() {
     try { await api('/api/admin/auth/logout', { method: 'POST' }); } finally { window.location.replace('/admin/login'); }
   }
 
   function bindEvents() {
+    byId('refresh-phone').addEventListener('click',loadPhoneInquiries);
+    byId('phone-status-filter').addEventListener('change',renderPhoneInquiries);
+    byId('phone-channel-form').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/admin/settings',{method:'PUT',body:JSON.stringify({values:{phone_consultation_url:byId('phone-channel-url').value.trim()}})});showMessage('phone-admin-message','카카오 상담 주소를 저장했습니다.','success');}catch(err){showMessage('phone-admin-message',err.message,'error');}});
     document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.view)));
     document.querySelectorAll('[data-open-deals]').forEach((button) => button.addEventListener('click', () => setView('phone-deals')));
     byId('new-deal').addEventListener('click', () => { resetForm(); setView('phone-deals'); byId('title').focus(); });

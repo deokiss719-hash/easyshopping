@@ -36,6 +36,7 @@ const { createDealClickStore, createDealClicksRouter } = require('./src/deal-cli
 const { createTrafficAnalyticsStore } = require('./src/traffic-analytics-store');
 const { createCtaEventStore, createCtaEventsRouter } = require('./src/cta-events');
 const { createSeoPagesRouter } = require('./src/seo-pages');
+const { createPhoneStore, createPhoneRouter } = require('./src/phone-inquiries');
 const { createAdvertisingInquiryRouter } = require('./src/advertising-inquiries');
 const {
   createCommunityStore,
@@ -254,6 +255,12 @@ async function start() {
     app.use(createCommunityPagesRouter({ store: communityStore, publicDir: path.join(__dirname, 'public') }));
     if (adminAuth) app.use('/api/admin/community', createCommunityAdminRouter({ store: communityStore, auth: adminAuth }));
     app.use('/api/advertising-inquiries', createAdvertisingInquiryRouter(adminStore));
+    const phoneStore = createPhoneStore(pool);
+    app.use(createPhoneRouter({ store: phoneStore, adminStore, auth: adminAuth }));
+    const purgePhone = () => phoneStore.purge().catch(() => console.warn('phone inquiry retention cleanup failed'));
+    await purgePhone();
+    const phoneRetentionTimer = setInterval(purgePhone, 3600000);
+    phoneRetentionTimer.unref();
     if (adminRuntime.sessionSecret) {
       app.use('/api/deal-clicks', createDealClicksRouter({ store: createDealClickStore(pool), secret: adminRuntime.sessionSecret }));
       app.use('/api/cta-events', createCtaEventsRouter({ store: createCtaEventStore(pool), secret: adminRuntime.sessionSecret }));

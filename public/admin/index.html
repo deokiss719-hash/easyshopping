@@ -18,6 +18,7 @@
         <button type="button" class="nav-item" data-view="phone-deals">휴대폰 핫딜 관리</button>
         <button type="button" class="nav-item" data-view="products">상품 관리</button>
         <button type="button" class="nav-item" data-view="home-display">메인 노출 관리</button>
+        <button type="button" class="nav-item" data-view="phone-inquiries">휴대폰 상담관리</button>
         <button type="button" class="nav-item" data-view="advertising-inquiries">광고문의</button>
         <button type="button" class="nav-item" data-view="community">커뮤니티 관리</button>
         <button type="button" class="nav-item" data-view="settings">사이트 설정</button>
@@ -66,7 +67,7 @@
               <label class="span-2">이미지 URL<input id="image-url" type="url" inputmode="url" placeholder="https://..."></label>
               <label>판매처<input id="merchant" maxlength="200"></label>
               <label>카테고리<select id="category"><option selected>디지털/가전</option><option>식품</option><option>생활/주방</option><option>패션/의류</option><option>뷰티</option><option>건강</option><option>육아/아동</option><option>게임</option><option>스포츠/레저</option><option>반려동물</option><option>자동차</option><option>여행/숙박</option><option>상품권/쿠폰</option><option>기타</option></select></label>
-              <label class="span-2">상세 설명<textarea id="description" maxlength="2000" rows="4"></textarea></label>
+              <label class="span-2">구매 조건 · 상세 설명 (통신사, 요금제·유지 기간, 부가서비스, 카드·반납 조건)<textarea id="description" maxlength="2000" rows="4"></textarea></label>
               <label class="span-2">이동할 URL<input id="target-url" type="url" inputmode="url" required></label>
               <label>노출 우선순위<input id="priority" type="number" min="-100000" max="100000" step="1" value="0" required></label>
               <div class="switches"><label class="check"><input id="is-published" type="checkbox"><span>게시 활성화</span></label><label class="check"><input id="show-on-home" type="checkbox"><span>메인에 노출</span></label></div>
@@ -102,6 +103,7 @@
         </section>
       </section>
       <section id="home-display" class="view scaffold"><p class="eyebrow">COMING SOON</p><h1>메인 노출 관리</h1><p>통합 메인 편집 기능을 준비하고 있어요. 휴대폰 핫딜의 메인 노출은 핫딜 편집에서 설정해 주세요.</p></section>
+      <section id="phone-inquiries" class="view"><div class="page-heading"><div><h1>휴대폰 상담관리</h1><p>전화 요청 고객에게 연락하고 상담 결과를 기록하세요. 개인정보는 접수 90일 후 자동 삭제됩니다.</p></div><button id="refresh-phone" class="button secondary" type="button">새로고침</button></div><section class="panel"><form id="phone-channel-form"><label>카카오채널 1:1 상담 주소<input id="phone-channel-url" type="url" placeholder="https://pf.kakao.com/_채널ID/chat"></label><button class="button primary">주소 저장</button><p>비워두면 전화 상담만 제공해요. 단체 오픈채팅 주소는 사용할 수 없어요.</p></form></section><div id="phone-admin-message" role="status"></div><section class="panel"><label>상태 필터<select id="phone-status-filter"><option value="">전체</option><option value="new">신규</option><option value="consulting">상담 중</option><option value="reserved">방문 예약</option><option value="completed">개통 완료</option><option value="absent">부재중</option><option value="closed">상담 종료</option></select></label><p id="phone-summary"></p><details><summary>접수일별 상담 현황</summary><p>접수 날짜별 문의의 현재 상태입니다.</p><div id="phone-daily"></div></details><div id="phone-inquiry-list"></div></section></section>
       <section id="advertising-inquiries" class="view" aria-labelledby="inquiries-title">
         <div class="page-heading"><div><p class="eyebrow">ADVERTISING</p><h1 id="inquiries-title">광고문의</h1><p>홈페이지에서 접수된 광고 및 제휴 문의를 확인하고 처리 상태를 관리하세요.</p></div><button id="refresh-inquiries" class="button secondary" type="button">새로고침</button></div>
         <div id="inquiries-message" class="message notice" role="status" aria-live="polite"></div>
