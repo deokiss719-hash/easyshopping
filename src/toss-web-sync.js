@@ -68,7 +68,8 @@ function buildTossWebSnapshot({ publications, ranking, webLinks = [], clickCount
     if (!item.isSoldOut) products.set(candidate.id, candidate);
   }
   const deals = new Map();
-  const popular = [...products.values()].filter(isWebProduct);
+  const rankedProducts = [...products.values()].sort((left, right) => left.rank - right.rank);
+  const popular = rankedProducts.filter(isWebProduct);
   function add(product, url, publishedAt) {
     const image = safeTossImage(product.thumbnailUrl);
     deals.set(product.id, {
@@ -90,7 +91,7 @@ function buildTossWebSnapshot({ publications, ranking, webLinks = [], clickCount
     if (seen.has(row.deal_id)) throw new Error('Duplicate Toss publication');
     seen.add(row.deal_id);
     const product = products.get(row.deal_id);
-    if (product && isWebProduct(product)) add(product, row.original_url, row.confirmed_at);
+    if (product) add(product, row.original_url, row.confirmed_at);
   }
   for (const link of webLinks) {
     if (link.status !== 'ready') continue;
@@ -98,9 +99,11 @@ function buildTossWebSnapshot({ publications, ranking, webLinks = [], clickCount
     const product = products.get(`toss:${link.source_item_id}`);
     if (!product) continue;
     // Keep the web URL stable even if Kakao subsequently publishes this same product.
-    if (deals.has(product.id) || isWebProduct(product)) add(product, link.short_url, link.created_at);
+    add(product, link.short_url, link.created_at);
   }
-  return { deals: [...deals.values()], popularCandidates: popular, observedAt: at.toISOString(), confirmedCount: publications.length };
+  const selectedDeals = rankedProducts.map((product) => deals.get(product.id)).filter(Boolean).slice(0, WEB_PRODUCT_LIMIT);
+  return { deals: selectedDeals, popularCandidates: popular, fallbackCandidates: rankedProducts,
+    observedAt: at.toISOString(), confirmedCount: publications.length };
 }
 
 async function applyTossWebSnapshot(pool, snapshot) {
@@ -154,8 +157,8 @@ async function syncTossWeb({ pool, db, tossClient, dryRun = true, now = () => ne
     const kakaoIds = new Set(db.prepare("SELECT deal_id FROM kakao_auto_publications WHERE source = 'toss'").all().map((r) => r.deal_id));
     const reserved = new Set(links.map((r) => r.source_item_id));
     let issued = 0, uncertain = 0, attempted = 0;
-    for (const product of snapshot.popularCandidates) {
-      if (attempted >= MAX_NEW_LINKS_PER_SYNC) break;
+    for (const product of snapshot.fallbackCandidates) {
+      if (attempted >= MAX_NEW_LINKS_PER_SYNC || snapshot.deals.length + issued >= WEB_PRODUCT_LIMIT) break;
       const id = String(product.tacaItemId);
       if (existing.has(id) || reserved.has(id) || kakaoIds.has(product.id)) continue;
       // Persist the reservation BEFORE the external API call. Unknown outcomes never auto-retry.

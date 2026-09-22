@@ -131,14 +131,19 @@ test('popular selection combines quality with Toss rank or observed web clicks',
  assert.equal(isPopularProduct(product({rank:50,reviewScore:4.1}),100),false);
 });
 
-test('web links expose the current top 50 and expire products outside that range', () => {
+test('web links prefer the current top 50 and use lower ranks only to fill empty slots', () => {
  const link={source_item_id:'10002',status:'ready',short_url:'https://toss.im/_m/WebLink',created_at:now.toISOString()};
  const build=(p,clickCounts={})=>buildTossWebSnapshot({publications:[],ranking:ranking([p]),webLinks:[link],clickCounts,now});
  assert.equal(build(product({tacaItemId:10002})).deals[0].originalUrl,link.short_url);
  assert.equal(build(product({tacaItemId:10002,rank:50})).deals.length,1);
- assert.equal(build(product({tacaItemId:10002,rank:51}),{'10002':100}).deals.length,0);
+ assert.equal(build(product({tacaItemId:10002,rank:51}),{'10002':100}).deals.length,1);
  assert.equal(build(product({tacaItemId:10002,isSoldOut:true})).deals.length,0);
  assert.equal(snapshot([product({reviewScore:4.1})]).deals.length,1);
+ const products=Array.from({length:51},(_,index)=>product({rank:index+1,tacaItemId:30000+index}));
+ const links=products.map((item)=>({source_item_id:String(item.tacaItemId),status:'ready',short_url:`https://toss.im/_m/link${item.tacaItemId}`,created_at:now.toISOString()}));
+ const full=buildTossWebSnapshot({publications:[],ranking:ranking(products),webLinks:links,now});
+ assert.equal(full.deals.length,50);
+ assert.equal(full.deals.some((deal)=>deal.sourceItemId==='30050'),false);
 });
 
 test('link reservation survives timeout without duplicate issuance on next run',async(t)=>{
