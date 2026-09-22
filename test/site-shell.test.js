@@ -120,19 +120,13 @@ test('홈페이지에서 쿠팡 파트너스 홍보와 상품 호출을 노출�
   assert.doesNotMatch(script, /source:\s*['"]coupang['"]/);
 });
 
-test('모바일 메뉴는 휴대폰 성지방을 포함한 다섯 항목을 균등 배치한다', () => {
+test('모바일 메뉴는 휴대폰 특가를 포함한 다섯 항목을 균등 배치한다', () => {
   assert.match(styles, /\.bottom-nav\s*\{[^}]*grid-template-columns:\s*repeat\(5,\s*1fr\)/);
 });
 
-test('데스크톱과 모바일 메뉴에서 휴대폰 성지 소통방으로 안전하게 연결한다', () => {
-  const links = html.match(/<a\b[^>]*href="https:\/\/open\.kakao\.com\/o\/gdexW9Oh"[^>]*>[\s\S]*?<\/a>/g) || [];
-  assert.equal(links.length, 2);
-  for (const link of links) {
-    assert.match(link, /target="_blank"/);
-    assert.match(link, /rel="noopener noreferrer"/);
-  }
-  assert.match(styles, /\.desktop-nav a\.phone-room-nav\s*\{[^}]*color:\s*#6d28d9/);
-  assert.match(styles, /\.bottom-nav \.phone-room-nav\s*\{[^}]*color:\s*#6d28d9/);
+test('휴대폰 소통방 대신 상품 상담 페이지로 연결한다', () => {
+  assert.doesNotMatch(html, /gdexW9Oh|phone-room-nav/);
+  assert.ok((html.match(/href="\/phone.html"/g) || []).length >= 2);
 });
 
 test('모바일 상품 카드에서도 커뮤니티 출처를 표시한다', () => {

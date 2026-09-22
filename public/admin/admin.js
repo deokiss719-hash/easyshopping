@@ -946,6 +946,7 @@
   function formPayload() {
     const priority = Number(byId('priority').value);
     if (!Number.isSafeInteger(priority)) throw new TypeError('우선순위는 정수로 입력해 주세요.');
+    if (!byId('target-url').value.trim()) setValue('target-url', `${location.origin}/phone.html?model=${encodeURIComponent(byId('title').value.trim())}#consult`);
     const productUrl = normalizeHttpsUrlInput(byId('target-url').value);
     setValue('target-url', productUrl);
     return {
