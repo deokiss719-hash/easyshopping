@@ -5,7 +5,7 @@ function normalize(input = {}) {
   const text = (key, max) => { const value = String(input[key] || '').trim(); if (value.length > max) throw new TypeError('입력 내용이 너무 길어요.'); return value; };
   const model = text('model', 300), carrier = text('carrier', 20), changeType = text('changeType', 20), method = text('method', 10);
   const customerName = text('customerName', 100);
-  if (!customerName) throw new TypeError('고객 이름을 입력해 주세요.');
+  if (!customerName) throw new TypeError('성함을 입력해 주세요.');
   const phone = text('phone', 30).replace(/[-\s]/g, ''), preferredTime = text('preferredTime', 100);
   if (!model || !['SKT','KT','LG U+','알뜰폰','모름'].includes(carrier) || !['번호이동','기기변경','상담 후 결정'].includes(changeType) || !['phone','kakao'].includes(method)) throw new TypeError('기종과 상담 조건을 확인해 주세요.');
   if (input.privacyConsent !== true) throw new TypeError('상담을 위한 개인정보 수집·이용에 동의해 주세요.');
