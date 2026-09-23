@@ -1118,7 +1118,7 @@
     const daily=byId('phone-daily');daily.replaceChildren();for(const [day,count] of days){daily.append(textNode('p',`${day} 접수 ${count.all}건 · 현재 방문 예약 ${count.reserved}건 · 개통 완료 ${count.completed}건`));}
     const rows=phoneRows.filter(r=>!byId('phone-status-filter').value||r.status===byId('phone-status-filter').value);
     if(!rows.length)list.append(textNode('p','해당 상담이 없습니다.'));
-    for(const r of rows){const card=textNode('article','','panel');card.append(textNode('h3',r.model),textNode('p',`${new Date(r.created_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})} · ${r.id}`),textNode('p',`${r.carrier} · ${r.change_type} · ${r.method==='phone'?'전화 상담':(r.status==='new'?'카카오 상담 시작 미확인 — 채널에서 견적번호 확인':'카카오 상담')}`));
+    for(const r of rows){const card=textNode('article','','panel');card.append(textNode('h3',r.model),textNode('p','고객 이름: '+(r.customer_name||'미입력 (기존 접수)')),textNode('p',`${new Date(r.created_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})} · ${r.id}`),textNode('p',`${r.carrier} · ${r.change_type} · ${r.method==='phone'?'전화 상담':(r.status==='new'?'카카오 상담 시작 미확인 — 채널에서 견적번호 확인':'카카오 상담')}`));
       if(r.phone){const a=textNode('a',r.phone+' 전화 걸기');a.href='tel:'+r.phone;card.append(a,textNode('p','통화 가능: '+r.preferred_time));}
       const select=document.createElement('select');select.setAttribute('aria-label','상담 상태');for(const [value,label] of Object.entries(phoneStatuses)){const o=textNode('option',label);o.value=value;select.append(o);}select.value=r.status;
       const note=document.createElement('textarea');note.value=r.admin_note;note.maxLength=2000;note.rows=3;note.placeholder='상담 메모';note.setAttribute('aria-label','상담 메모');

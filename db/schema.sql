@@ -378,3 +378,5 @@ CREATE TABLE IF NOT EXISTS phone_inquiries (
  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS phone_inquiries_created ON phone_inquiries(created_at DESC);
+
+ALTER TABLE phone_inquiries ADD COLUMN IF NOT EXISTS customer_name TEXT NOT NULL DEFAULT '';

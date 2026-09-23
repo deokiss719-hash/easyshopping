@@ -4,7 +4,7 @@
  form.elements.model.value=selectedModel;
  if(selectedModel){document.querySelector('.advertise-hero h1').textContent='선택한 휴대폰 상담 신청';document.querySelector('#phone-offers').parentElement.hidden=true;}
  const node=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;};
- function updateMethod(){document.querySelector('#phone-submit').textContent=method.value==='kakao'?'접수하고 카카오톡으로 문의하기':'전화 상담 신청하기';for(const id of ['phone-contact','phone-time']){const label=document.getElementById(id);label.hidden=method.value==='kakao';label.querySelector('input').required=method.value==='phone';}}
+ function updateMethod(){document.querySelector('#phone-submit').textContent=method.value==='kakao'?'접수하고 카카오톡으로 문의하기':'전화 상담 신청하기';for(const id of ['phone-time']){const label=document.getElementById(id);label.hidden=method.value==='kakao';label.querySelector('input').required=method.value==='phone';}}
  method.addEventListener('change',updateMethod);updateMethod();
  async function load(){
   const grid=document.querySelector('#phone-offers');

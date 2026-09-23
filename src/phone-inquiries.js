@@ -4,17 +4,19 @@ const STATUSES = ['new', 'consulting', 'reserved', 'completed', 'absent', 'close
 function normalize(input = {}) {
   const text = (key, max) => { const value = String(input[key] || '').trim(); if (value.length > max) throw new TypeError('입력 내용이 너무 길어요.'); return value; };
   const model = text('model', 300), carrier = text('carrier', 20), changeType = text('changeType', 20), method = text('method', 10);
+  const customerName = text('customerName', 100);
+  if (!customerName) throw new TypeError('고객 이름을 입력해 주세요.');
   const phone = text('phone', 30).replace(/[-\s]/g, ''), preferredTime = text('preferredTime', 100);
   if (!model || !['SKT','KT','LG U+','알뜰폰','모름'].includes(carrier) || !['번호이동','기기변경','상담 후 결정'].includes(changeType) || !['phone','kakao'].includes(method)) throw new TypeError('기종과 상담 조건을 확인해 주세요.');
   if (input.privacyConsent !== true) throw new TypeError('상담을 위한 개인정보 수집·이용에 동의해 주세요.');
-  if (method === 'phone' && (!/^01[016789]\d{7,8}$/.test(phone) || !preferredTime)) throw new TypeError('연락처와 통화 가능한 시간을 확인해 주세요.');
-  return { model, carrier, changeType, method, phone: method === 'phone' ? phone : '', preferredTime: method === 'phone' ? preferredTime : '' };
+  if (!/^01[016789]\d{7,8}$/.test(phone) || (method === 'phone' && !preferredTime)) throw new TypeError('연락처와 통화 가능한 시간을 확인해 주세요.');
+  return { customerName, model, carrier, changeType, method, phone, preferredTime: method === 'phone' ? preferredTime : '' };
 }
 function createPhoneStore(pool) {
   return {
     async create(input) {
       const v = normalize(input), id = 'P' + randomBytes(8).toString('hex').toUpperCase();
-      await pool.query('INSERT INTO phone_inquiries(id,model,carrier,change_type,method,phone,preferred_time) VALUES($1,$2,$3,$4,$5,$6,$7)', [id,v.model,v.carrier,v.changeType,v.method,v.phone,v.preferredTime]);
+      await pool.query('INSERT INTO phone_inquiries(id,model,carrier,change_type,method,phone,preferred_time,customer_name,consent_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)', [id,v.model,v.carrier,v.changeType,v.method,v.phone,v.preferredTime,v.customerName,'2026-09-23']);
       return { id };
     },
     async list() { return (await pool.query('SELECT * FROM phone_inquiries ORDER BY created_at DESC LIMIT 500')).rows; },
