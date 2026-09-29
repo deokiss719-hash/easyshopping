@@ -155,7 +155,7 @@ function renderStory() {
     part.setAttribute('aria-labelledby', heading.id);
     part.append(heading, ...section.blocks.map(b => block(b, current.report)));
     if (config.accessMode === 'beta' && index === sections.length - 1) {
-      part.append($('chart-details')); show('chart-details', true);
+      show('chart-details', true); part.append($('chart-details'));
     }
     return part;
   }));
