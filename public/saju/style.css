@@ -553,3 +553,13 @@ pre {
 
 .story-basis { padding: 18px 0; border-bottom: 1px solid #554a34; }
 .story-basis > summary { cursor: pointer; line-height: 1.7; }
+
+/* One continuous story; only quiet, unnumbered topic breaks. */
+.saju-experience .story-section { margin: 0 auto; padding: 32px 0; max-width: 680px; }
+.saju-experience .story-section + .story-section { border-top: 1px solid #493c2b; }
+.saju-experience .story-section > h3 { color: #c7af78; font-size: 21px; font-weight: 500; margin: 0 0 26px; }
+.saju-experience .story-section:first-child { padding-top: 16px; }
+@media (max-width:480px) {
+ .saju-experience .story-section { padding: 26px 0; }
+ .saju-experience .story-section > h3 { font-size: 19px; }
+}

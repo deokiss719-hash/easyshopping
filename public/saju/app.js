@@ -3,8 +3,7 @@ const $ = (id) => document.getElementById(id);
 let config,
   current,
   access = {},
-  paymentReturn = null,
-  chapterIndex = 0;
+  paymentReturn = null;
 const show = (id, yes) => ($(id).hidden = !yes);
 const tell = (t) => {
   $('message').textContent = t;
@@ -141,23 +140,25 @@ function renderContents(titles) {
     return li;
   }));
 }
-function renderChapter(index, focus = false) {
+function renderStory() {
   if (!current?.fullAccess && !current?.paid) return;
-  chapterIndex = index;
-  const sections = current.report.sections, section = sections[index];
-  $('book-title').textContent = `${index + 1}장. ${section.title}`;
-  $('chapter-select').value = index;
-  if (config.accessMode === 'beta') $('full-report').after($('chart-details'));
-  $('chapter-content').replaceChildren(...section.blocks.map(b => block(b, current.report)));
-  if (config.accessMode === 'beta') {
-    $('full-report').after($('chart-details'));
-    show('chart-details', false);
-    if (section.id === 'basis' || (!['ko-pattern-4','ko-story-5','ko-grandmother-story-6','ko-simple-story-7'].includes(current.report.version) && index === sections.length - 1)) { $('chapter-content').append($('chart-details')); show('chart-details', true); }
-  }
-  $('chapter-progress').textContent = `${index + 1} / ${sections.length}`;
-  $('previous-chapter').disabled = index === 0;
-  $('next-chapter').disabled = index === sections.length - 1;
-  if (focus) { $('book-title').focus({ preventScroll: true }); $('full-report').scrollIntoView(); }
+  // Move the shared chart out before replacing the previous report DOM.
+  $('full-report').after($('chart-details'));
+  show('chart-details', config.accessMode !== 'beta');
+  $('book-title').textContent = '태어난 날에 담긴 이야기';
+  const sections = current.report.sections;
+  $('chapter-content').replaceChildren(...sections.map((section, index) => {
+    const part = document.createElement('section');
+    part.className = 'story-section';
+    const heading = text('h3', section.title);
+    heading.id = `story-section-${index}`;
+    part.setAttribute('aria-labelledby', heading.id);
+    part.append(heading, ...section.blocks.map(b => block(b, current.report)));
+    if (config.accessMode === 'beta' && index === sections.length - 1) {
+      part.append($('chart-details')); show('chart-details', true);
+    }
+    return part;
+  }));
 }
 function openCheckout() {
   if (config.accessMode === 'beta') {
@@ -181,9 +182,6 @@ $('close-checkout').onclick = () => {
   show('checkout-panel', false);
   $(current.fullAccess || current.paid ? 'full-report' : 'paid-offer').scrollIntoView({ block: 'start' });
 };
-$('chapter-select').onchange = e => renderChapter(Number(e.target.value), true);
-$('previous-chapter').onclick = () => renderChapter(Math.max(0, chapterIndex - 1), true);
-$('next-chapter').onclick = () => renderChapter(Math.min(current.report.sections.length - 1, chapterIndex + 1), true);
 async function load(id) {
   current = await api('/reports/' + encodeURIComponent(id));
   sessionStorage.setItem('saju-current', id);
@@ -206,13 +204,10 @@ async function load(id) {
     document.body.classList.add('beta-reading');
     show('paid-offer', false); show('free-reading', false); show('full-report', true);
     show('checkout-panel', false); show('purchase-controls', false); show('order-panel', false);
-    $('chapter-select').replaceChildren(...current.report.sections.map((section, index) => {
-      const option = text('option', `${index + 1}. ${section.title}`); option.value = index; return option;
-    }));
     $('book-version').textContent = current.report.version === config.version
       ? '전체 무료 베타 · 태어난 날을 전통 방식으로 풀어낸 이야기예요. 실제 삶은 환경과 선택에 따라 달라져요.'
       : '이전 버전으로 저장된 보고서입니다. 아래 새 분석 버튼으로 개편된 풀이를 볼 수 있습니다.';
-    renderChapter(Math.min(chapterIndex, current.report.sections.length - 1));
+    renderStory();
     $('expiry').textContent = '이 결과의 보관 기한: ' + new Date(current.expiresAt).toLocaleDateString('ko-KR');
     accessUi(); return;
   }
@@ -243,15 +238,9 @@ async function load(id) {
     : `이어서 보기 · ${config.price.toLocaleString()}원${config.mode === 'test' ? ' (테스트)' : ''}`;
   $('continue-reading').disabled = !config.canPay;
   if (current.paid) {
-    $('chapter-select').replaceChildren(...current.report.sections.map((section, index) => {
-      const option = text('option', `${index + 1}장 · ${section.title}`);
-      option.value = index;
-      return option;
-    }));
     $('book-version').textContent = `해석 버전 ${current.report.version} · 구매 시 저장된 내용`;
-    renderChapter(Math.min(chapterIndex, current.report.sections.length - 1));
+    renderStory();
   } else {
-    chapterIndex = 0;
     $('chapter-content').replaceChildren();
   }
   show('order-panel', !!current.order);
@@ -424,7 +413,6 @@ $('new-analysis').onclick = () => {
   sessionStorage.removeItem('saju-current');
   current = null;
   access = {};
-  chapterIndex = 0;
   $('saved').checked = false;
   $('terms').checked = false;
   $('chart-details').open = false;
