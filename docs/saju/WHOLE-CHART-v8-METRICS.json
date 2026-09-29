@@ -1,0 +1,288 @@
+{
+  "uniqueBefore": [
+    8,
+    7,
+    8,
+    6
+  ],
+  "uniqueAfter": [
+    11,
+    8,
+    10,
+    6
+  ],
+  "rows": [
+    {
+      "date": "1990-01-09",
+      "time": "02:00",
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "정재",
+        "path": "pillars.month.hiddenStems.0",
+        "exposed": true
+      },
+      "support": "mixed",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    },
+    {
+      "date": "1990-01-09",
+      "time": "12:00",
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "정재",
+        "path": "pillars.month.hiddenStems.0",
+        "exposed": true
+      },
+      "support": "limited",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    },
+    {
+      "date": "1990-01-09",
+      "time": null,
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "정재",
+        "path": "pillars.month.hiddenStems.0",
+        "exposed": true
+      },
+      "support": "uncertain",
+      "sensitivity": {
+        "hourAlternatives": 12,
+        "focusMayChange": false,
+        "supportMayChange": true,
+        "patternsMayChange": true
+      }
+    },
+    {
+      "date": "1988-08-15",
+      "time": "04:00",
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "편인",
+        "path": "pillars.month.hiddenStems.0",
+        "exposed": true
+      },
+      "support": "mixed",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    },
+    {
+      "date": "1975-11-21",
+      "time": "19:30",
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "상관",
+        "path": "pillars.month.hiddenStems.0",
+        "exposed": false
+      },
+      "support": "mixed",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    },
+    {
+      "date": "2000-04-17",
+      "time": "08:00",
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "정재",
+        "path": "pillars.month.hiddenStems.0",
+        "exposed": false
+      },
+      "support": "mixed",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    },
+    {
+      "date": "1996-07-12",
+      "time": "16:00",
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "정재",
+        "path": "pillars.month.hiddenStems.2",
+        "exposed": true
+      },
+      "support": "mixed",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    },
+    {
+      "date": "1985-03-21",
+      "time": "10:30",
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "편관",
+        "path": "pillars.month.hiddenStems.0",
+        "exposed": true
+      },
+      "support": "mixed",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    },
+    {
+      "date": "1970-12-12",
+      "time": "07:00",
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "정관",
+        "path": "pillars.month.hiddenStems.0",
+        "exposed": false
+      },
+      "support": "mixed",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    },
+    {
+      "date": "1992-09-18",
+      "time": "20:00",
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "편재",
+        "path": "pillars.month.hiddenStems.0",
+        "exposed": false
+      },
+      "support": "mixed",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    },
+    {
+      "date": "2001-06-03",
+      "time": "15:00",
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": {
+        "god": "상관",
+        "path": "pillars.month.hiddenStems.2",
+        "exposed": true
+      },
+      "support": "mixed",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    },
+    {
+      "date": "1990-01-05",
+      "time": null,
+      "checks": {
+        "jargon": 0,
+        "questions": 0,
+        "unresolved": 0,
+        "duplicateMainSentences": [],
+        "duplicateFlowParagraphs": 0
+      },
+      "focus": null,
+      "support": "unknown",
+      "sensitivity": {
+        "hourAlternatives": 0,
+        "focusMayChange": false,
+        "supportMayChange": false,
+        "patternsMayChange": false
+      }
+    }
+  ]
+}

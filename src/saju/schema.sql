@@ -71,3 +71,11 @@ WITH first_apply AS (
 )
 UPDATE saju_settings SET report_version='ko-simple-story-7'
 WHERE id=1 AND EXISTS(SELECT 1 FROM first_apply);
+
+-- New analysis only; encrypted reports/orders remain unchanged.
+WITH first_apply AS (
+ INSERT INTO saju_content_migrations(version) VALUES('ko-whole-chart-8')
+ ON CONFLICT(version) DO NOTHING RETURNING version
+)
+UPDATE saju_settings SET report_version='ko-whole-chart-8'
+WHERE id=1 AND EXISTS(SELECT 1 FROM first_apply);

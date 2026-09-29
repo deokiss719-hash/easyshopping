@@ -1,7 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {calculate}=require('../src/saju/calculator');
-const current=require('../src/saju/report');
+const current=require('../src/saju/report-v7');
 const previous=require('../src/saju/report-v6');
 const {inspect}=require('../scripts/saju-grandmother-audit');
 test('simple stories keep facts and saved v6, omit subtitles and formal vocabulary across charts',()=>{
