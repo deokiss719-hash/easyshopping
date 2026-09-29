@@ -570,13 +570,13 @@ pre {
  src: url('/saju/fonts/NanumMyeongjo-Regular.ttf') format('truetype');
 }
 .saju-experience .narrative article {
- display: flex; flex-direction: column; gap: 1.2rem; max-width: 652px; margin: 32px auto;
+ display: flex; flex-direction: column; gap: 12px; max-width: 560px; margin: 28px auto;
 }
 .saju-experience .narrative article > p {
  font-family: 'Nanum Myeongjo', Gungsuh, Batang, serif;
- font-size: clamp(1rem, 2.8vw, 1.15rem); font-weight: 400;
- line-height: 2.4; letter-spacing: .02em; text-align: left;
- color: #c4b896; word-break: keep-all; overflow-wrap: anywhere;
+ font-size: 19px; font-weight: 400;
+ line-height: 2; letter-spacing: .01em; text-align: left;
+ color: #e0d5bf; word-break: keep-all; overflow-wrap: anywhere;
  width: 100%; max-width: none; margin: 0; padding: 0;
 }
 .saju-experience .story-section > h3 {
@@ -591,3 +591,21 @@ pre {
 .saju-experience #skip-reading-motion[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .reading-letter { opacity: 1; transition: none; } }
 @media print { .reading-letter { opacity: 1; } #skip-reading-motion { display: none !important; } }
+
+/* Readable story rhythm: related sentences stay close; a new thought gets space. */
+.saju-experience .narrative article > .story-paragraph-start { margin-top: 20px; }
+.saju-experience .narrative article > .period-tags {
+ display: flex; flex-direction: column; gap: 6px; width: auto;
+ padding: 12px 16px; margin-bottom: 12px; border-left: 2px solid #9e855b;
+ background: #191713; font: 14px/1.7 system-ui, sans-serif; color: #d6c5a5;
+}
+.saju-experience .story-section > h3 { font-size: 23px; color: #e8d2a3; margin-bottom: 28px; }
+.saju-experience .story-section { padding: 40px 0; }
+.saju-experience #skip-reading-motion { min-height: 44px; color: #d6c5a5; font-size: 13px; }
+@media (max-width:480px) {
+ .saju-experience main { padding-left: 20px; padding-right: 20px; }
+ .saju-experience .narrative article > p { font-size: 18px; line-height: 2; }
+ .saju-experience .story-section { padding: 32px 0; }
+ .saju-experience .story-section > h3 { font-size: 22px; }
+ .saju-experience .narrative article > .period-tags { font-size: 13px; }
+}

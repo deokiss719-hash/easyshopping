@@ -48,7 +48,9 @@ function block(b, report) {
       .replace(/^역행 약 /, '두 번째 풀이: ')
       .replace(/(\d+(?:\.\d+)?)~(\d+(?:\.\d+)?)세/, (_, start, end) => `약 ${Math.round(Number(start))}살부터 ${Math.round(Number(end))}살까지`)
       .replace(/년 입춘 이후/, '년 2월 초부터'));
-    wrap.append(text('p', labels.join(' · '), 'period-tags'));
+    const periods = text('p', '', 'period-tags');
+    labels.forEach(label => periods.append(text('span', label)));
+    wrap.append(periods);
   }
   const savedParts = b.parts || b.text.split(/(?<=[.!?])\s+/u).map(text => ({text}));
   let paragraphs = savedParts.length === 5 && savedParts.every(p => p.label)
@@ -61,10 +63,14 @@ function block(b, report) {
       { text: '첫 번째 풀이와 두 번째 풀이에 적힌 나이는 대략의 나이란다. 연도가 적힌 이야기는 그해 2월 초부터 다음 해 2월 초까지를 보고 풀었지. 같은 이야기가 나오는 나이와 해는 한곳에 모아두었단다.' },
     ];
   }
-  for (const part of paragraphs) {
+  for (const [groupIndex, part] of paragraphs.entries()) {
     // Sentence-by-sentence reading changes presentation, not saved report text.
     const sentences = part.text.trim().split(/(?<=[.!?。！？])\s+/u);
-    for (const sentence of sentences) wrap.append(text('p', sentence));
+    sentences.forEach((sentence, index) => {
+      const paragraph = text('p', sentence);
+      if (index === 0 && groupIndex > 0) paragraph.className = 'story-paragraph-start';
+      wrap.append(paragraph);
+    });
   }
   return wrap;
 }
