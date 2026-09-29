@@ -40,3 +40,10 @@
 }
 
 #phone-inquiry-list article{display:grid;gap:12px;overflow-wrap:anywhere;margin-top:16px}#phone-inquiry-list textarea,#phone-channel-url{width:100%;box-sizing:border-box}#phone-channel-form{display:grid;gap:12px}
+
+.community-comment-admin[hidden]{display:none!important}
+.community-admin-post-preview{min-width:0;padding:14px;border:1px solid #dfe5ed;border-radius:10px;background:#fff}
+.community-admin-post-preview h3{margin:0 0 10px;font-size:15px}
+.community-admin-post-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin:0 0 12px;max-width:100%}
+.community-admin-post-body.is-collapsed{display:-webkit-box;-webkit-line-clamp:10;-webkit-box-orient:vertical;overflow:hidden;max-height:17em}
+.community-admin-post-image{display:block;max-width:100%;max-height:420px;width:auto;height:auto;object-fit:contain;margin-top:12px;border-radius:8px}
