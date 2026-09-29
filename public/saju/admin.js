@@ -30,7 +30,7 @@ async function run(fn) {
 async function load() {
   const x = await api('/api/admin/saju');
   $('mode').textContent =
-    x.mode === 'live' ? '실결제 환경이에요.' : '테스트/체험 환경이에요. 실제 과금은 없어요.';
+    x.accessMode === 'beta' ? '전체 무료 베타입니다. 가격·무료 범위·판매 설정은 현재 고객 흐름에 적용되지 않습니다.' : x.mode === 'live' ? '실결제 환경이에요.' : '테스트/체험 환경이에요. 실제 과금은 없어요.';
   for (const [k, v] of Object.entries(x.settings)) {
     const e = $('settings').elements[k];
     if (e) {

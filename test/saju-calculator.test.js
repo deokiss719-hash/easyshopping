@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { DateTime } = require('luxon');
 const { calculate, normalize, god } = require('../src/saju/calculator');
-const { generate } = require('../src/saju/report');
+const { generate } = require('../src/saju/report-v2');
 const now = DateTime.fromISO('2040-01-01');
 const input = (date = '1990-01-01', time = '12:00', zone = 'Asia/Seoul') => ({
   date,

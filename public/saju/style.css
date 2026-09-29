@@ -523,3 +523,30 @@ pre {
 .saju-experience #result-panel .evidence pre { text-align: left; }
 .saju-experience #result-panel .element-bars { text-align: center; }
 .saju-experience #warnings { list-style-position: inside; padding-left: 0; }
+
+/* Free beta: reach the interpretation first; technical material stays behind chapter 7. */
+.beta-reading .reading-title { margin: 24px auto 20px; padding: 0; }
+.beta-reading .reading-title h1 { font-size: clamp(25px, 6vw, 38px); }
+.beta-reading .reading-title .red-rule { margin: 16px auto; }
+.beta-reading .book-reader { padding-top: 12px; }
+.beta-reading .narrative article { margin: 24px auto 36px; padding: 0; }
+.beta-reading .narrative h3 { font-size: clamp(21px, 5vw, 28px); margin: 22px 0; }
+.beta-reading .narrative p { font-family: system-ui, sans-serif; font-size: 17px; line-height: 1.9; margin: 18px auto; max-width: 620px; word-break: keep-all; overflow-wrap: anywhere; }
+.beta-reading .part-label { display: block; color: #c7af78; font-size: 13px; margin-bottom: 5px; }
+.beta-reading .period-tags { font-size: 13px; color: #c7af78; }
+.beta-reading .evidence { font-size: 13px; margin: 24px 0; }
+.beta-reading .evidence p { font-size: 14px; }
+.beta-reading .book-controls { position: static; }
+.beta-reading #book-version { font-size: 12px; }
+.beta-reading #mode { font-size: 13px; padding: 10px; }
+.beta-reading .chapter-jump { margin-bottom: 18px; }
+@media(max-width:480px) {
+ .beta-reading .narrative p { font-size: 16px; line-height: 1.85; }
+ .beta-reading .reading-title { margin-top: 18px; }
+ .beta-reading .book-controls { gap: 6px; }
+ .beta-reading .book-controls button { padding: 12px 8px; font-size: 13px; }
+}
+
+.beta-reading .flow-timeline { border: 1px solid #554a34; padding: 14px; margin: 24px 0; }
+.beta-reading .flow-timeline ul { padding-left: 0; list-style: none; font: 14px/1.9 system-ui,sans-serif; }
+.beta-reading .flow-timeline li { margin: 10px 0; overflow-wrap: anywhere; }

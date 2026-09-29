@@ -17,7 +17,7 @@ test('HTTP funnel, privacy, admin protections, recovery, refund and erasure', as
     requireMutationProtection: (q, s, n) =>
       q.get('x-csrf-test') === 'valid' ? n() : s.sendStatus(403),
   };
-  app.use(createSajuRouter({ store, auth, env: { SAJU_PUBLIC_ORIGIN: base } }).router);
+  app.use(createSajuRouter({ store, auth, env: { SAJU_PUBLIC_ORIGIN: base, SAJU_ACCESS_MODE: 'paid' } }).router);
   t.after(async () => {
     await new Promise((r) => server.close(r));
     await pool.end();
@@ -87,7 +87,7 @@ test('HTTP funnel, privacy, admin protections, recovery, refund and erasure', as
   assert.equal(view.data.paid, false);
   assert.equal(view.data.chart.pillars.hour, null);
   assert.equal(view.data.report.sections, undefined);
-  assert.equal(view.data.report.toc.length, 8);
+  assert.equal(view.data.report.toc.length, 7);
   const originalJar = jar;
   jar = '';
   assert.equal((await request('/api/saju/reports/' + id)).r.status, 404);
@@ -106,7 +106,7 @@ test('HTTP funnel, privacy, admin protections, recovery, refund and erasure', as
   const approved = await request('/api/saju/orders/' + order + '/confirm', { amount: 6900 });
   assert.equal(approved.data.status, 'paid');
   view = await request('/api/saju/reports/' + id);
-  assert.equal(view.data.report.sections.length, 8);
+  assert.equal(view.data.report.sections.length, 7);
   const originalReport = JSON.stringify(view.data.report);
   assert.equal(
     JSON.stringify((await request('/api/saju/reports/' + id)).data.report),

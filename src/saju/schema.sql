@@ -42,3 +42,11 @@ WITH first_apply AS (
 )
 UPDATE saju_settings SET report_version='ko-depth-3'
 WHERE id=1 AND report_version IN ('ko-evidence-1','ko-grandmother-2') AND EXISTS(SELECT 1 FROM first_apply);
+
+-- A new default only; never rewrite encrypted snapshots or existing orders.
+WITH first_apply AS (
+ INSERT INTO saju_content_migrations(version) VALUES('ko-pattern-4')
+ ON CONFLICT(version) DO NOTHING RETURNING version
+)
+UPDATE saju_settings SET report_version='ko-pattern-4'
+WHERE id=1 AND EXISTS(SELECT 1 FROM first_apply);

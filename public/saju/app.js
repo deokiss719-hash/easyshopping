@@ -45,11 +45,28 @@ function block(b, report) {
   if (symbols[b.id]) heading.prepend(text('span', symbols[b.id], 'chapter-symbol'));
   wrap.append(heading);
   // Only change presentation; the stored report wording stays unchanged.
-  for (const sentence of b.text.split(/(?<=[.!?])\s+/u))
-    wrap.append(text('p', sentence.trim()));
+  if (b.periods) wrap.append(text('p', b.periods.join(' · '), 'period-tags'));
+  for (const part of b.parts || b.text.split(/(?<=[.!?])\s+/u).map(text => ({text}))) {
+    const paragraph = text('p', part.text.trim());
+    if (part.label) paragraph.prepend(text('strong', part.label + ' · ', 'part-label'));
+    wrap.append(paragraph);
+  }
+  if (b.timeline) {
+    const timeline = document.createElement('details'); timeline.className = 'flow-timeline';
+    timeline.append(text('summary', '나이·연도 순서로 보기'));
+    for (const group of b.timeline) {
+      timeline.append(text('h4', group.label));
+      const list = document.createElement('ul');
+      for (const item of group.items) list.append(text('li', `${item.period} · ${item.topic}`));
+      if (!group.items.length) list.append(text('li', '입력 범위에서 확정할 수 없습니다.'));
+      timeline.append(list);
+    }
+    wrap.append(timeline);
+  }
   const detail = document.createElement('details');
   detail.className = 'evidence';
-  detail.append(text('summary', '이 해석의 계산 근거'));
+  detail.append(text('summary', '왜 이렇게 해석했나요?'));
+  if (b.reason) detail.append(text('p', b.reason));
   for (const e of report.evidence?.[b.id] || [])
     detail.append(text('p', e.path), text('pre', JSON.stringify(e.value, null, 2)));
   wrap.append(detail);
@@ -120,18 +137,31 @@ function renderContents(titles) {
   }));
 }
 function renderChapter(index, focus = false) {
-  if (!current?.paid) return;
+  if (!current?.fullAccess && !current?.paid) return;
   chapterIndex = index;
   const sections = current.report.sections, section = sections[index];
   $('book-title').textContent = `${index + 1}장. ${section.title}`;
   $('chapter-select').value = index;
+  if (config.accessMode === 'beta') $('full-report').after($('chart-details'));
   $('chapter-content').replaceChildren(...section.blocks.map(b => block(b, current.report)));
+  if (config.accessMode === 'beta') {
+    $('full-report').after($('chart-details'));
+    show('chart-details', false);
+    if (section.id === 'basis' || (current.report.version !== 'ko-pattern-4' && index === sections.length - 1)) { $('chapter-content').append($('chart-details')); show('chart-details', true); }
+  }
   $('chapter-progress').textContent = `${index + 1} / ${sections.length}`;
   $('previous-chapter').disabled = index === 0;
   $('next-chapter').disabled = index === sections.length - 1;
   if (focus) { $('book-title').focus({ preventScroll: true }); $('full-report').scrollIntoView(); }
 }
 function openCheckout() {
+  if (config.accessMode === 'beta') {
+    show('checkout-panel', true); show('purchase-controls', false);
+    $('checkout-title').textContent = '다시 읽고 싶다면 · 선택 저장';
+    $('checkout-summary').textContent = '지금은 저장하지 않고 전체 내용을 읽어도 됩니다. 무료 결과는 생성 후 7일 동안 보관합니다.';
+    $('close-checkout').textContent = '← 보고서로 돌아가기';
+    $('checkout-panel').scrollIntoView(); return;
+  }
   show('checkout-panel', true);
   $('checkout-summary').textContent = current.paid
     ? '구매한 보고서를 다시 열 수 있도록 개인용 조회 수단을 보관해 주세요.'
@@ -144,7 +174,7 @@ $('continue-reading').onclick = openCheckout;
 $('manage-access').onclick = openCheckout;
 $('close-checkout').onclick = () => {
   show('checkout-panel', false);
-  $(current.paid ? 'full-report' : 'paid-offer').scrollIntoView({ block: 'start' });
+  $(current.fullAccess || current.paid ? 'full-report' : 'paid-offer').scrollIntoView({ block: 'start' });
 };
 $('chapter-select').onchange = e => renderChapter(Number(e.target.value), true);
 $('previous-chapter').onclick = () => renderChapter(Math.max(0, chapterIndex - 1), true);
@@ -167,6 +197,20 @@ async function load(id) {
     `확정된 ${current.chart.visibleCount}글자만 집계해요. 지장간 가중치·계절 강약은 제외한 분포예요.`;
   $('preview').replaceChildren(...current.report.preview.map((b) => block(b, current.report)));
   $('warnings').replaceChildren(...current.chart.warnings.map((w) => text('li', w)));
+  if (config.accessMode === 'beta') {
+    document.body.classList.add('beta-reading');
+    show('paid-offer', false); show('free-reading', false); show('full-report', true);
+    show('checkout-panel', false); show('purchase-controls', false); show('order-panel', false);
+    $('chapter-select').replaceChildren(...current.report.sections.map((section, index) => {
+      const option = text('option', `${index + 1}. ${section.title}`); option.value = index; return option;
+    }));
+    $('book-version').textContent = current.report.version === 'ko-pattern-4'
+      ? '전체 무료 베타 · 전통 해석에 따른 패턴 가설이며 실제 행동을 관찰한 결과가 아닙니다.'
+      : '이전 버전으로 저장된 보고서입니다. 아래 새 분석 버튼으로 개편된 풀이를 볼 수 있습니다.';
+    renderChapter(Math.min(chapterIndex, current.report.sections.length - 1));
+    $('expiry').textContent = '이 결과의 보관 기한: ' + new Date(current.expiresAt).toLocaleDateString('ko-KR');
+    accessUi(); return;
+  }
   renderContents(current.report.toc);
   $('sample').replaceChildren(block(current.report.sample, current.report));
   $('price').textContent = config.price.toLocaleString() + '원 (부가세 포함)';
@@ -439,6 +483,7 @@ async function init() {
     route = location.pathname;
   history.replaceState(null, '', route);
   config = await api('/config');
+  if (config.accessMode === 'beta') document.body.classList.add('beta-reading');
   $('seller-info').textContent = config.seller?.name
     ? `판매자: ${config.seller.name} / 대표: ${config.seller.representative} / 사업자등록번호: ${config.seller.registration} / 통신판매: ${config.seller.commerce} / 주소: ${config.seller.address} / 연락처: ${config.seller.contact}`
     : '실판매 전 판매자 사업자 정보를 등록할 예정이에요. 현재 실제 과금은 하지 않아요.';
@@ -450,7 +495,9 @@ async function init() {
       return o;
     }),
   );
-  if (config.mode !== 'live') {
+  if (config.accessMode === 'beta') {
+    show('mode', true); $('mode').textContent = '전체 무료 베타 · 모든 장을 바로 읽을 수 있습니다.';
+  } else if (config.mode !== 'live') {
     show('mode', true);
     $('mode').textContent =
       config.mode === 'demo'

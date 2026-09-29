@@ -1,0 +1,861 @@
+[
+  {
+    "date": "1990-01-01",
+    "selected": {
+      "personality": "비견",
+      "strength": "비견",
+      "money": "비견",
+      "moneyPath": "pillars.month",
+      "work": "비견",
+      "love": "편인"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 385,
+      "repeatPairs": 9,
+      "nearPairs": 0,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 병자의 천간을 네 일간(丙)과 비교하면 비견이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '내 기준과 동료'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "혼자 결정할 일과 함께 결정할 일을 나누어 두면 협업의 기준이 또렷해진단다."
+        ],
+        [
+          "strength",
+          "resources",
+          "혼자 결정할 일과 함께 결정할 일을 나누어 두면 협업의 기준이 또렷해진단다."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "혼자 결정할 일과 함께 결정할 일을 나누어 두면 협업의 기준이 또렷해진단다."
+        ],
+        [
+          "strength",
+          "year-2026",
+          "혼자 결정할 일과 함께 결정할 일을 나누어 두면 협업의 기준이 또렷해진단다."
+        ],
+        [
+          "work",
+          "year-2026",
+          "혼자 결정할 일과 함께 결정할 일을 나누어 두면 협업의 기준이 또렷해진단다."
+        ],
+        [
+          "resources",
+          "year-2026",
+          "혼자 결정할 일과 함께 결정할 일을 나누어 두면 협업의 기준이 또렷해진단다."
+        ],
+        [
+          "work-plan",
+          "year-2026",
+          "혼자 결정할 일과 함께 결정할 일을 나누어 두면 협업의 기준이 또렷해진단다."
+        ]
+      ],
+      "near": []
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 185,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-02",
+    "selected": {
+      "personality": "겁재",
+      "strength": "겁재",
+      "money": "겁재",
+      "moneyPath": "pillars.month",
+      "work": "겁재",
+      "love": "편인"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 394,
+      "repeatPairs": 9,
+      "nearPairs": 0,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 병자의 천간을 네 일간(丁)과 비교하면 겁재이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '경쟁과 나눌 몫'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "공동 비용과 수익을 누가 얼마나 맡는지 시작 전에 적어두는 편이 좋겠구나."
+        ],
+        [
+          "strength",
+          "resources",
+          "공동 비용과 수익을 누가 얼마나 맡는지 시작 전에 적어두는 편이 좋겠구나."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "공동 비용과 수익을 누가 얼마나 맡는지 시작 전에 적어두는 편이 좋겠구나."
+        ],
+        [
+          "strength",
+          "year-2026",
+          "공동 비용과 수익을 누가 얼마나 맡는지 시작 전에 적어두는 편이 좋겠구나."
+        ],
+        [
+          "work",
+          "year-2026",
+          "공동 비용과 수익을 누가 얼마나 맡는지 시작 전에 적어두는 편이 좋겠구나."
+        ],
+        [
+          "resources",
+          "year-2026",
+          "공동 비용과 수익을 누가 얼마나 맡는지 시작 전에 적어두는 편이 좋겠구나."
+        ],
+        [
+          "work-plan",
+          "year-2026",
+          "공동 비용과 수익을 누가 얼마나 맡는지 시작 전에 적어두는 편이 좋겠구나."
+        ]
+      ],
+      "near": []
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 154,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-03",
+    "selected": {
+      "personality": "편인",
+      "strength": "편인",
+      "money": "편인",
+      "moneyPath": "pillars.month",
+      "work": "편인",
+      "love": "비견"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 394,
+      "repeatPairs": 9,
+      "nearPairs": 0,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 병자의 천간을 네 일간(戊)과 비교하면 편인이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '탐구와 다른 관점'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "strength",
+          "resources",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "strength",
+          "year-2026",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "work",
+          "year-2026",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "resources",
+          "year-2026",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "work-plan",
+          "year-2026",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ]
+      ],
+      "near": []
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 162,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-04",
+    "selected": {
+      "personality": "정인",
+      "strength": "정인",
+      "money": "정인",
+      "moneyPath": "pillars.month",
+      "work": "정인",
+      "love": "정인"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 382,
+      "repeatPairs": 9,
+      "nearPairs": 0,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 병자의 천간을 네 일간(己)과 비교하면 정인이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '배움과 도움'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "배운 내용을 한 번 정리한 뒤 실제 일 하나에 적용해 보거라."
+        ],
+        [
+          "strength",
+          "resources",
+          "배운 내용을 한 번 정리한 뒤 실제 일 하나에 적용해 보거라."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "배운 내용을 한 번 정리한 뒤 실제 일 하나에 적용해 보거라."
+        ],
+        [
+          "strength",
+          "year-2026",
+          "배운 내용을 한 번 정리한 뒤 실제 일 하나에 적용해 보거라."
+        ],
+        [
+          "work",
+          "year-2026",
+          "배운 내용을 한 번 정리한 뒤 실제 일 하나에 적용해 보거라."
+        ],
+        [
+          "resources",
+          "year-2026",
+          "배운 내용을 한 번 정리한 뒤 실제 일 하나에 적용해 보거라."
+        ],
+        [
+          "work-plan",
+          "year-2026",
+          "배운 내용을 한 번 정리한 뒤 실제 일 하나에 적용해 보거라."
+        ]
+      ],
+      "near": []
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 165,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-05",
+    "selected": {
+      "personality": null,
+      "strength": null,
+      "money": null,
+      "moneyPath": "pillars.month",
+      "work": null,
+      "love": "정관"
+    },
+    "before": {
+      "openingTerms": 4,
+      "openingCharacters": 252,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 88,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-06",
+    "selected": {
+      "personality": "편관",
+      "strength": "편관",
+      "money": "편관",
+      "moneyPath": "pillars.month",
+      "work": "편관",
+      "love": "편인"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 385,
+      "repeatPairs": 9,
+      "nearPairs": 0,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 정축의 천간을 네 일간(辛)과 비교하면 편관이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '도전과 부담 조절'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "어려운 과제를 맡을 때 기한과 권한, 지원받을 수 있는 범위를 함께 확인하거라."
+        ],
+        [
+          "strength",
+          "resources",
+          "어려운 과제를 맡을 때 기한과 권한, 지원받을 수 있는 범위를 함께 확인하거라."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "어려운 과제를 맡을 때 기한과 권한, 지원받을 수 있는 범위를 함께 확인하거라."
+        ],
+        [
+          "strength",
+          "year-2027",
+          "어려운 과제를 맡을 때 기한과 권한, 지원받을 수 있는 범위를 함께 확인하거라."
+        ],
+        [
+          "work",
+          "year-2027",
+          "어려운 과제를 맡을 때 기한과 권한, 지원받을 수 있는 범위를 함께 확인하거라."
+        ],
+        [
+          "resources",
+          "year-2027",
+          "어려운 과제를 맡을 때 기한과 권한, 지원받을 수 있는 범위를 함께 확인하거라."
+        ],
+        [
+          "work-plan",
+          "year-2027",
+          "어려운 과제를 맡을 때 기한과 권한, 지원받을 수 있는 범위를 함께 확인하거라."
+        ]
+      ],
+      "near": []
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 153,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-07",
+    "selected": {
+      "personality": "정재",
+      "strength": "정재",
+      "money": "정재",
+      "moneyPath": "pillars.month",
+      "work": "정재",
+      "love": "편인"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 384,
+      "repeatPairs": 9,
+      "nearPairs": 1,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 정축의 천간을 네 일간(壬)과 비교하면 정재이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '일상과 자원 관리'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "반복 지출과 들어오는 돈을 나누어 기록하되 계획을 고칠 날짜도 정해 두거라."
+        ],
+        [
+          "strength",
+          "resources",
+          "반복 지출과 들어오는 돈을 나누어 기록하되 계획을 고칠 날짜도 정해 두거라."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "반복 지출과 들어오는 돈을 나누어 기록하되 계획을 고칠 날짜도 정해 두거라."
+        ],
+        [
+          "strength",
+          "year-2027",
+          "반복 지출과 들어오는 돈을 나누어 기록하되 계획을 고칠 날짜도 정해 두거라."
+        ],
+        [
+          "work",
+          "year-2027",
+          "반복 지출과 들어오는 돈을 나누어 기록하되 계획을 고칠 날짜도 정해 두거라."
+        ],
+        [
+          "resources",
+          "year-2027",
+          "반복 지출과 들어오는 돈을 나누어 기록하되 계획을 고칠 날짜도 정해 두거라."
+        ],
+        [
+          "work-plan",
+          "year-2027",
+          "반복 지출과 들어오는 돈을 나누어 기록하되 계획을 고칠 날짜도 정해 두거라."
+        ]
+      ],
+      "near": [
+        [
+          "pattern",
+          "resources",
+          "연주 천간의 정관, 월주 천간의 정재를 확인했단다.",
+          "월주 천간의 정재를 확인했단다."
+        ]
+      ]
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 167,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-08",
+    "selected": {
+      "personality": "편재",
+      "strength": "편재",
+      "money": "편재",
+      "moneyPath": "pillars.month",
+      "work": "편재",
+      "love": "편인"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 381,
+      "repeatPairs": 9,
+      "nearPairs": 1,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 정축의 천간을 네 일간(癸)과 비교하면 편재이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '기회와 바깥 자원'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "strength",
+          "resources",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "strength",
+          "year-2027",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "work",
+          "year-2027",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "resources",
+          "year-2027",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "work-plan",
+          "year-2027",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ]
+      ],
+      "near": [
+        [
+          "pattern",
+          "resources",
+          "연주 천간의 편관, 월주 천간의 편재를 확인했단다.",
+          "월주 천간의 편재를 확인했단다."
+        ]
+      ]
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 164,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-09",
+    "selected": {
+      "personality": "상관",
+      "strength": "상관",
+      "money": "정재",
+      "moneyPath": "pillars.year",
+      "work": "상관",
+      "love": "편재"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 384,
+      "repeatPairs": 10,
+      "nearPairs": 0,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 정축의 천간을 네 일간(甲)과 비교하면 상관이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '표현과 개선'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "기존 방식의 문제를 지적할 때 작은 대안과 비교 결과를 함께 내놓아 보거라."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "기존 방식의 문제를 지적할 때 작은 대안과 비교 결과를 함께 내놓아 보거라."
+        ],
+        [
+          "strength",
+          "year-2027",
+          "기존 방식의 문제를 지적할 때 작은 대안과 비교 결과를 함께 내놓아 보거라."
+        ],
+        [
+          "work",
+          "year-2027",
+          "기존 방식의 문제를 지적할 때 작은 대안과 비교 결과를 함께 내놓아 보거라."
+        ],
+        [
+          "resources",
+          "luck-0-cycle-1",
+          "반복 지출과 들어오는 돈을 나누어 기록하되 계획을 고칠 날짜도 정해 두거라."
+        ],
+        [
+          "resources",
+          "luck-1-cycle-7",
+          "반복 지출과 들어오는 돈을 나누어 기록하되 계획을 고칠 날짜도 정해 두거라."
+        ],
+        [
+          "resources",
+          "year-2029",
+          "반복 지출과 들어오는 돈을 나누어 기록하되 계획을 고칠 날짜도 정해 두거라."
+        ],
+        [
+          "work-plan",
+          "year-2027",
+          "기존 방식의 문제를 지적할 때 작은 대안과 비교 결과를 함께 내놓아 보거라."
+        ]
+      ],
+      "near": []
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 183,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-10",
+    "selected": {
+      "personality": "식신",
+      "strength": "식신",
+      "money": "편재",
+      "moneyPath": "pillars.year",
+      "work": "식신",
+      "love": "정인"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 394,
+      "repeatPairs": 10,
+      "nearPairs": 0,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 정축의 천간을 네 일간(乙)과 비교하면 식신이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '꾸준한 표현과 생산'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "매일 완성할 수 있는 결과물을 정하고 그 결과에 대한 반응을 기록해 보거라."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "매일 완성할 수 있는 결과물을 정하고 그 결과에 대한 반응을 기록해 보거라."
+        ],
+        [
+          "strength",
+          "year-2027",
+          "매일 완성할 수 있는 결과물을 정하고 그 결과에 대한 반응을 기록해 보거라."
+        ],
+        [
+          "work",
+          "year-2027",
+          "매일 완성할 수 있는 결과물을 정하고 그 결과에 대한 반응을 기록해 보거라."
+        ],
+        [
+          "resources",
+          "luck-0-cycle-1",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "resources",
+          "luck-1-cycle-7",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "resources",
+          "year-2029",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "work-plan",
+          "year-2027",
+          "매일 완성할 수 있는 결과물을 정하고 그 결과에 대한 반응을 기록해 보거라."
+        ]
+      ],
+      "near": []
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 160,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1988-08-15",
+    "selected": {
+      "personality": "편인",
+      "strength": "편인",
+      "money": "편인",
+      "moneyPath": "pillars.month",
+      "work": "편인",
+      "love": "식신"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 394,
+      "repeatPairs": 9,
+      "nearPairs": 0,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 경신의 천간을 네 일간(壬)과 비교하면 편인이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '탐구와 다른 관점'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "strength",
+          "resources",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "strength",
+          "year-2030",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "work",
+          "year-2030",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "resources",
+          "year-2030",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ],
+        [
+          "work-plan",
+          "year-2030",
+          "흥미로운 생각 하나를 작은 실험으로 옮겨 실제로 쓸 수 있는지 확인해 보거라."
+        ]
+      ],
+      "near": []
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 162,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  },
+  {
+    "date": "1990-03-02",
+    "selected": {
+      "personality": "식신",
+      "strength": "식신",
+      "money": "편재",
+      "moneyPath": "pillars.year",
+      "work": "식신",
+      "love": "편인"
+    },
+    "before": {
+      "openingTerms": 5,
+      "openingCharacters": 385,
+      "repeatPairs": 10,
+      "nearPairs": 0,
+      "repeated": [
+        [
+          "summary",
+          "work",
+          "월주 무인의 천간을 네 일간(丙)과 비교하면 식신이란다."
+        ],
+        [
+          "summary",
+          "work",
+          "이 조합에서 꺼내볼 주제는 '꾸준한 표현과 생산'란다."
+        ],
+        [
+          "strength",
+          "work",
+          "매일 완성할 수 있는 결과물을 정하고 그 결과에 대한 반응을 기록해 보거라."
+        ],
+        [
+          "strength",
+          "work-plan",
+          "매일 완성할 수 있는 결과물을 정하고 그 결과에 대한 반응을 기록해 보거라."
+        ],
+        [
+          "strength",
+          "year-2028",
+          "매일 완성할 수 있는 결과물을 정하고 그 결과에 대한 반응을 기록해 보거라."
+        ],
+        [
+          "work",
+          "year-2028",
+          "매일 완성할 수 있는 결과물을 정하고 그 결과에 대한 반응을 기록해 보거라."
+        ],
+        [
+          "resources",
+          "luck-0-cycle-1",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "resources",
+          "luck-1-cycle-7",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "resources",
+          "year-2030",
+          "새 제안을 받으면 기대하는 결과뿐 아니라 필요한 시간과 감당 가능한 비용도 적어보거라."
+        ],
+        [
+          "work-plan",
+          "year-2028",
+          "매일 완성할 수 있는 결과물을 정하고 그 결과에 대한 반응을 기록해 보거라."
+        ]
+      ],
+      "near": []
+    },
+    "after": {
+      "openingTerms": 0,
+      "openingCharacters": 160,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "repeated": [],
+      "near": []
+    }
+  }
+]

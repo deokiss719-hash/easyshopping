@@ -18,6 +18,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
     address: env.SAJU_SELLER_ADDRESS || '',
     contact: env.SAJU_SELLER_CONTACT || '',
   };
+  const beta = env.SAJU_ACCESS_MODE !== 'paid';
   const sellerReady = Object.values(seller).every(Boolean);
   const base = env.SAJU_PUBLIC_ORIGIN || 'https://easyshoopping.com';
   const cookie = (res, name, value, seconds) =>
@@ -81,12 +82,13 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
       cookie(res, 'saju_owner', owner, 3600);
       const s = await store.settings();
       res.json({
-        price: s.price,
+        price: beta ? null : s.price,
+        accessMode: beta ? 'beta' : 'paid',
         freeSections: s.free_sections,
         version: s.report_version,
         mode: config.mode,
         clientKey: config.clientKey,
-        canPay: config.mode !== 'live' || (s.sales_enabled && sellerReady),
+        canPay: !beta && (config.mode !== 'live' || (s.sales_enabled && sellerReady)),
         seller,
         zones: ZONES,
       });
@@ -144,6 +146,8 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
       res.json({
         id: r.id,
         paid: r.paid,
+        fullAccess: beta || r.paid,
+        accessMode: beta ? 'beta' : 'paid',
         name: chart.input.name,
         expiresAt: r.expires_at,
         order,
@@ -156,7 +160,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
           visibleCount: chart.visibleCount,
           warnings: chart.warnings,
         },
-        report: r.paid
+        report: (beta || r.paid)
           ? report
           : {
               version: report.version,
@@ -164,14 +168,14 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
               toc: report.toc,
               preview:
                 settings.free_sections === 4
-                  ? [...report.preview, report.sections[2].blocks[2]]
+                  ? [...report.preview, (report.sections[2].blocks[2] || report.sections[3].blocks[0])]
                   : report.preview,
               sample: report.sample,
               evidence: Object.fromEntries(
                 [
                   ...report.preview,
                   report.sample,
-                  ...(settings.free_sections === 4 ? [report.sections[2].blocks[2]] : []),
+                  ...(settings.free_sections === 4 ? [(report.sections[2].blocks[2] || report.sections[3].blocks[0])] : []),
                 ].map((b) => [b.id, report.evidence[b.id]]),
               ),
             },
@@ -212,6 +216,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
   router.post(
     '/api/saju/reports/:id/orders',
     wrap(async (req, res) => {
+      if (beta) return res.status(409).json({error:'전체 무료 베타에서는 주문을 만들지 않습니다.'});
       const r = await authorize(req),
         s = await store.settings();
       if (req.body?.terms !== true || req.body?.recoverySaved !== true)
@@ -241,6 +246,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
   router.post(
     '/api/saju/orders/:order/confirm',
     wrap(async (req, res) => {
+      if (beta) return res.status(409).json({error:'전체 무료 베타에서는 구매 승인을 진행하지 않습니다.'});
       const o = await orderAuth(req);
       const key = config.mode === 'demo' ? 'demo_' + o.id : req.body.paymentKey;
       if (typeof key !== 'string' || key.length > 200 || !key)
@@ -297,7 +303,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
     router.use('/api/admin/saju', auth.requireAuth);
     router.get(
       '/api/admin/saju',
-      wrap(async (_req, res) => res.json({ ...(await store.dashboard()), mode: config.mode })),
+      wrap(async (_req, res) => res.json({ ...(await store.dashboard()), mode: config.mode, accessMode: beta ? 'beta' : 'paid' })),
     );
     router.patch(
       '/api/admin/saju/settings',

@@ -1,7 +1,7 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {calculate} = require('../src/saju/calculator');
-const {generate,profile} = require('../src/saju/report');
+const {generate,profile} = require('../src/saju/report-v3');
 const old = require('../src/saju/report-v2');
 const input = date => ({date,calendar:'solar',timeType:'exact',time:'12:00',zone:'Asia/Seoul'});
 test('depth report keeps earlier purchased text reproducible and every inference traceable',()=>{
