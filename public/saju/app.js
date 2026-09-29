@@ -42,11 +42,25 @@ function block(b, report) {
   const wrap = document.createElement('article');
   // Chapter names remain; narrative subtitles no longer interrupt the story.
   // Only change presentation; the stored report wording stays unchanged.
-  if (b.periods) wrap.append(text('p', b.periods.join(' · '), 'period-tags'));
+  if (b.periods) {
+    const labels = b.periods.map(value => value
+      .replace(/^순행 약 /, '첫 번째 풀이: ')
+      .replace(/^역행 약 /, '두 번째 풀이: ')
+      .replace(/(\d+(?:\.\d+)?)~(\d+(?:\.\d+)?)세/, (_, start, end) => `약 ${Math.round(Number(start))}살부터 ${Math.round(Number(end))}살까지`)
+      .replace(/년 입춘 이후/, '년 2월 초부터'));
+    wrap.append(text('p', labels.join(' · '), 'period-tags'));
+  }
   const savedParts = b.parts || b.text.split(/(?<=[.!?])\s+/u).map(text => ({text}));
-  const paragraphs = savedParts.length === 5 && savedParts.every(p => p.label)
+  let paragraphs = savedParts.length === 5 && savedParts.every(p => p.label)
     ? [{text:savedParts.slice(0,3).map(p=>p.text).join(' ')},{text:savedParts.slice(3).map(p=>p.text).join(' ')}]
     : savedParts;
+  if (b.id === 'flow-guide') {
+    paragraphs = [
+      { text: '이제 나이와 해에 따라 어떤 이야기가 담겨 있는지 들려주마. 적힌 때에 꼭 그 일이 생긴다는 뜻은 아니란다. 니가 어디에서 누구와 지내고 무엇을 고르는지에 따라 삶은 달라진다.' },
+      { text: '나이별 이야기는 두 가지로 나올 수 있단다. 지금 받은 정보만으로는 둘 중 어느 쪽이 니에게 맞는지 정할 수 없어 함께 적었지. 둘 다 겪는다는 뜻도, 마음에 드는 쪽을 고르라는 뜻도 아니란다.' },
+      { text: '첫 번째 풀이와 두 번째 풀이에 적힌 나이는 대략의 나이란다. 연도가 적힌 이야기는 그해 2월 초부터 다음 해 2월 초까지를 보고 풀었지. 같은 이야기가 나오는 나이와 해는 한곳에 모아두었단다.' },
+    ];
+  }
   for (const part of paragraphs) {
     // Sentence-by-sentence reading changes presentation, not saved report text.
     const sentences = part.text.trim().split(/(?<=[.!?。！？])\s+/u);
