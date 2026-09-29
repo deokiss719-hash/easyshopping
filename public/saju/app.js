@@ -212,7 +212,7 @@ async function load(id) {
     $('chapter-select').replaceChildren(...current.report.sections.map((section, index) => {
       const option = text('option', `${index + 1}. ${section.title}`); option.value = index; return option;
     }));
-    $('book-version').textContent = ['ko-pattern-4','ko-story-5','ko-grandmother-story-6'].includes(current.report.version)
+    $('book-version').textContent = current.report.version === config.version
       ? '전체 무료 베타 · 전통 해석에 따른 패턴 가설이며 실제 행동을 관찰한 결과가 아닙니다.'
       : '이전 버전으로 저장된 보고서입니다. 아래 새 분석 버튼으로 개편된 풀이를 볼 수 있습니다.';
     renderChapter(Math.min(chapterIndex, current.report.sections.length - 1));
