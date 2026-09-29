@@ -50,3 +50,10 @@ WITH first_apply AS (
 )
 UPDATE saju_settings SET report_version='ko-pattern-4'
 WHERE id=1 AND EXISTS(SELECT 1 FROM first_apply);
+
+WITH first_apply AS (
+ INSERT INTO saju_content_migrations(version) VALUES('ko-story-5')
+ ON CONFLICT(version) DO NOTHING RETURNING version
+)
+UPDATE saju_settings SET report_version='ko-story-5'
+WHERE id=1 AND EXISTS(SELECT 1 FROM first_apply);
