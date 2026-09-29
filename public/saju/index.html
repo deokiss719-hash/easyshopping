@@ -8,28 +8,32 @@
     <link rel="stylesheet" href="/saju/style.css" />
     <script src="/saju/app.js" defer></script>
   </head>
-  <body>
+  <body class="saju-experience">
     <header>
       <a href="/">이지핫딜</a>
       <nav><a href="/saju">사주풀이</a><a href="/saju/recover">구매 보고서 찾기</a></nav>
     </header>
     <main>
-      <p class="eyebrow">나를 돌아보는 전통 명리 이야기</p>
-      <h1>내 사주를 읽는<br />작은 출발점</h1>
-      <p class="intro">
-        계산한 원국과 해석의 근거를 먼저 살펴보세요.<br />무료 결과를 읽은 뒤, 더 궁금할 때 보고서를
-        선택하세요.
-      </p>
-      <ol class="steps" aria-label="이용 순서">
-        <li>정보 입력</li>
-        <li>무료 풀이</li>
-        <li>결제</li>
-        <li>전체 보고서</li>
-      </ol>
+      <section id="opening" class="opening" aria-labelledby="opening-title">
+        <p class="opening-brand">이지핫딜의 사주 이야기</p>
+        <div class="saju-seal" aria-hidden="true"><span>四柱</span><small>나를 읽는 시간</small></div>
+        <p class="eyebrow">태어난 날에 담긴 이야기</p>
+        <h1 id="opening-title">나를 알아가는<br />사주 한 편</h1>
+        <div class="opening-story">
+          <p>같은 일을 겪어도<br />마음이 향하는 곳은 저마다 다릅니다.</p>
+          <p>내가 자연스럽게 잘하는 것,<br />관계에서 자꾸 되풀이하는 모습.<br />그 안에 나를 이해할 단서가 있을까요?</p>
+          <p>태어난 날과 시간의 여덟 글자를 따라<br />당신의 이야기를 천천히 읽어봅니다.</p>
+        </div>
+        <button id="begin-reading" type="button" class="opening-button">나의 사주 풀이 보기 <span aria-hidden="true">→</span></button>
+        <p class="opening-note">무료 풀이 먼저 · 회원가입 없이</p>
+        <p class="opening-disclaimer">전통 명리를 바탕으로 나를 돌아보는 해석입니다.<br />미래를 확정하거나 예언하지 않습니다.</p>
+      </section>
       <p id="mode" class="notice" hidden></p>
       <p id="message" role="status" aria-live="polite"></p>
-      <section id="input-panel" class="card">
-        <h2>출생 정보</h2>
+      <section id="input-panel" class="card" hidden>
+        <button id="back-opening" type="button" class="text-button">← 처음으로</button>
+        <p class="eyebrow">첫 번째 장 · 나의 시작</p>
+        <h2>어느 날, 어느 시간에<br />태어나셨나요?</h2>
         <p class="muted">
           회원가입·전화번호 없이 이용해요. 만 14세 이상, 1900년 이후 출생을 지원해요.
         </p>
@@ -109,7 +113,7 @@
               이용할 수 없어요.</span
             ></label
           >
-          <button type="submit" id="analyze">무료 사주 보기</button>
+          <button type="submit" id="analyze">나의 무료 풀이 열기 →</button>
         </form>
       </section>
       <section id="recovery-panel" class="card" hidden>
@@ -128,7 +132,7 @@
       <section id="result-panel" hidden>
         <button type="button" id="new-analysis" class="secondary">다른 출생 정보로 새 분석</button>
         <div class="card">
-          <p class="eyebrow">계산 결과 · 무료 공개</p>
+          <p class="eyebrow">두 번째 장 · 여덟 글자에 담긴 나</p>
           <h2 id="result-title"></h2>
           <p id="chart-meta"></p>
           <div id="pillars" class="pillars"></div>
@@ -142,7 +146,7 @@
           </details>
         </div>
         <div class="card" id="access-panel">
-          <h2>개인용 조회 수단을 저장해 주세요</h2>
+          <h2>내 이야기를 다시 찾는 방법</h2>
           <p>
             보고서에는 개인 정보가 포함되어 있어요. 링크와 코드를 다른 사람에게 공유하지 마세요.
           </p>
@@ -156,6 +160,7 @@
           </p>
         </div>
         <div id="paid-offer" class="card">
+          <p class="eyebrow">이야기를 더 깊이 읽고 싶다면</p>
           <h2>나의 사주 기본 보고서</h2>
           <p>무료 결과에 이어 아래 내용을 모두 열람할 수 있어요.</p>
           <ol id="toc"></ol>
@@ -165,7 +170,8 @@
           </details>
           <p class="price" id="price"></p>
           <p id="checkout-mode"></p>
-          <div class="policy">
+          <details class="policy">
+            <summary>구매·열람·환불 안내 확인하기</summary>
             <p id="seller-info"></p>
             <h3>구매 전 확인해 주세요</h3>
             <p>
@@ -184,7 +190,7 @@
               보관해요. 복구 수단 분실 시 주문번호로 결제·환불 문의는 가능하지만 보고서 자동 복구는
               불가능해요.
             </p>
-          </div>
+          </details>
           <label class="check"
             ><input type="checkbox" id="saved" /><span
               >조회 링크와 복구 코드를 안전한 곳에 저장했어요.</span

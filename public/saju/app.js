@@ -59,6 +59,7 @@ async function load(id) {
   sessionStorage.setItem('saju-current', id);
   const stored = sessionStorage.getItem('saju-access-' + id);
   if (stored) access = JSON.parse(stored);
+  show('opening', false);
   show('input-panel', false);
   show('recovery-panel', false);
   show('result-panel', true);
@@ -203,6 +204,18 @@ async function checkout(fail = false) {
     throw Error('결제가 취소되었거나 결제창을 열지 못했어요. 같은 주문으로 다시 시도할 수 있어요.');
   }
 }
+$('begin-reading').onclick = () => {
+  show('opening', false);
+  show('input-panel', true);
+  window.scrollTo({ top: 0 });
+  form.elements.date.focus({ preventScroll: true });
+};
+$('back-opening').onclick = () => {
+  show('input-panel', false);
+  show('opening', true);
+  tell('');
+  window.scrollTo({ top: 0 });
+};
 const form = $('birth-form');
 form.elements.date.addEventListener('input', (e) => {
   const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 8);
@@ -314,6 +327,7 @@ $('delete').onclick = () => {
     sessionStorage.removeItem('saju-access-' + current.id);
     sessionStorage.removeItem('saju-current');
     show('result-panel', false);
+    show('opening', true);
     tell('출생 정보와 보고서를 삭제했어요. 결제 기록은 법정 기간 동안 별도로 보관해요.');
   });
 };
@@ -343,6 +357,7 @@ async function init() {
   }
   api('/events', { method: 'POST', body: { event: 'visit' } }).catch(() => {});
   if (route === '/saju/recover') {
+    show('opening', false);
     show('input-panel', false);
     show('recovery-panel', true);
     if (fragment) {

@@ -326,3 +326,97 @@ pre {
     max-width: 100%;
   }
 }
+
+/* Customer reading experience. Admin and method pages retain their own styles. */
+.saju-experience {
+  background: #0c0c0b;
+  color: #d4cbb8;
+  font-family: 'AppleMyungjo', 'Batang', 'Noto Serif KR', Georgia, serif;
+  min-height: 100vh;
+  color-scheme: dark;
+  --gold: #c4ab75;
+  --line: #3d372c;
+}
+.saju-experience header {
+  background: transparent;
+  border: 0;
+  max-width: 760px;
+  margin: auto;
+  padding: 22px 24px;
+}
+.saju-experience header > a { font-size: 15px; font-weight: 400; letter-spacing: 2px; }
+.saju-experience nav { font-size: 12px; }
+.saju-experience a { color: #b8a581; }
+.saju-experience main { max-width: 660px; padding: 0 24px 48px; }
+.saju-experience .opening { text-align: center; padding: 34px 0 18px; }
+.opening-brand { font-size: 12px; letter-spacing: 4px; color: #998c73; }
+.saju-seal {
+  width: 152px; height: 190px; margin: 35px auto;
+  border: 1px solid #756344; border-radius: 50%;
+  outline: 1px solid #393126; outline-offset: 7px;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  background: radial-gradient(ellipse, #29231a 0%, #12110e 65%);
+}
+.saju-seal span { font-size: 45px; letter-spacing: 9px; padding-left: 9px; color: #c9b486; }
+.saju-seal small { font-size: 10px; letter-spacing: 2px; color: #a18f6e; margin-top: 12px; }
+.saju-experience .eyebrow { color: #b09a71; font-weight: 400; font-size: 12px; letter-spacing: 2px; }
+.saju-experience h1 { font-size: clamp(35px, 8vw, 48px); font-weight: 400; line-height: 1.55; letter-spacing: 0; color: #e3d5b7; }
+.saju-experience h2 { font-size: 27px; font-weight: 400; line-height: 1.65; color: #e1d0ac; }
+.saju-experience h3 { font-size: 19px; color: #d9c49c; font-weight: 400; }
+.opening-story { font-size: 16px; line-height: 2.1; color: #b9ae97; }
+.opening-story p { margin: 25px 0; }
+.saju-experience button { background: #c2aa77; color: #16130e; border: 1px solid #c2aa77; border-radius: 0; font-weight: 400; padding: 16px 18px; }
+.saju-experience .opening-button { background: transparent; color: #e0cda5; width: min(100%, 350px); margin: 20px 0 0; }
+.opening-button span { margin-left: 25px; }
+.opening-note { color: #b5a17a; font-size: 12px; letter-spacing: 1px; }
+.opening-disclaimer { color: #8c8578; font-size: 11px; margin-top: 35px; line-height: 1.9; }
+.saju-experience .card { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; padding: 38px 0; margin: 0; }
+.saju-experience #input-panel { padding-top: 12px; border-top: 0; max-width: 480px; margin: auto; }
+.saju-experience #input-panel h2 { margin-top: 24px; }
+.saju-experience label { font-weight: 400; font-size: 15px; margin-top: 25px; }
+.saju-experience input:not([type='checkbox']), .saju-experience select { background: #12120f; color: #e0d6c2; border: 1px solid #554b39; border-radius: 0; padding: 15px 12px; }
+.saju-experience input::placeholder { color: #918776; }
+.saju-experience input:focus, .saju-experience select:focus, .saju-experience button:focus-visible { outline: 2px solid #cfb583; }
+.saju-experience input[type='checkbox'] { accent-color: #c2aa77; }
+.saju-experience small, .saju-experience .muted { color: #aaa18f; font-size: 12px; }
+.saju-experience details { background: #141410; border-radius: 0; border: 1px solid #302c23; padding: 16px; }
+.saju-experience summary { font-weight: 400; font-size: 13px; color: #bfa97e; }
+.saju-experience .check { font-size: 12px; color: #b9ae97; line-height: 1.9; }
+.saju-experience .notice { background: transparent; color: #a89a7f; border: 1px solid #393225; border-radius: 0; padding: 10px 14px; font-size: 11px; text-align: center; }
+.saju-experience #message { color: #d6bd89; font-size: 14px; }
+.saju-experience #message:empty { display: none; }
+.saju-experience .text-button { border: 0; background: transparent; color: #ad9b78; padding: 8px 0; font-size: 12px; }
+.saju-experience .secondary { background: transparent; border-color: #65583e; color: #cdbd9e; font-size: 12px; }
+.saju-experience .danger { background: transparent; color: #c99888; border-color: #664d42; font-size: 12px; }
+.saju-experience .pillars { gap: 1px; background: #49402f; border: 1px solid #49402f; margin: 28px 0; }
+.saju-experience .pillar { background: #171611; border-radius: 0; padding: 20px 2px; }
+.saju-experience .pillar strong { color: #e4c98d; font-size: 25px; margin: 12px 0; font-weight: 400; }
+.saju-experience .element { border: 1px solid #484132; border-radius: 0; background: transparent; color: #c6b999; font-size: 14px; padding: 8px 14px; }
+.saju-experience article { margin: 38px 0; }
+.saju-experience article > p { line-height: 2.1; font-size: 16px; word-break: keep-all; overflow-wrap: anywhere; }
+.saju-experience .evidence { color: #a49a86; }
+.saju-experience .report-section { border-color: var(--line); padding-top: 35px; margin-top: 45px; }
+.saju-experience .report-section h2 { color: #d6be8d; }
+.saju-experience #paid-offer { border: 1px solid #685639; padding: 30px 24px; background: #14130f; margin-bottom: 35px; }
+.saju-experience #toc { list-style: decimal-leading-zero; padding-left: 32px; }
+.saju-experience #toc li { padding: 12px 0 12px 8px; border-bottom: 1px solid #332e23; font-size: 15px; }
+.saju-experience #toc li::marker { color: #9b8357; }
+.saju-experience .price { color: #e0c693; font-size: 30px; font-weight: 400; margin-bottom: 5px; }
+.saju-experience #checkout-mode, .saju-experience #order-info { font-size: 12px; color: #b1a38a; overflow-wrap: anywhere; }
+.saju-experience .policy { border-color: #49402f; }
+.saju-experience footer { border-top: 1px solid #332e25; padding-top: 25px; color: #918777; font-size: 11px; }
+@media (max-width: 480px) {
+  .saju-experience header { padding: 18px 20px; }
+  .saju-experience header > a { font-size: 13px; }
+  .saju-experience nav { font-size: 11px; gap: 12px; }
+  .saju-experience main { padding: 0 22px 35px; }
+  .saju-experience .opening { padding-top: 16px; }
+  .saju-seal { width: 122px; height: 152px; margin: 30px auto; }
+  .saju-seal span { font-size: 36px; }
+  .opening-story { font-size: 15px; }
+  .saju-experience .pillar strong { font-size: 21px; }
+  .saju-experience .pillar small { font-size: 10px; }
+  .saju-experience .elements { gap: 6px; }
+  .saju-experience .element { padding: 7px 11px; }
+  .saju-experience #paid-offer { padding: 25px 16px; }
+}
