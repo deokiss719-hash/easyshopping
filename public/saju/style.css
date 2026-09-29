@@ -420,3 +420,94 @@ pre {
   .saju-experience .element { padding: 7px 11px; }
   .saju-experience #paid-offer { padding: 25px 16px; }
 }
+
+/* Post-input reading: analysis, narrative, chapter preview and book reader. */
+.saju-experience .analysis-scene { min-height: 75svh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 55px 0; }
+.analysis-orbit { width: 150px; height: 150px; border: 1px solid #71613e; border-radius: 50%; display: grid; place-items: center; margin-bottom: 38px; box-shadow: 0 0 65px #a7854222, inset 0 0 40px #ab823318; animation: saju-breathe 2.6s ease-in-out infinite; }
+.analysis-orbit span { font-size: 34px; letter-spacing: 8px; padding-left: 8px; color: #cdb888; }
+.saju-experience .analysis-scene h2 { font-size: 24px; }
+#analysis-status { font-size: 13px; color: #c4b697; line-height: 1.9; }
+.analysis-notes { margin-top: 25px; font-size: 14px; line-height: 2.2; color: #958973; }
+@keyframes saju-breathe { 50% { box-shadow: 0 0 90px #a7854240, inset 0 0 50px #ab823326; } }
+.reading-title { text-align: center; margin: 45px 0 36px; }
+.saju-experience .reading-title h1 { font-size: clamp(29px, 6vw, 40px); overflow-wrap: anywhere; }
+.red-rule { display: block; width: 45px; height: 2px; background: #813d27; margin: 25px auto; }
+.saju-experience .chart-details { background: transparent; border: 0; padding: 0; margin-bottom: 36px; }
+.saju-experience .chart-details > summary { list-style: none; text-align: center; border: 1px solid #503b2c; background: #1b130d; padding: 14px 10px; font-size: 12px; }
+.chart-details > summary::-webkit-details-marker { display: none; }
+.chart-toggle { display: block; color: #b9a78b; font-size: 11px; margin-top: 5px; }
+.chart-toggle::after { content: ' ▾'; }
+.chart-details[open] .chart-toggle::after { content: ' ▴'; }
+.saju-experience .chart-details h2, .saju-experience .chart-details h3 { text-align: center; margin-top: 28px; }
+.birth-chart { table-layout: fixed; width: 100%; margin-top: 22px; }
+.birth-chart caption { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.saju-experience .birth-chart th, .saju-experience .birth-chart td { border: 1px solid #3c3225; padding: 10px 3px; text-align: center; font-weight: 400; font-size: 12px; }
+.birth-chart th:first-child { width: 42px; }
+.birth-chart td strong { display: block; font-size: 26px; font-weight: 400; }
+.saju-experience .birth-chart td small { display: block; font-size: 10px; }
+.unconfirmed { font-size: 10px; color: #9c9281; }
+.element-wood { --element-color: #80aa73; }
+.element-fire { --element-color: #ca8d7b; }
+.element-earth { --element-color: #c5b574; }
+.element-metal { --element-color: #c2c0b7; }
+.element-water { --element-color: #879dcc; }
+.birth-chart td[class^='element-'] { color: var(--element-color); background: color-mix(in srgb, var(--element-color) 14%, #100f0c); }
+.element-bars { display: grid; gap: 12px; margin: 22px 0; }
+.element-bar { display: grid; grid-template-columns: 24px 1fr 32px; align-items: center; gap: 12px; color: var(--element-color); font-size: 13px; }
+.element-bar progress { display: block; width: 100%; height: 12px; border: 1px solid #3a342a; border-radius: 0; background: #171612; accent-color: var(--element-color); }
+.element-bar progress::-webkit-progress-bar { background: #171612; }
+.element-bar progress::-webkit-progress-value { background: var(--element-color); }
+.element-bar progress::-moz-progress-bar { background: var(--element-color); }
+.saju-experience .reading-seal { margin-top: 50px; margin-bottom: 36px; }
+.reading-intro { text-align: center; color: #ac9b7e; font-size: 13px; line-height: 2; margin-bottom: 45px; }
+.saju-experience .narrative article { margin: 45px 0 65px; }
+.saju-experience .narrative h3 { font-size: 19px; display: flex; align-items: center; gap: 13px; margin-bottom: 27px; }
+.chapter-symbol { font-size: 33px; color: #b76640; font-weight: 400; }
+.saju-experience .narrative article > p { font-size: 18px; line-height: 2.15; margin: 22px 0; color: #d1c3a6; }
+.saju-experience .narrative .evidence { border: 0; border-top: 1px solid #30291f; background: transparent; padding: 14px 0; margin-top: 28px; }
+.saju-experience .narrative .evidence summary { font-size: 11px; color: #a09277; }
+.saju-experience #paid-offer { border: 0; border-top: 1px solid #53422d; padding: 40px 0 20px; background: transparent; margin: 35px 0; }
+.offer-intro { text-align: center; margin: 0 0 38px; }
+.offer-intro > p { font-size: 14px; line-height: 2; color: #b6a68a; }
+.saju-experience #toc { padding: 0; list-style: none; }
+.saju-experience #toc li { position: relative; padding: 24px 18px 24px 57px; margin-bottom: 10px; border: 1px solid #3c3021; background: linear-gradient(110deg, #20170f, #100f0c); }
+.chapter-number { position: absolute; top: 28px; left: 17px; color: #aa7950; font-size: 19px; }
+.saju-experience #toc h3 { font-size: 17px; margin: 0 0 9px; }
+.saju-experience #toc p { font-size: 13px; color: #aaa08d; line-height: 1.9; margin: 0 0 10px; }
+.saju-experience #toc .chapter-lock { color: #a68d67; font-size: 10px; }
+.saju-experience .sample-reading { background: transparent; border-color: #453b29; margin-top: 35px; }
+.sample-reading article { margin: 20px 0; }
+.offer-price { text-align: center; margin: 42px 0 0; border-top: 1px solid #433623; padding-top: 30px; }
+.offer-price > p { font-size: 13px; color: #b8a789; }
+.saju-experience .offer-price .price { font-size: 31px; margin: 14px 0; color: #e4c693; }
+.saju-experience #continue-reading { width: 100%; background: #7c3926; border-color: #aa6944; color: #f0dcba; margin: 20px 0 0; }
+.saju-experience .checkout-panel { border: 1px solid #5a4930; padding: 24px; margin: 36px 0; background: #15120e; scroll-margin-top: 18px; }
+.checkout-panel h2 { margin-top: 16px; }
+.saju-experience .checkout-panel #access-panel { padding: 25px 0; }
+.saju-experience .checkout-panel #access-panel h2 { font-size: 20px; }
+.checkout-panel #access-panel > p { font-size: 13px; }
+.saju-experience .checkout-panel #pay { background: #7c3926; border-color: #aa6944; color: #f0dcba; }
+.book-reader { margin: 40px 0; scroll-margin-top: 28px; }
+.saju-experience .book-reader > h2 { font-size: 26px; }
+.saju-experience .chapter-jump { font-size: 12px; color: #b1a17f; }
+.book-controls { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #4e3f2b; padding-top: 16px; gap: 8px; }
+.book-controls button { margin: 0; }
+#chapter-progress { font-size: 13px; color: #ac9b7f; white-space: nowrap; }
+.reading-tools { border-top: 1px solid #3e3324; margin-top: 40px; padding-top: 20px; }
+.saju-experience button:disabled { cursor: default; }
+@media (max-width: 480px) {
+  .reading-title { margin-top: 25px; }
+  .saju-experience .reading-title h1 { font-size: 30px; }
+  .saju-experience .narrative article > p { font-size: 16px; }
+  .saju-experience .checkout-panel { padding: 18px 14px; }
+  .saju-experience #toc li { padding-left: 48px; padding-right: 12px; }
+  .chapter-number { left: 12px; }
+  .saju-experience .birth-chart th, .saju-experience .birth-chart td { font-size: 11px; padding: 9px 2px; }
+  .saju-experience .birth-chart td small { font-size: 9px; }
+  .birth-chart td strong { font-size: 23px; }
+  .book-controls button { padding: 12px 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .analysis-orbit { animation: none; } }
+.saju-experience .reading-title h1, .saju-experience .book-reader h2, .saju-experience .offer-intro h2 { word-break: keep-all; overflow-wrap: anywhere; }
+.checkout-summary { color: #d8bd8b; font-size: 14px; line-height: 1.9; }
+.reading-intro { word-break: keep-all; }

@@ -129,22 +129,38 @@
           유효해요. 둘 다 잃으면 본인 확인 수단이 없어 자동 복구할 수 없어요.
         </p>
       </section>
+      <section id="analysis-panel" class="analysis-scene" aria-labelledby="analysis-title" aria-busy="true" hidden>
+        <div class="analysis-orbit" aria-hidden="true"><span>四柱</span></div>
+        <p class="eyebrow">나의 이야기를 여는 중</p>
+        <h2 id="analysis-title">사주를 풀고 있습니다</h2>
+        <p id="analysis-status" role="status">입력한 날짜와 시각을 바탕으로 원국을 계산하고 있어요.</p>
+        <div class="analysis-notes"><p>태어난 날의 천간과 지지,<br />그 안에 담긴 오행의 분포를 살펴봅니다.</p><p>시간을 모르면 시주를 비워두고<br />확인할 수 있는 이야기부터 전해드려요.</p></div>
+      </section>
       <section id="result-panel" hidden>
-        <button type="button" id="new-analysis" class="secondary">다른 출생 정보로 새 분석</button>
-        <div class="card">
-          <p class="eyebrow">두 번째 장 · 여덟 글자에 담긴 나</p>
-          <h2 id="result-title"></h2>
-          <p id="chart-meta"></p>
-          <div id="pillars" class="pillars"></div>
-          <h3>오행 분포</h3>
-          <div id="elements" class="elements"></div>
+        <div class="reading-title"><p class="eyebrow">이지핫딜 · 나를 읽는 시간</p><h1 id="result-title" tabindex="-1">나의 사주 이야기</h1><span class="red-rule" aria-hidden="true"></span></div>
+        <details id="chart-details" class="chart-details">
+          <summary><span id="chart-meta"></span><span class="chart-toggle">원국·오행 자세히 보기</span></summary>
+          <h2>사주 원국</h2>
+          <div id="pillars" class="chart-table-wrap"></div>
+          <h3>오행 분포</h3><div id="elements" class="element-bars"></div>
           <p class="muted" id="count-note"></p>
-          <div id="preview"></div>
-          <details>
-            <summary>불확실한 정보와 계산 한계</summary>
-            <ul id="warnings"></ul>
-          </details>
+          <details><summary>불확실한 정보와 계산 한계</summary><ul id="warnings"></ul></details>
+        </details>
+        <div id="free-reading">
+          <div class="saju-seal reading-seal" aria-hidden="true"><span>四柱</span><small>당신의 이야기</small></div>
+          <p id="reading-intro" class="reading-intro"></p>
+          <div id="preview" class="narrative"></div>
         </div>
+        <section id="paid-offer" class="reading-offer">
+          <div class="offer-intro"><p class="eyebrow">여기서부터, 조금 더 깊은 이야기</p><h2>나의 기질에서<br />관계와 삶의 흐름까지</h2><p>다음 여덟 장에서 무엇을 읽을 수 있는지<br />먼저 살펴보세요.</p></div>
+          <ol id="toc" class="chapter-list"></ol>
+          <details class="sample-reading" open><summary>내 사주로 작성된 실제 보고서 한 문단</summary><div id="sample"></div></details>
+          <div class="offer-price"><p>나의 사주 기본 보고서 · 총 8장</p><p class="price" id="price"></p><p>한 번 결제 · 1년간 열람 · 추가 구독 없음</p><p id="checkout-mode"></p><button id="continue-reading" type="button">이어서 보기</button><p class="muted">구매 안내와 복구 수단을 확인한 뒤 진행해요.</p></div>
+        </section>
+        <section id="checkout-panel" class="checkout-panel" aria-labelledby="checkout-title" hidden>
+          <button id="close-checkout" type="button" class="text-button">← 무료 풀이로 돌아가기</button>
+          <h2 id="checkout-title" tabindex="-1">이야기를 계속 읽기 전에</h2>
+          <p id="checkout-summary" class="checkout-summary"></p>
         <div class="card" id="access-panel">
           <h2>내 이야기를 다시 찾는 방법</h2>
           <p>
@@ -159,17 +175,7 @@
             유효. 코드 원문은 최초 발급 때만 제공해요. 둘 다 잃으면 자동 복구할 수 없어요.
           </p>
         </div>
-        <div id="paid-offer" class="card">
-          <p class="eyebrow">이야기를 더 깊이 읽고 싶다면</p>
-          <h2>나의 사주 기본 보고서</h2>
-          <p>무료 결과에 이어 아래 내용을 모두 열람할 수 있어요.</p>
-          <ol id="toc"></ol>
-          <details open>
-            <summary>내 계산 결과로 만든 실제 샘플</summary>
-            <div id="sample"></div>
-          </details>
-          <p class="price" id="price"></p>
-          <p id="checkout-mode"></p>
+          <div id="purchase-controls">
           <details class="policy">
             <summary>구매·열람·환불 안내 확인하기</summary>
             <p id="seller-info"></p>
@@ -203,8 +209,16 @@
           ><button id="demo-fail" type="button" class="secondary" hidden>
             체험: 결제 실패 확인
           </button>
-        </div>
-        <div id="full-report" class="card" hidden></div>
+          </div>
+        </section>
+        <section id="full-report" class="book-reader" aria-labelledby="book-title" hidden>
+          <p class="eyebrow">나의 사주 기본 보고서</p><h2 id="book-title" tabindex="-1"></h2>
+          <p id="book-version" class="muted"></p>
+          <label class="chapter-jump">목차에서 이동<select id="chapter-select"></select></label>
+          <div id="chapter-content" class="narrative"></div>
+          <nav class="book-controls" aria-label="보고서 장 이동"><button id="previous-chapter" type="button" class="secondary">← 이전 장</button><span id="chapter-progress"></span><button id="next-chapter" type="button" class="secondary">다음 장 →</button></nav>
+        </section>
+        <div class="reading-tools"><button id="manage-access" type="button" class="secondary">조회 링크·복구 코드 보관</button><button type="button" id="new-analysis" class="secondary">다른 출생 정보로 새 분석</button></div>
         <div id="order-panel" class="card" hidden>
           <h2>구매 내역</h2>
           <p id="order-info"></p>

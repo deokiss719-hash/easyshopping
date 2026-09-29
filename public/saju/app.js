@@ -3,7 +3,8 @@ const $ = (id) => document.getElementById(id);
 let config,
   current,
   access = {},
-  paymentReturn = null;
+  paymentReturn = null,
+  chapterIndex = 0;
 const show = (id, yes) => ($(id).hidden = !yes);
 const tell = (t) => {
   $('message').textContent = t;
@@ -39,7 +40,13 @@ async function busy(button, fn) {
 }
 function block(b, report) {
   const wrap = document.createElement('article');
-  wrap.append(text('h3', b.title), text('p', b.text));
+  const heading = text('h3', b.title);
+  const symbols = { summary: '性', strength: '才', relationship: '緣' };
+  if (symbols[b.id]) heading.prepend(text('span', symbols[b.id], 'chapter-symbol'));
+  wrap.append(heading);
+  // Only change presentation; the stored report wording stays unchanged.
+  for (const sentence of b.text.split(/(?<=[.!?])\s+/u))
+    wrap.append(text('p', sentence.trim()));
   const detail = document.createElement('details');
   detail.className = 'evidence';
   detail.append(text('summary', '이 해석의 계산 근거'));
@@ -54,6 +61,94 @@ function accessUi() {
   show('recovery-code-label', !!access.recovery);
   $('save-access').disabled = !access.link;
 }
+const elementClass = { 목: 'wood', 화: 'fire', 토: 'earth', 금: 'metal', 수: 'water' };
+function renderChart(chart) {
+  const table = document.createElement('table');
+  table.className = 'birth-chart';
+  const caption = text('caption', '확정된 사주 네 기둥');
+  const head = document.createElement('thead');
+  const tr = document.createElement('tr');
+  tr.append(text('th', ''));
+  const columns = [['hour', '시주'], ['day', '일주'], ['month', '월주'], ['year', '연주']];
+  for (const [, label] of columns) { const th = text('th', label); th.scope = 'col'; tr.append(th); }
+  head.append(tr);
+  const body = document.createElement('tbody');
+  for (const [key, label] of [['stem', '천간'], ['branch', '지지'], ['tenGod', '십성'], ['hiddenStems', '지장간']]) {
+    const row = document.createElement('tr');
+    const th = text('th', label); th.scope = 'row'; row.append(th);
+    for (const [column] of columns) {
+      const p = chart.pillars[column], td = document.createElement('td');
+      if (!p) td.append(text('span', '미확정', 'unconfirmed'));
+      else if (key === 'stem' || key === 'branch') {
+        const isStem = key === 'stem';
+        const element = p[isStem ? 'elementStem' : 'elementBranch'];
+        td.className = 'element-' + elementClass[element];
+        td.append(text('strong', p.korean[isStem ? 0 : 1]), text('small', `${p[key]} · ${element}`));
+      } else if (key === 'hiddenStems') {
+        for (const v of p.hiddenStems) td.append(text('small', `${v.korean} ${v.tenGod}`));
+      } else td.append(text('span', column === 'day' ? '일간' : p.tenGod));
+      row.append(td);
+    }
+    body.append(row);
+  }
+  table.append(caption, head, body);
+  $('pillars').replaceChildren(table);
+  $('elements').replaceChildren(...Object.entries(chart.elements).map(([label, value]) => {
+    const row = document.createElement('div'); row.className = 'element-bar element-' + elementClass[label];
+    const meter = document.createElement('progress'); meter.max = 8; meter.value = value;
+    meter.setAttribute('aria-label', `${label} ${value}개`);
+    row.append(text('span', label), meter, text('span', `${value}개`));
+    return row;
+  }));
+}
+function renderContents(titles) {
+  const descriptions = [
+    '태어난 연·월·일·시의 글자와 각각의 의미를 살펴봅니다.',
+    '다섯 오행과 음양이 어떻게 분포하는지 읽어봅니다.',
+    '내가 자연스럽게 발휘하는 강점과 점검할 경향을 짚습니다.',
+    '관계를 맺고 대화할 때 돌아볼 만한 주제를 살펴봅니다.',
+    '일을 해내는 방식과 자원을 관리하는 관점을 읽습니다.',
+    '대운의 두 시나리오와 세운별 참고 주제를 확인합니다.',
+    '각 해석이 어떤 계산값에서 나왔는지 확인합니다.',
+    '출생시각 등으로 확정할 수 없는 부분을 구분합니다.',
+  ];
+  $('toc').replaceChildren(...titles.map((title, i) => {
+    const li = document.createElement('li');
+    li.append(text('span', String(i + 1).padStart(2, '0'), 'chapter-number'),
+      text('h3', title), text('p', descriptions[i] || ''), text('small', '전체 보고서에 수록', 'chapter-lock'));
+    return li;
+  }));
+}
+function renderChapter(index, focus = false) {
+  if (!current?.paid) return;
+  chapterIndex = index;
+  const sections = current.report.sections, section = sections[index];
+  $('book-title').textContent = `${index + 1}장. ${section.title}`;
+  $('chapter-select').value = index;
+  $('chapter-content').replaceChildren(...section.blocks.map(b => block(b, current.report)));
+  $('chapter-progress').textContent = `${index + 1} / ${sections.length}`;
+  $('previous-chapter').disabled = index === 0;
+  $('next-chapter').disabled = index === sections.length - 1;
+  if (focus) { $('book-title').focus({ preventScroll: true }); $('full-report').scrollIntoView(); }
+}
+function openCheckout() {
+  show('checkout-panel', true);
+  $('checkout-summary').textContent = current.paid
+    ? '구매한 보고서를 다시 열 수 있도록 개인용 조회 수단을 보관해 주세요.'
+    : `나의 사주 기본 보고서 · ${config.price.toLocaleString()}원 (부가세 포함) · 1년 열람${config.mode === 'live' ? '' : ' · 현재 실제 과금 없음'}`;
+  $('close-checkout').textContent = current.paid ? '← 보고서로 돌아가기' : '← 무료 풀이로 돌아가기';
+  $('checkout-title').focus({ preventScroll: true });
+  $('checkout-panel').scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+$('continue-reading').onclick = openCheckout;
+$('manage-access').onclick = openCheckout;
+$('close-checkout').onclick = () => {
+  show('checkout-panel', false);
+  $(current.paid ? 'full-report' : 'paid-offer').scrollIntoView({ block: 'start' });
+};
+$('chapter-select').onchange = e => renderChapter(Number(e.target.value), true);
+$('previous-chapter').onclick = () => renderChapter(Math.max(0, chapterIndex - 1), true);
+$('next-chapter').onclick = () => renderChapter(Math.min(current.report.sections.length - 1, chapterIndex + 1), true);
 async function load(id) {
   current = await api('/reports/' + encodeURIComponent(id));
   sessionStorage.setItem('saju-current', id);
@@ -63,34 +158,16 @@ async function load(id) {
   show('input-panel', false);
   show('recovery-panel', false);
   show('result-panel', true);
-  $('result-title').textContent = (current.name ? current.name + '님의 ' : '나의 ') + '사주 원국';
-  $('chart-meta').textContent = '양력 ' + current.chart.solarDate;
-  $('pillars').replaceChildren();
-  for (const [k, title] of Object.entries({
-    year: '연주',
-    month: '월주',
-    day: '일주',
-    hour: '시주',
-  })) {
-    const p = current.chart.pillars[k],
-      el = document.createElement('div');
-    el.className = 'pillar';
-    el.append(
-      text('small', title),
-      text('strong', p ? p.korean : '미확정'),
-      text('small', p ? p.chars : '—'),
-      text('small', p ? `${p.elementStem} · ${p.elementBranch}` : ''),
-    );
-    $('pillars').append(el);
-  }
-  $('elements').replaceChildren(
-    ...Object.entries(current.chart.elements).map(([k, v]) => text('span', `${k} ${v}`, 'element')),
-  );
+  $('result-title').textContent = (current.name ? current.name + '님의 ' : '나의 ') + '사주 이야기';
+  $('chart-meta').textContent = '양력 ' + current.chart.solarDate +
+    (current.chart.pillars.hour ? ' · 시주 포함' : ' · 시주 미확정');
+  $('reading-intro').textContent = '태어난 날의 글자에서, 나를 알아가는 이야기가 시작됩니다.';
+  renderChart(current.chart);
   $('count-note').textContent =
     `확정된 ${current.chart.visibleCount}글자만 집계해요. 지장간 가중치·계절 강약은 제외한 분포예요.`;
   $('preview').replaceChildren(...current.report.preview.map((b) => block(b, current.report)));
   $('warnings').replaceChildren(...current.chart.warnings.map((w) => text('li', w)));
-  $('toc').replaceChildren(...current.report.toc.map((t) => text('li', t)));
+  renderContents(current.report.toc);
   $('sample').replaceChildren(block(current.report.sample, current.report));
   $('price').textContent = config.price.toLocaleString() + '원 (부가세 포함)';
   $('pay').textContent =
@@ -109,17 +186,24 @@ async function load(id) {
         : '토스페이먼츠 결제창에서 카드 결제를 진행해요.';
   show('paid-offer', !current.paid);
   show('full-report', current.paid);
+  show('free-reading', !current.paid);
+  show('checkout-panel', false);
+  show('purchase-controls', !current.paid);
+  $('continue-reading').textContent = config.mode === 'demo'
+    ? '이어서 보기 · 과금 없는 체험'
+    : `이어서 보기 · ${config.price.toLocaleString()}원${config.mode === 'test' ? ' (테스트)' : ''}`;
+  $('continue-reading').disabled = !config.canPay;
   if (current.paid) {
-    $('full-report').replaceChildren(
-      text('h2', '나의 사주 기본 보고서'),
-      text('p', `해석 버전 ${current.report.version} · 구매 시 저장된 내용`),
-    );
-    for (const section of current.report.sections) {
-      const el = document.createElement('section');
-      el.className = 'report-section';
-      el.append(text('h2', section.title), ...section.blocks.map((b) => block(b, current.report)));
-      $('full-report').append(el);
-    }
+    $('chapter-select').replaceChildren(...current.report.sections.map((section, index) => {
+      const option = text('option', `${index + 1}장 · ${section.title}`);
+      option.value = index;
+      return option;
+    }));
+    $('book-version').textContent = `해석 버전 ${current.report.version} · 구매 시 저장된 내용`;
+    renderChapter(Math.min(chapterIndex, current.report.sections.length - 1));
+  } else {
+    chapterIndex = 0;
+    $('chapter-content').replaceChildren();
   }
   show('order-panel', !!current.order);
   if (current.order) {
@@ -180,6 +264,7 @@ async function checkout(fail = false) {
     });
     await load(current.id);
     tell('과금 없는 체험 승인이 완료되었어요.');
+    renderChapter(0, true);
     return;
   }
   if (!window.TossPayments)
@@ -248,17 +333,30 @@ form.addEventListener('input', () => {
 form.onsubmit = (e) => {
   e.preventDefault();
   busy($('analyze'), async () => {
-    tell('입력한 날짜·지역과 가능한 시각의 원국을 계산하고 있어요.');
-    const body = Object.fromEntries(new FormData(form));
-    body.leap = body.leap === 'true';
-    body.period = Number(body.period);
-    body.consent = body.consent === 'on';
-    const r = await api('/reports', { method: 'POST', body });
-    access = { link: r.link, recovery: r.recovery };
-    sessionStorage.setItem('saju-access-' + r.id, JSON.stringify(access));
-    await load(r.id);
-    tell('계산을 완료했어요. 먼저 무료 결과와 계산 한계를 확인해 주세요.');
-    $('result-panel').scrollIntoView();
+    show('input-panel', false);
+    show('analysis-panel', true);
+    $('analysis-status').textContent = '입력한 날짜와 시각을 바탕으로 원국과 풀이를 계산하고 있어요.';
+    $('analysis-panel').scrollIntoView();
+    try {
+      const body = Object.fromEntries(new FormData(form));
+      body.leap = body.leap === 'true';
+      body.period = Number(body.period);
+      body.consent = body.consent === 'on';
+      const r = await api('/reports', { method: 'POST', body });
+      access = { link: r.link, recovery: r.recovery };
+      sessionStorage.setItem('saju-access-' + r.id, JSON.stringify(access));
+      // Preserve the created report for retry if its subsequent read fails.
+      sessionStorage.setItem('saju-current', r.id);
+      $('analysis-status').textContent = '계산을 마쳤어요. 저장된 풀이를 불러오고 있어요.';
+      await load(r.id);
+      $('result-title').focus({ preventScroll: true });
+      $('result-panel').scrollIntoView();
+    } catch (e) {
+      show('input-panel', true);
+      throw e;
+    } finally {
+      show('analysis-panel', false);
+    }
   });
 };
 $('recover-form').onsubmit = (e) => {
@@ -277,6 +375,10 @@ $('new-analysis').onclick = () => {
   sessionStorage.removeItem('saju-current');
   current = null;
   access = {};
+  chapterIndex = 0;
+  $('saved').checked = false;
+  $('terms').checked = false;
+  $('chart-details').open = false;
   show('result-panel', false);
   show('input-panel', true);
   form.reset();
@@ -386,6 +488,7 @@ async function init() {
     const id = r.reportId || sessionStorage.getItem('saju-current');
     if (id) await load(id);
     tell(r.message || '결제가 확인되어 보고서가 열렸어요.');
+    if (current?.paid) renderChapter(0, true);
     return;
   }
   if (route === '/saju/fail') {
