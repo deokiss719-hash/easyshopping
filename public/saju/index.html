@@ -7,6 +7,7 @@
     <title>나의 사주 기본 보고서 · 이지핫딜</title>
     <link rel="stylesheet" href="/saju/style.css" />
     <script src="/saju/reading-motion.js" defer></script>
+    <script src="/saju/payment-options.js" defer></script>
     <script src="/saju/app.js" defer></script>
   </head>
   <body class="saju-experience">
@@ -26,7 +27,7 @@
           <p>태어난 날과 시간의 여덟 글자를 따라<br />당신의 이야기를 천천히 읽어봅니다.</p>
         </div>
         <button id="begin-reading" type="button" class="opening-button">나의 사주 풀이 보기 <span aria-hidden="true">→</span></button>
-        <p class="opening-note">전체 무료 베타 · 회원가입 없이</p>
+        <p class="opening-note" id="opening-note">전체 무료 베타 · 회원가입 없이</p>
         <p class="opening-disclaimer">전통 명리를 바탕으로 나를 돌아보는 해석입니다.<br />미래를 확정하거나 예언하지 않습니다.</p>
       </section>
       <p id="mode" class="notice" hidden></p>
@@ -94,7 +95,7 @@
             <summary>계산 기준과 개인정보 안내</summary>
             <p>
               출생일·시각·지역은 사주 계산에, 별명은 화면 표시에만 사용해요. 개인정보를 외부 AI에
-              전송하지 않습니다. 무료 베타 결과는 7일 보관합니다. 기존 구매 보고서는 원래 보관 기간을 유지합니다.
+              전송하지 않습니다. 무료 결과는 7일, 구매 보고서는 결제 후 1년 보관합니다. 기존 보고서는 원래 보관 기간을 유지합니다.
               아래 결과 화면에서 즉시 삭제도 가능해요.
             </p>
             <p>
@@ -150,13 +151,13 @@
         <div id="free-reading">
           <div class="saju-seal reading-seal" aria-hidden="true"><span>四柱</span><small>당신의 이야기</small></div>
           <p id="reading-intro" class="reading-intro"></p>
-          <div id="preview" class="narrative"></div>
+          <div id="preview" class="narrative"></div><p id="free-limits" class="muted"></p>
         </div>
         <section id="paid-offer" class="reading-offer" hidden>
-          <div class="offer-intro"><p class="eyebrow">여기서부터, 조금 더 깊은 이야기</p><h2>나의 기질에서<br />관계와 삶의 흐름까지</h2><p>다음 여덟 장에서 무엇을 읽을 수 있는지<br />먼저 살펴보세요.</p></div>
+          <div class="offer-intro"><p class="eyebrow">여기서부터, 조금 더 깊은 이야기</p><h2>나의 기질에서<br />관계와 삶의 흐름까지</h2><p>돈·일·관계와 시기별 흐름에서 더 읽을 내용을<br />먼저 살펴보세요.</p></div>
           <ol id="toc" class="chapter-list"></ol>
           <details class="sample-reading" open><summary>내 사주로 작성된 실제 보고서 한 문단</summary><div id="sample"></div></details>
-          <div class="offer-price"><p>나의 사주 기본 보고서 · 총 8장</p><p class="price" id="price"></p><p>한 번 결제 · 1년간 열람 · 추가 구독 없음</p><p id="checkout-mode"></p><button id="continue-reading" type="button">이어서 보기</button><p class="muted">구매 안내와 복구 수단을 확인한 뒤 진행해요.</p></div>
+          <div class="offer-price"><p>나의 사주 기본 보고서 · 상세 풀이 전체</p><p class="price" id="price"></p><p>한 번 결제 · 1년간 열람 · 추가 구독 없음</p><p id="checkout-mode"></p><button id="continue-reading" type="button">이어서 보기</button><p class="muted">구매 안내와 복구 수단을 확인한 뒤 진행해요.</p></div>
         </section>
         <section id="checkout-panel" class="checkout-panel" aria-labelledby="checkout-title" hidden>
           <button id="close-checkout" type="button" class="text-button">← 무료 풀이로 돌아가기</button>
@@ -206,7 +207,11 @@
             ><input type="checkbox" id="terms" /><span
               >가격, 제공 범위, 열람·복구 방법, 보관 기간, 환불 정책을 확인했어요.</span
             ></label
-          ><button id="pay" type="button">보고서 구매하기</button
+          ><fieldset class="payment-methods"><legend>결제수단</legend>
+            <label class="check"><input type="radio" name="payment-method" value="KAKAOPAY" checked />카카오페이</label>
+            <label class="check"><input type="radio" name="payment-method" value="TOSSPAY" />토스페이 · 토스 앱</label>
+            <p class="muted">토스뱅크로 직접 송금하는 방식이 아닙니다. 사용 가능한 카드·계좌는 결제창에서 확인해요.</p>
+          </fieldset><button id="pay" type="button">보고서 구매하기</button
           ><button id="demo-fail" type="button" class="secondary" hidden>
             체험: 결제 실패 확인
           </button>

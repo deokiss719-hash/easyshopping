@@ -5,6 +5,7 @@ const { calculate, ZONES } = require('./calculator');
 const { generate } = require('./report');
 const { token } = require('./store');
 const { createPayments, paymentConfig } = require('./payments');
+const { freeOffer } = require('./offer');
 const ROOT = path.join(__dirname, '../../public/saju');
 function createSajuRouter({ store, auth, env = process.env, provider }) {
   const router = express.Router(),
@@ -62,7 +63,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
     (_req, res) => res.sendFile(path.join(ROOT, 'admin.html')),
   );
   router.get('/saju/:asset', (req, res, next) =>
-    ['app.js', 'style.css', 'admin.js', 'reading-motion.js'].includes(req.params.asset)
+    ['app.js', 'style.css', 'admin.js', 'reading-motion.js', 'payment-options.js'].includes(req.params.asset)
       ? res.sendFile(path.join(ROOT, req.params.asset))
       : next(),
   );
@@ -117,7 +118,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
       const settings = await store.settings(),
         chart = calculate(req.body),
         report = generate(chart, settings.report_version);
-      const result = await store.create({ chart, report }, owner);
+      const result = await store.create({ chart, report }, owner, { betaAccess: beta });
       await store.event('input_complete', config.mode);
       res.status(201).json({ ...result, link: base + '/saju/recover#' + result.link });
     }),
@@ -149,8 +150,8 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
       res.json({
         id: r.id,
         paid: r.paid,
-        fullAccess: beta || r.paid,
-        accessMode: beta ? 'beta' : 'paid',
+        fullAccess: beta || r.beta_access || r.paid,
+        accessMode: (beta || r.beta_access) ? 'beta' : 'paid',
         name: chart.input.name,
         expiresAt: r.expires_at,
         order,
@@ -163,25 +164,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
           visibleCount: chart.visibleCount,
           warnings: chart.warnings,
         },
-        report: (beta || r.paid)
-          ? report
-          : {
-              version: report.version,
-              title: report.title,
-              toc: report.toc,
-              preview:
-                settings.free_sections === 4
-                  ? [...report.preview, (report.sections[2].blocks[2] || report.sections[3].blocks[0])]
-                  : report.preview,
-              sample: report.sample,
-              evidence: Object.fromEntries(
-                [
-                  ...report.preview,
-                  report.sample,
-                  ...(settings.free_sections === 4 ? [(report.sections[2].blocks[2] || report.sections[3].blocks[0])] : []),
-                ].map((b) => [b.id, report.evidence[b.id]]),
-              ),
-            },
+        report: (beta || r.beta_access || r.paid) ? report : freeOffer(report, chart, settings.free_sections),
       });
     }),
   );
@@ -222,6 +205,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
       if (beta) return res.status(409).json({error:'전체 무료 베타에서는 주문을 만들지 않습니다.'});
       const r = await authorize(req),
         s = await store.settings();
+      if (r.beta_access) return res.status(409).json({error:'무료 베타로 발급된 보고서는 결제하지 않아도 열람할 수 있어요.'});
       if (req.body?.terms !== true || req.body?.recoverySaved !== true)
         throw new TypeError('가격·환불·복구 안내 확인과 복구 코드 저장이 필요해요.');
       if (config.mode === 'live' && (!s.sales_enabled || !sellerReady))

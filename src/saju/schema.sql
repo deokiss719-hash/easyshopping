@@ -87,3 +87,13 @@ WITH first_apply AS (
 )
 UPDATE saju_settings SET report_version='ko-context-story-9'
 WHERE id=1 AND EXISTS(SELECT 1 FROM first_apply);
+
+-- Existing snapshots remain readable after a future paid rollout.
+ALTER TABLE saju_reports ADD COLUMN IF NOT EXISTS beta_access BOOLEAN NOT NULL DEFAULT FALSE;
+WITH first_apply AS (
+ INSERT INTO saju_content_migrations(version) VALUES('beta-access-preservation-1')
+ ON CONFLICT(version) DO NOTHING RETURNING version
+)
+UPDATE saju_reports SET beta_access=TRUE
+WHERE EXISTS(SELECT 1 FROM first_apply)
+AND NOT EXISTS(SELECT 1 FROM saju_orders WHERE report_id=saju_reports.id);

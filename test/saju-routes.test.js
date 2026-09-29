@@ -87,7 +87,7 @@ test('HTTP funnel, privacy, admin protections, recovery, refund and erasure', as
   assert.equal(view.data.paid, false);
   assert.equal(view.data.chart.pillars.hour, null);
   assert.equal(view.data.report.sections, undefined);
-  assert.equal(view.data.report.toc.length, 7);
+  assert.equal(view.data.report.toc.length, 4);
   const originalJar = jar;
   jar = '';
   assert.equal((await request('/api/saju/reports/' + id)).r.status, 404);
