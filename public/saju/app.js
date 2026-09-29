@@ -161,7 +161,7 @@ async function load(id) {
   $('result-title').textContent = (current.name ? current.name + '님의 ' : '나의 ') + '사주 이야기';
   $('chart-meta').textContent = '양력 ' + current.chart.solarDate +
     (current.chart.pillars.hour ? ' · 시주 포함' : ' · 시주 미확정');
-  $('reading-intro').textContent = current.report.version === 'ko-grandmother-2' ? '자, 네가 태어난 날에 담긴 이야기를 들려주마.' : '태어난 날의 글자에서, 나를 알아가는 이야기가 시작됩니다.';
+  $('reading-intro').textContent = ['ko-grandmother-2', 'ko-depth-3'].includes(current.report.version) ? '자, 네가 태어난 날에 담긴 이야기를 들려주마.' : '태어난 날의 글자에서, 나를 알아가는 이야기가 시작됩니다.';
   renderChart(current.chart);
   $('count-note').textContent =
     `확정된 ${current.chart.visibleCount}글자만 집계해요. 지장간 가중치·계절 강약은 제외한 분포예요.`;
