@@ -1,7 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {calculate}=require('../src/saju/calculator');
-const {generate,selectors}=require('../src/saju/report');
+const {generate,selectors}=require('../src/saju/report-v6');
 const previous=require('../src/saju/report-v5');
 const {inspect}=require('../scripts/saju-grandmother-audit');
 test('grandmother stories are conditional narratives, not questions or exercises; prior reports and facts stay fixed',()=>{

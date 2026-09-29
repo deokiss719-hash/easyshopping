@@ -40,10 +40,7 @@ async function busy(button, fn) {
 }
 function block(b, report) {
   const wrap = document.createElement('article');
-  const heading = text('h3', b.title);
-  const symbols = { summary: '性', strength: '才', relationship: '緣' };
-  if (symbols[b.id]) heading.prepend(text('span', symbols[b.id], 'chapter-symbol'));
-  if (!b.collapsed) wrap.append(heading);
+  // Chapter names remain; narrative subtitles no longer interrupt the story.
   // Only change presentation; the stored report wording stays unchanged.
   if (b.periods) wrap.append(text('p', b.periods.join(' · '), 'period-tags'));
   const savedParts = b.parts || b.text.split(/(?<=[.!?])\s+/u).map(text => ({text}));
@@ -155,7 +152,7 @@ function renderChapter(index, focus = false) {
   if (config.accessMode === 'beta') {
     $('full-report').after($('chart-details'));
     show('chart-details', false);
-    if (section.id === 'basis' || (!['ko-pattern-4','ko-story-5','ko-grandmother-story-6'].includes(current.report.version) && index === sections.length - 1)) { $('chapter-content').append($('chart-details')); show('chart-details', true); }
+    if (section.id === 'basis' || (!['ko-pattern-4','ko-story-5','ko-grandmother-story-6','ko-simple-story-7'].includes(current.report.version) && index === sections.length - 1)) { $('chapter-content').append($('chart-details')); show('chart-details', true); }
   }
   $('chapter-progress').textContent = `${index + 1} / ${sections.length}`;
   $('previous-chapter').disabled = index === 0;
@@ -213,7 +210,7 @@ async function load(id) {
       const option = text('option', `${index + 1}. ${section.title}`); option.value = index; return option;
     }));
     $('book-version').textContent = current.report.version === config.version
-      ? '전체 무료 베타 · 전통 해석에 따른 패턴 가설이며 실제 행동을 관찰한 결과가 아닙니다.'
+      ? '전체 무료 베타 · 태어난 날을 전통 방식으로 풀어낸 이야기예요. 실제 삶은 환경과 선택에 따라 달라져요.'
       : '이전 버전으로 저장된 보고서입니다. 아래 새 분석 버튼으로 개편된 풀이를 볼 수 있습니다.';
     renderChapter(Math.min(chapterIndex, current.report.sections.length - 1));
     $('expiry').textContent = '이 결과의 보관 기한: ' + new Date(current.expiresAt).toLocaleDateString('ko-KR');

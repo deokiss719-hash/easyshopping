@@ -3,7 +3,7 @@ const fs=require('node:fs');
 const {calculate}=require('../src/saju/calculator');
 const {generate,selectors}=require('../src/saju/report');
 const {metrics}=require('./saju-content-audit');
-const forbidden=/[?？]|보거라|떠올려|확인해|적어보|적어 보|기록해|물어보|물어 보|답해|해보세요|해 보세요|너는 어떠|니는 어떠|하렴|해라/g;
+const forbidden=/[?？]|보거라|떠올려|확인해|적어보|적어 보|기록해|물어보|물어 보|(?<![가-힣])답해|해보세요|해 보세요|너는 어떠|니는 어떠|하렴|해라/g;
 const jargon=/경금|정관|편재|월주|월간|지장간|일간|십성/g;
 const dates=['1990-01-01','1990-01-02','1990-01-03','1990-01-06','1990-01-07','1990-01-08','1990-01-09','1990-01-10','1988-08-15'];
 function inspect(r){const body=r.sections.flatMap(s=>s.blocks).map(b=>b.title+' '+b.text).join(' ');const m=metrics(r);return {forbidden:(body.match(forbidden)||[]),introJargon:(r.sections[0].blocks[0].text.match(jargon)||[]).length,repeatPairs:m.repeatPairs,nearPairs:m.nearPairs,near:m.near};}
