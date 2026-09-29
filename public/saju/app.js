@@ -47,32 +47,9 @@ function block(b, report) {
     ? [{text:savedParts.slice(0,3).map(p=>p.text).join(' ')},{text:savedParts.slice(3).map(p=>p.text).join(' ')}]
     : savedParts;
   for (const part of paragraphs) {
-    const paragraph = text('p', part.text.trim());
-
-    wrap.append(paragraph);
-  }
-  if (b.timeline) {
-    const timeline = document.createElement('details'); timeline.className = 'flow-timeline';
-    timeline.append(text('summary', '나이·연도 순서로 보기'));
-    for (const group of b.timeline) {
-      timeline.append(text('h4', group.label));
-      const list = document.createElement('ul');
-      for (const item of group.items) list.append(text('li', `${item.period} · ${item.topic}`));
-      if (!group.items.length) list.append(text('li', '입력 범위에서 확정할 수 없습니다.'));
-      timeline.append(list);
-    }
-    wrap.append(timeline);
-  }
-  const detail = document.createElement('details');
-  detail.className = 'evidence';
-  detail.append(text('summary', '풀이의 근거 보기'));
-  if (b.reason) detail.append(text('p', b.reason));
-  for (const e of report.evidence?.[b.id] || [])
-    detail.append(text('p', e.path), text('pre', JSON.stringify(e.value, null, 2)));
-  wrap.append(detail);
-  if (b.collapsed) {
-    const folded = document.createElement('details'); folded.className = 'story-basis';
-    folded.append(text('summary', b.title), wrap); return folded;
+    // Sentence-by-sentence reading changes presentation, not saved report text.
+    const sentences = part.text.trim().split(/(?<=[.!?。！？])\s+/u);
+    for (const sentence of sentences) wrap.append(text('p', sentence));
   }
   return wrap;
 }
@@ -144,9 +121,9 @@ function renderStory() {
   if (!current?.fullAccess && !current?.paid) return;
   // Move the shared chart out before replacing the previous report DOM.
   $('full-report').after($('chart-details'));
-  show('chart-details', config.accessMode !== 'beta');
+  show('chart-details', false);
   $('book-title').textContent = '태어난 날에 담긴 이야기';
-  const sections = current.report.sections;
+  const sections = current.report.sections.filter(section => section.id !== 'basis');
   $('chapter-content').replaceChildren(...sections.map((section, index) => {
     const part = document.createElement('section');
     part.className = 'story-section';
@@ -154,9 +131,6 @@ function renderStory() {
     heading.id = `story-section-${index}`;
     part.setAttribute('aria-labelledby', heading.id);
     part.append(heading, ...section.blocks.map(b => block(b, current.report)));
-    if (config.accessMode === 'beta' && index === sections.length - 1) {
-      show('chart-details', true); part.append($('chart-details'));
-    }
     return part;
   }));
 }

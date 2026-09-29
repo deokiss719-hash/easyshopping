@@ -563,3 +563,22 @@ pre {
  .saju-experience .story-section { padding: 26px 0; }
  .saju-experience .story-section > h3 { font-size: 19px; }
 }
+
+/* Reference reading typography: Nanum Myeongjo, one sentence per paragraph. */
+@font-face {
+ font-family: 'Nanum Myeongjo'; font-style: normal; font-weight: 400; font-display: swap;
+ src: url('/saju/fonts/NanumMyeongjo-Regular.ttf') format('truetype');
+}
+.saju-experience .narrative article {
+ display: flex; flex-direction: column; gap: 1.2rem; max-width: 652px; margin: 32px auto;
+}
+.saju-experience .narrative article > p {
+ font-family: 'Nanum Myeongjo', Gungsuh, Batang, serif;
+ font-size: clamp(1rem, 2.8vw, 1.15rem); font-weight: 400;
+ line-height: 2.4; letter-spacing: .02em; text-align: left;
+ color: #c4b896; word-break: keep-all; overflow-wrap: anywhere;
+ width: 100%; max-width: none; margin: 0; padding: 0;
+}
+.saju-experience .story-section > h3 {
+ font-family: 'Nanum Myeongjo', Gungsuh, Batang, serif; font-weight: 400;
+}
