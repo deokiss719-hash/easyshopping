@@ -582,3 +582,12 @@ pre {
 .saju-experience .story-section > h3 {
  font-family: 'Nanum Myeongjo', Gungsuh, Batang, serif; font-weight: 400;
 }
+
+/* Keep line wrapping stable while Korean graphemes appear. */
+.reading-letter { opacity: 0; transition: opacity 90ms ease-out; }
+.reading-letter.is-written { opacity: 1; }
+.reading-accessible { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.saju-experience #skip-reading-motion { display: block; width: auto; margin: 12px auto 28px; font-size: 12px; padding: 9px 14px; }
+.saju-experience #skip-reading-motion[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .reading-letter { opacity: 1; transition: none; } }
+@media print { .reading-letter { opacity: 1; } #skip-reading-motion { display: none !important; } }

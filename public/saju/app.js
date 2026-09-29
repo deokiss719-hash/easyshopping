@@ -4,6 +4,7 @@ let config,
   current,
   access = {},
   paymentReturn = null;
+let stopReadingMotion = () => {};
 const show = (id, yes) => ($(id).hidden = !yes);
 const tell = (t) => {
   $('message').textContent = t;
@@ -118,6 +119,7 @@ function renderContents(titles) {
   }));
 }
 function renderStory() {
+  stopReadingMotion();
   if (!current?.fullAccess && !current?.paid) return;
   // Move the shared chart out before replacing the previous report DOM.
   $('full-report').after($('chart-details'));
@@ -133,6 +135,7 @@ function renderStory() {
     part.append(heading, ...section.blocks.map(b => block(b, current.report)));
     return part;
   }));
+  stopReadingMotion = window.startSajuReadingMotion($('chapter-content'), $('skip-reading-motion'));
 }
 function openCheckout() {
   if (config.accessMode === 'beta') {
@@ -384,6 +387,7 @@ $('recover-form').onsubmit = (e) => {
   });
 };
 $('new-analysis').onclick = () => {
+  stopReadingMotion();
   sessionStorage.removeItem('saju-current');
   current = null;
   access = {};
