@@ -173,7 +173,7 @@ test('new popular product gets one link, uses fresh price, and reuses link on re
  assert.equal(rows.length,1);assert.equal(Number(rows[0].price_amount),9900);
 });
 
-test('link requests are paced and failed attempts remain inside the daily request budget',async(t)=>{
+test('link issuance stops after an uncertain result to protect the remaining request budget',async(t)=>{
  const {pool}=await database(t);
  const connect=pool.connect.bind(pool);
  pool.connect=async()=>{const c=await connect();const q=c.query.bind(c);c.query=(sql,args)=>/pg_try_advisory_lock/.test(sql)?Promise.resolve({rows:[{acquired:true}]}):/pg_advisory_unlock/.test(sql)?Promise.resolve({rows:[{unlocked:true}]}):q(sql,args);return c;};
@@ -181,9 +181,9 @@ test('link requests are paced and failed attempts remain inside the daily reques
  const items=Array.from({length:50},(_,index)=>product({rank:index+1,tacaItemId:20000+index}));
  const api={fetchBestSelling:async()=>ranking(items),createLink:async()=>{attempts++;throw new Error('unknown outcome');}};
  const result=await syncTossWeb({pool,db,tossClient:api,dryRun:false,now:()=>now,sleep:async(ms)=>delays.push(ms)});
- assert.equal(attempts,MAX_NEW_LINKS_PER_SYNC);
- assert.equal(result.linkAttempts,MAX_NEW_LINKS_PER_SYNC);
- assert.equal(result.uncertainLinks,MAX_NEW_LINKS_PER_SYNC);
- assert.equal(delays.length,MAX_NEW_LINKS_PER_SYNC-1);
- assert.equal(delays.every((ms)=>ms===LINK_REQUEST_INTERVAL_MS),true);
+ assert.equal(attempts,1);
+ assert.equal(result.linkAttempts,1);
+ assert.equal(result.uncertainLinks,1);
+ assert.equal(result.linkFailureCode,'unknown');
+ assert.equal(delays.length,0);
 });

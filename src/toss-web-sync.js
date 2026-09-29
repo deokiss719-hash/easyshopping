@@ -157,6 +157,7 @@ async function syncTossWeb({ pool, db, tossClient, dryRun = true, now = () => ne
     const kakaoIds = new Set(db.prepare("SELECT deal_id FROM kakao_auto_publications WHERE source = 'toss'").all().map((r) => r.deal_id));
     const reserved = new Set(links.map((r) => r.source_item_id));
     let issued = 0, uncertain = 0, attempted = 0;
+    let linkFailureCode = null;
     for (const product of snapshot.fallbackCandidates) {
       if (attempted >= MAX_NEW_LINKS_PER_SYNC || snapshot.deals.length + issued >= WEB_PRODUCT_LIMIT) break;
       const id = String(product.tacaItemId);
@@ -174,16 +175,21 @@ async function syncTossWeb({ pool, db, tossClient, dryRun = true, now = () => ne
           updated_at = CURRENT_TIMESTAMP WHERE source_item_id = $1 AND status = 'pending' RETURNING *`, [id, link.shortUrl]);
         if (saved.rowCount !== 1) throw new Error('Link reservation lost');
         links.push(saved.rows[0]); issued++;
-      } catch {
+      } catch (error) {
         await pool.query("UPDATE toss_web_links SET status = 'uncertain', updated_at = CURRENT_TIMESTAMP WHERE source_item_id = $1 AND status = 'pending'", [id]);
         uncertain++;
+        linkFailureCode = /^toss_[a-z_]+$/.test(String(error?.code || '')) ? error.code : 'unknown';
+        // A failing link endpoint may be rate limited or unavailable. Stop this
+        // run instead of reserving every remaining product with an unknown outcome.
+        break;
       }
     }
     // Re-read rank/price/availability after link issuance to avoid publishing stale products.
     const freshRanking = issued ? await tossClient.fetchBestSelling({ size: 100 }) : ranking;
     snapshot = buildTossWebSnapshot({ publications, ranking: freshRanking, webLinks: links, clickCounts, now: now() });
     return { ...await applyTossWebSnapshot(pool, snapshot), popular: snapshot.deals.filter((d) => d.isPopular).length,
-      linkAttempts: attempted, linksIssued: issued, uncertainLinks: uncertain };
+      linkAttempts: attempted, linksIssued: issued, uncertainLinks: uncertain,
+      ...(linkFailureCode ? { linkFailureCode } : {}) };
   };
   if (dryRun) return run();
   const result = await createDealStore(pool).withCollectionLease('toss', run);
