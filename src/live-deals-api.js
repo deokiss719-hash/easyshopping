@@ -9,7 +9,7 @@ function toApiDeal(deal) {
       ? `/api/public/manual-deals/${deal.manualId}/image`
       : null)
     : deal.imageUrl;
-  const publicImageUrl = deal.source === 'ruliweb' ? null : manualImageUrl;
+  const publicImageUrl = manualImageUrl;
   return {
     id: deal.id,
     sourceItemId: deal.source === 'toss' ? deal.sourceItemId : undefined,
@@ -24,9 +24,7 @@ function toApiDeal(deal) {
     publishedAt: deal.publishedAt,
     postedAt: deal.publishedAt,
     imageUrl: publicImageUrl,
-    imageStatus: deal.source === 'ruliweb'
-      ? 'missing_merchant_url'
-      : (deal.imageStatus || (publicImageUrl ? 'ready' : 'missing_merchant_url')),
+    imageStatus: deal.imageStatus || (publicImageUrl ? 'ready' : 'missing_merchant_url'),
     originalPrice: deal.originalPriceAmount ?? null,
     description: deal.source === 'toss' ? TOSS_SHARELINK_DISCLOSURE : (deal.description ?? null),
     isManual,

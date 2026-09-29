@@ -33,7 +33,7 @@ async function withServer(store, callback, options = {}) {
   }
 }
 
-test('ruliweb hotlink-blocked thumbnails are not exposed to public clients', () => {
+test('ruliweb thumbnails are exposed with their stored image status', () => {
   const deal = toApiDeal({
     id: 'ruliweb-1',
     source: 'ruliweb',
@@ -44,8 +44,8 @@ test('ruliweb hotlink-blocked thumbnails are not exposed to public clients', () 
     imageStatus: 'ready',
   });
 
-  assert.equal(deal.imageUrl, null);
-  assert.equal(deal.imageStatus, 'missing_merchant_url');
+  assert.equal(deal.imageUrl, 'https://i1.ruliweb.com/thumb/example.webp');
+  assert.equal(deal.imageStatus, 'ready');
 });
 
 test('live deals API returns stored deals with pagination metadata and original links', async () => {
