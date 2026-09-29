@@ -99,3 +99,19 @@ test('input validation excludes impossible/future/unsupported data', () => {
   assert.throws(() => calculate(input('1990-01-01', '25:00'), now));
   assert.throws(() => calculate(input('1990-01-01', '12:00', 'Mars/Base'), now));
 });
+test('new narrator preserves evidence and the original version remains reproducible', () => {
+  const chart = calculate(input(), now);
+  const old = require('../src/saju/report-v1').generate(chart);
+  assert.deepEqual(generate(chart, 'ko-evidence-1'), old);
+  const updated = generate(chart, 'ko-grandmother-2');
+  assert.equal(updated.version, 'ko-grandmother-2');
+  assert.deepEqual(updated.evidence, old.evidence);
+  assert.deepEqual(updated, generate(chart, 'ko-grandmother-2'));
+  assert.match(updated.preview[0].text, /보자꾸나/);
+  assert.match(updated.preview[0].text, new RegExp(chart.pillars.day.stem));
+  assert.match(updated.sections[0].blocks[0].text, /음이란다/);
+  assert.doesNotMatch(JSON.stringify(updated), /음란다|양란다|목란다|주제이란다/);
+  const unknown = calculate({ ...input(), timeType: 'unknown' }, now);
+  const r = generate(unknown);
+  assert.match(r.sections[0].blocks.find(b => b.id === 'pillar-hour').text, /확정할 수 없어/);
+});

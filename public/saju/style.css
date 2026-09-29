@@ -511,3 +511,15 @@ pre {
 .saju-experience .reading-title h1, .saju-experience .book-reader h2, .saju-experience .offer-intro h2 { word-break: keep-all; overflow-wrap: anywhere; }
 .checkout-summary { color: #d8bd8b; font-size: 14px; line-height: 1.9; }
 .reading-intro { word-break: keep-all; }
+
+/* Center the customer reading, including the preview and purchased chapters. */
+.saju-experience #result-panel { text-align: center; }
+.saju-experience .narrative h3 { justify-content: center; }
+.saju-experience .narrative article > p,
+.saju-experience #sample article > p { max-width: 520px; margin-left: auto; margin-right: auto; text-align: center; word-break: keep-all; }
+.saju-experience #toc li { padding: 24px 18px; }
+.saju-experience .chapter-number { position: static; display: block; margin-bottom: 10px; }
+.saju-experience #result-panel .check { justify-content: center; }
+.saju-experience #result-panel .evidence pre { text-align: left; }
+.saju-experience #result-panel .element-bars { text-align: center; }
+.saju-experience #warnings { list-style-position: inside; padding-left: 0; }

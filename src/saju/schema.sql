@@ -26,3 +26,12 @@ CREATE TABLE IF NOT EXISTS saju_limits (key TEXT PRIMARY KEY, count INTEGER NOT 
 
 ALTER TABLE saju_reports ADD COLUMN IF NOT EXISTS owner_expires TIMESTAMPTZ NOT NULL DEFAULT NOW()+INTERVAL '1 hour';
 ALTER TABLE saju_orders ADD COLUMN IF NOT EXISTS last_checked_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01';
+
+-- Apply the new narrator default once; keep stored/purchased report snapshots intact.
+CREATE TABLE IF NOT EXISTS saju_content_migrations (version TEXT PRIMARY KEY);
+WITH first_apply AS (
+ INSERT INTO saju_content_migrations(version) VALUES('ko-grandmother-2')
+ ON CONFLICT(version) DO NOTHING RETURNING version
+)
+UPDATE saju_settings SET report_version='ko-grandmother-2'
+WHERE id=1 AND report_version='ko-evidence-1' AND EXISTS(SELECT 1 FROM first_apply);
