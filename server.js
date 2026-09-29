@@ -52,6 +52,8 @@ const {
   startFmkoreaScheduler,
 } = require('./src/fmkorea-collector');
 const { readRuliwebRuntime, runRuliwebCollector } = require('./src/ruliweb-collector');
+const { createStore: createSajuStore } = require('./src/saju/store');
+const { createSajuRouter } = require('./src/saju/routes');
 const { securityHeaders } = require('./src/security-headers');
 
 const app = express();
@@ -242,6 +244,25 @@ async function start() {
         imageUrlValidator: manualImageUrlValidator,
       }),
     });
+    const sajuStore = await createSajuStore(pool, process.env.SAJU_DATA_KEY || adminRuntime.sessionSecret);
+    const saju = createSajuRouter({ store: sajuStore, auth: adminAuth });
+    app.use(saju.router);
+    let sajuMaintenanceRunning = false;
+    const maintainSaju = async () => {
+      if (sajuMaintenanceRunning) return;
+      sajuMaintenanceRunning = true;
+      try {
+      await sajuStore.purge();
+      const pending = await sajuStore.pool.query("SELECT id FROM saju_orders WHERE status IN ('confirming','refunding') ORDER BY last_checked_at LIMIT 20");
+      for (const order of pending.rows) {
+        await saju.payments.reconcile(order.id).catch(() => {});
+        await sajuStore.pool.query('UPDATE saju_orders SET last_checked_at=NOW() WHERE id=$1', [order.id]);
+      }
+      } finally { sajuMaintenanceRunning = false; }
+    };
+    void maintainSaju().catch(() => console.warn('saju maintenance unavailable'));
+    const sajuTimer = setInterval(() => void maintainSaju().catch(() => console.warn('saju maintenance unavailable')), 60000);
+    sajuTimer.unref();
     const communitySecret = adminRuntime.sessionSecret || process.env.COMMUNITY_SECRET;
     if (!communitySecret) throw new Error('ADMIN_SESSION_SECRET or COMMUNITY_SECRET is required for community identity protection');
     app.use(createCommunityRouter({

@@ -29,11 +29,15 @@
     "express": "^5.1.0",
     "fast-xml-parser": "^5.11.1",
     "ipaddr.js": "^2.5.0",
+    "korean-lunar-calendar": "0.3.6",
+    "lunar-javascript": "1.7.7",
+    "luxon": "3.7.2",
     "pg": "^8.23.0",
     "playwright": "1.55.1",
     "sharp": "^0.35.4"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
     "pg-mem": "^3.0.14"
   }
 }

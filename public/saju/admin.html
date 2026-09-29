@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>사주 서비스 관리</title>
+    <link rel="stylesheet" href="/saju/style.css" />
+    <script src="/saju/admin.js" defer></script>
+  </head>
+  <body>
+    <header><a href="/admin">이지핫딜 관리자</a><a href="/saju">고객 화면</a></header>
+    <main>
+      <h1>사주 서비스 관리</h1>
+      <p id="message" role="status"></p>
+      <p id="mode" class="notice"></p>
+      <section class="card">
+        <h2>단일 상품 설정</h2>
+        <form id="settings">
+          <label
+            >기본 보고서 가격 (원)<input
+              name="price"
+              type="number"
+              min="100"
+              max="1000000"
+              required /></label
+          ><label
+            >무료 공개 범위<select name="free_sections">
+              <option value="3">기본 3개: 성향·강점·관계</option>
+              <option value="4">기본 3개 + 주의할 경향</option>
+            </select></label
+          ><label
+            >신규 보고서 해석 버전<select name="report_version">
+              <option value="ko-evidence-1">ko-evidence-1 · 근거 중심 한국어</option>
+            </select></label
+          >
+          <p class="muted">
+            검증된 버전만 선택할 수 있어요. 버전을 추가해도 기존 구매 보고서 내용은 바뀌지 않아요.
+            원국·오행·근거는 무료 공개의 최소 범위로 유지해요.
+          </p>
+          <label class="check"
+            ><input name="sales_enabled" type="checkbox" /><span
+              >실결제 판매 허용 (운영 키·판매자 고지 준비 후)</span
+            ></label
+          ><button>설정 저장</button>
+        </form>
+      </section>
+      <section class="card">
+        <h2>구매·환불 현황</h2>
+        <p>
+          최근 200건. 출생 정보는 이 화면에 표시하지 않아요. 신청 접수 후 법정 환급 기한에 맞춰
+          처리해 주세요. 승인·환불 확인 중이면 새 주문을 만들지 말고 상태 확인을 사용하세요.
+        </p>
+        <button id="refresh" class="secondary">새로고침</button>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>주문 / 일자</th>
+                <th>금액 / 환경</th>
+                <th>상태</th>
+                <th>처리</th>
+              </tr>
+            </thead>
+            <tbody id="orders"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card">
+        <h2>최근 30일 이용 단계</h2>
+        <p class="muted">
+          단계별 발생 횟수예요. 새로고침·재방문이 일부 포함되므로 고유 고객 수와 다를 수 있어요.
+          테스트·실결제를 분리하고 출생 정보는 수집하지 않아요.
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>단계</th>
+                <th>환경</th>
+                <th>횟수</th>
+              </tr>
+            </thead>
+            <tbody id="events"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

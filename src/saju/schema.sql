@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS saju_settings (
+ id INTEGER PRIMARY KEY CHECK(id=1), price INTEGER NOT NULL DEFAULT 6900 CHECK(price BETWEEN 100 AND 1000000),
+ report_version TEXT NOT NULL DEFAULT 'ko-evidence-1', free_sections INTEGER NOT NULL DEFAULT 3 CHECK(free_sections BETWEEN 3 AND 4), sales_enabled BOOLEAN NOT NULL DEFAULT FALSE
+);
+INSERT INTO saju_settings(id) VALUES(1) ON CONFLICT(id) DO NOTHING;
+CREATE TABLE IF NOT EXISTS saju_reports (
+ id TEXT PRIMARY KEY, payload TEXT, owner_hash TEXT NOT NULL, recovery_hash TEXT UNIQUE NOT NULL,
+ link_hash TEXT UNIQUE, link_expires TIMESTAMPTZ, session_hash TEXT, session_expires TIMESTAMPTZ,
+ created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), expires_at TIMESTAMPTZ NOT NULL,
+ paid BOOLEAN NOT NULL DEFAULT FALSE, deleted_at TIMESTAMPTZ, fingerprint TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS saju_reports_expiry ON saju_reports(expires_at);
+CREATE TABLE IF NOT EXISTS saju_orders (
+ id TEXT PRIMARY KEY, report_id TEXT NOT NULL REFERENCES saju_reports(id), amount INTEGER NOT NULL,
+ mode TEXT NOT NULL CHECK(mode IN ('demo','test','live')), status TEXT NOT NULL DEFAULT 'pending',
+ payment_key TEXT UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), paid_at TIMESTAMPTZ,
+ refund_requested_at TIMESTAMPTZ, refunded_at TIMESTAMPTZ, receipt_url TEXT,
+ terms_version TEXT NOT NULL DEFAULT '2026-09-29', expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW()+INTERVAL '30 minutes'
+);
+CREATE UNIQUE INDEX IF NOT EXISTS saju_one_open_order ON saju_orders(report_id) WHERE status IN ('pending','confirming','paid','refund_requested','refunding');
+CREATE TABLE IF NOT EXISTS saju_events (
+ day DATE NOT NULL, event TEXT NOT NULL, mode TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0,
+ PRIMARY KEY(day,event,mode)
+);
+CREATE TABLE IF NOT EXISTS saju_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at TIMESTAMPTZ NOT NULL);
+
+ALTER TABLE saju_reports ADD COLUMN IF NOT EXISTS owner_expires TIMESTAMPTZ NOT NULL DEFAULT NOW()+INTERVAL '1 hour';
+ALTER TABLE saju_orders ADD COLUMN IF NOT EXISTS last_checked_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01';

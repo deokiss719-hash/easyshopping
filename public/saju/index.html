@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>나의 사주 기본 보고서 · 이지핫딜</title>
+    <link rel="stylesheet" href="/saju/style.css" />
+    <script src="/saju/app.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <a href="/">이지핫딜</a>
+      <nav><a href="/saju">사주풀이</a><a href="/saju/recover">구매 보고서 찾기</a></nav>
+    </header>
+    <main>
+      <p class="eyebrow">나를 돌아보는 전통 명리 이야기</p>
+      <h1>내 사주를 읽는<br />작은 출발점</h1>
+      <p class="intro">
+        계산한 원국과 해석의 근거를 먼저 살펴보세요.<br />무료 결과를 읽은 뒤, 더 궁금할 때 보고서를
+        선택하세요.
+      </p>
+      <ol class="steps" aria-label="이용 순서">
+        <li>정보 입력</li>
+        <li>무료 풀이</li>
+        <li>결제</li>
+        <li>전체 보고서</li>
+      </ol>
+      <p id="mode" class="notice" hidden></p>
+      <p id="message" role="status" aria-live="polite"></p>
+      <section id="input-panel" class="card">
+        <h2>출생 정보</h2>
+        <p class="muted">
+          회원가입·전화번호 없이 이용해요. 만 14세 이상, 1900년 이후 출생을 지원해요.
+        </p>
+        <form id="birth-form">
+          <label
+            >생년월일<input
+              name="date"
+              type="text"
+              inputmode="numeric"
+              placeholder="1990-01-01"
+              pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+              maxlength="10"
+              required
+              autocomplete="off"
+            /><small>양력·음력 모두 YYYY-MM-DD로 입력해 주세요.</small></label
+          >
+          <div class="two">
+            <label
+              >달력 기준<select name="calendar">
+                <option value="solar">양력</option>
+                <option value="lunar">음력 (한국 음력)</option>
+              </select></label
+            ><label id="leap-label" hidden
+              >음력 윤달<select name="leap">
+                <option value="false">평달</option>
+                <option value="true">윤달</option>
+              </select></label
+            >
+          </div>
+          <label
+            >태어난 시각<select name="timeType">
+              <option value="unknown">모름</option>
+              <option value="exact">정확한 시각</option>
+              <option value="range">대략적인 시간대</option>
+            </select></label
+          >
+          <label id="exact-label" hidden
+            >출생 기록의 현지 시각<input name="time" type="time"
+          /></label>
+          <label id="range-label" hidden>대략적인 현지 시간대<select name="period"></select></label>
+          <label
+            >출생 국가·지역<select name="zone" id="zones" required></select
+            ><small
+              >현재 거주지가 아닌 태어난 지역이에요. 목록에 없는 지역은 아직 지원하지 않아요. 음력
+              입력은 한국 음력 기준이에요.</small
+            ></label
+          >
+          <label
+            >이름 또는 별명 <span class="muted">선택</span
+            ><input
+              name="name"
+              maxlength="30"
+              autocomplete="off"
+              placeholder="보고서에서만 표시해요"
+          /></label>
+          <details>
+            <summary>계산 기준과 개인정보 안내</summary>
+            <p>
+              출생일·시각·지역은 사주 계산에, 별명은 화면 표시에만 사용해요. 개인정보를 외부 AI에
+              전송하지 않습니다. 무료 결과는 7일, 구매 보고서는 결제일로부터 1년 보관 후 삭제해요.
+              아래 결과 화면에서 즉시 삭제도 가능해요.
+            </p>
+            <p>
+              연주는 입춘, 월주는 절입, 일주는 현지 자정 기준이에요. 역사적 표준시·서머타임을
+              적용하며 진태양시는 사용하지 않아요. 다른 만세력과 기준에 따른 차이가 있을 수 있어요.
+              대운은 성별을 추측하지 않고 순행·역행 두 경우를 보여줘요.
+            </p>
+            <p>
+              명리 해석은 과학적 성격 검사나 미래 예측이 아니에요. 중요한 건강·금전·관계 결정의
+              근거로 사용하지 마세요.
+            </p>
+            <a href="/saju/method">자료 출처와 상세 기준</a>
+          </details>
+          <label class="check"
+            ><input type="checkbox" name="consent" required /><span
+              >사주 계산·결과 보관을 위한 위 개인정보 수집·이용에 동의해요. 동의하지 않으면 분석을
+              이용할 수 없어요.</span
+            ></label
+          >
+          <button type="submit" id="analyze">무료 사주 보기</button>
+        </form>
+      </section>
+      <section id="recovery-panel" class="card" hidden>
+        <h2>내 보고서 다시 열기</h2>
+        <p>저장한 복구 코드를 입력해 주세요. 이름·전화번호로 찾지 않아요.</p>
+        <form id="recover-form">
+          <label
+            >복구 코드<input name="code" required autocomplete="off" spellcheck="false" /></label
+          ><button>보고서 열기</button>
+        </form>
+        <p class="muted">
+          링크는 발급 후 7일·1회 사용, 열람 세션은 1시간이에요. 복구 코드는 보고서 보관 기간까지
+          유효해요. 둘 다 잃으면 본인 확인 수단이 없어 자동 복구할 수 없어요.
+        </p>
+      </section>
+      <section id="result-panel" hidden>
+        <button type="button" id="new-analysis" class="secondary">다른 출생 정보로 새 분석</button>
+        <div class="card">
+          <p class="eyebrow">계산 결과 · 무료 공개</p>
+          <h2 id="result-title"></h2>
+          <p id="chart-meta"></p>
+          <div id="pillars" class="pillars"></div>
+          <h3>오행 분포</h3>
+          <div id="elements" class="elements"></div>
+          <p class="muted" id="count-note"></p>
+          <div id="preview"></div>
+          <details>
+            <summary>불확실한 정보와 계산 한계</summary>
+            <ul id="warnings"></ul>
+          </details>
+        </div>
+        <div class="card" id="access-panel">
+          <h2>개인용 조회 수단을 저장해 주세요</h2>
+          <p>
+            보고서에는 개인 정보가 포함되어 있어요. 링크와 코드를 다른 사람에게 공유하지 마세요.
+          </p>
+          <label>개인용 조회 링크<input id="private-link" readonly /></label
+          ><label id="recovery-code-label">복구 코드<input id="recovery-code" readonly /></label
+          ><button type="button" id="save-access" class="secondary">조회 링크·코드 파일 저장</button
+          ><button type="button" id="reissue" class="secondary">조회 링크 재발급</button>
+          <p class="muted">
+            링크: 7일·1회 사용. 재발급하면 이전 링크가 무효화돼요. 복구 코드: 보고서 보관 기간까지
+            유효. 코드 원문은 최초 발급 때만 제공해요. 둘 다 잃으면 자동 복구할 수 없어요.
+          </p>
+        </div>
+        <div id="paid-offer" class="card">
+          <h2>나의 사주 기본 보고서</h2>
+          <p>무료 결과에 이어 아래 내용을 모두 열람할 수 있어요.</p>
+          <ol id="toc"></ol>
+          <details open>
+            <summary>내 계산 결과로 만든 실제 샘플</summary>
+            <div id="sample"></div>
+          </details>
+          <p class="price" id="price"></p>
+          <p id="checkout-mode"></p>
+          <div class="policy">
+            <p id="seller-info"></p>
+            <h3>구매 전 확인해 주세요</h3>
+            <p>
+              일회 결제이며 추가 상품·구독은 없어요. 서버 승인 후 이 화면에서 전체 보고서를 열어요.
+              결제일로부터 1년간 열람할 수 있고, 저장한 조회 링크와 복구 코드로 다시 열 수 있어요.
+              외부 AI에 출생 정보를 보내지 않아요.
+            </p>
+            <p>
+              초기 운영 정책: 결제 후 7일 이내 신청 시 열람 여부와 관계없이 전액 환불해요. 내용이
+              표시·계약과 다르거나 제공되지 않은 경우에는 공급 후 3개월 또는 그 사실을 안 날부터
+              30일 이내 등 법정 권리를 보장해요. 환불 신청은 보고서 하단에서 가능하고, 청약철회에
+              따른 환급은 법정 기한에 맞춰 처리해요. 카드사 반영에는 별도 시간이 걸릴 수 있어요.
+            </p>
+            <p>
+              출생 정보·보고서는 1년 또는 삭제 요청까지, 계약·결제·공급 기록은 법에 따라 5년 별도
+              보관해요. 복구 수단 분실 시 주문번호로 결제·환불 문의는 가능하지만 보고서 자동 복구는
+              불가능해요.
+            </p>
+          </div>
+          <label class="check"
+            ><input type="checkbox" id="saved" /><span
+              >조회 링크와 복구 코드를 안전한 곳에 저장했어요.</span
+            ></label
+          ><label class="check"
+            ><input type="checkbox" id="terms" /><span
+              >가격, 제공 범위, 열람·복구 방법, 보관 기간, 환불 정책을 확인했어요.</span
+            ></label
+          ><button id="pay" type="button">보고서 구매하기</button
+          ><button id="demo-fail" type="button" class="secondary" hidden>
+            체험: 결제 실패 확인
+          </button>
+        </div>
+        <div id="full-report" class="card" hidden></div>
+        <div id="order-panel" class="card" hidden>
+          <h2>구매 내역</h2>
+          <p id="order-info"></p>
+          <button id="recheck" type="button" class="secondary">같은 주문 승인 상태 확인</button
+          ><button id="refund" type="button" class="secondary">환불 신청</button>
+          <p id="refund-message" role="status"></p>
+        </div>
+        <div class="card">
+          <p id="expiry"></p>
+          <button id="delete" type="button" class="danger">내 출생 정보·보고서 삭제</button>
+          <p class="muted">
+            삭제한 보고서는 복구되지 않아요. 법정 결제 기록은 별도로 보관되며, 삭제가 자동 환불을
+            뜻하지 않아요. 환불이 필요하면 먼저 신청해 주세요.
+          </p>
+        </div>
+      </section>
+      <footer>
+        <a href="/saju/method">계산 출처·운영 정책</a
+        ><a href="http://pf.kakao.com/_MKxoCX/chat" rel="noreferrer">운영 문의</a>
+        <p>사주는 전통적 해석 콘텐츠예요. 전화번호·회원가입은 받지 않아요.</p>
+      </footer>
+    </main>
+  </body>
+</html>
