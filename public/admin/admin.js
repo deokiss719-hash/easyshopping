@@ -241,11 +241,45 @@
       actions.append(open);
       if (!post.deleted) {
         actions.append(communityAction('댓글 등록', async () => {
-          const data = await api(`/api/admin/community/posts/${post.id}/comments`);
           const existing = item.querySelector('.community-comment-admin');
-          if (existing) { existing.remove(); return; }
+          if (existing) { existing.hidden = !existing.hidden; return; }
+          const data = await api(`/api/admin/community/posts/${post.id}/comments`);
+          // A second click may have finished loading while this request was pending.
+          if (item.querySelector('.community-comment-admin')) return;
           const box = document.createElement('div');
           box.className = 'community-comment-admin deal-list';
+          const postPreview = document.createElement('section');
+          postPreview.className = 'community-admin-post-preview';
+          postPreview.setAttribute('aria-label', '게시글 본문');
+          postPreview.append(textNode('h3', '게시글 본문'));
+          const fullBody = String(post.body || '본문이 없습니다.');
+          const previewBody = textNode('p', fullBody, 'community-admin-post-body');
+          postPreview.append(previewBody);
+          if (fullBody.length > 600 || fullBody.split('\n').length > 10) {
+            previewBody.classList.add('is-collapsed');
+            const expand = textNode('button', '본문 전체 보기', 'button secondary small');
+            expand.type = 'button';
+            expand.setAttribute('aria-expanded', 'false');
+            expand.addEventListener('click', () => {
+              const collapsed = previewBody.classList.toggle('is-collapsed');
+              expand.textContent = collapsed ? '본문 전체 보기' : '본문 접기';
+              expand.setAttribute('aria-expanded', String(!collapsed));
+            });
+            postPreview.append(expand);
+          }
+          if (post.imageUrl && isTrustedImageUrl(post.imageUrl)) {
+            const imageLink = document.createElement('a');
+            imageLink.href = post.imageUrl;
+            imageLink.target = '_blank';
+            imageLink.rel = 'noopener noreferrer';
+            const image = document.createElement('img');
+            image.src = post.imageUrl;
+            image.alt = '게시글 첨부 이미지 (새 창에서 원본 보기)';
+            image.loading = 'lazy';
+            image.className = 'community-admin-post-image';
+            imageLink.append(image);
+            postPreview.append(imageLink);
+          }
           const replyForm = document.createElement('form');
           replyForm.className = 'community-admin-reply-form';
           const replyArea = document.createElement('textarea');
@@ -262,7 +296,7 @@
           replyForm.append(replyArea, replyFooter);
 
           const renderComments = (comments) => {
-            box.replaceChildren(replyForm);
+            box.replaceChildren(postPreview, replyForm);
             if (!comments?.length) box.append(textNode('p', '등록된 댓글이 없습니다.', 'empty-copy'));
             const depths = new Map();
             (comments || []).forEach((comment) => {
