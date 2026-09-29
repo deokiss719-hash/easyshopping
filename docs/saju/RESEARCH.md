@@ -1,3 +1,7 @@
+# 최신 풀이 품질 업데이트
+
+v9 변경 및 검증: [CONTEXT-v9-QUALITY.md](CONTEXT-v9-QUALITY.md). 기존 계산 기준을 유지하고 해석 분기와 불확실성 표현을 개선했습니다.
+
 ## 최신 해석 v8 (2026-09-29)
 
 원국 관계 종합 풀이의 조사·규칙·검증·한계는 [WHOLE-CHART-v8-RESEARCH.md](WHOLE-CHART-v8-RESEARCH.md)에 정리했습니다. 아래는 기존 버전의 결정 기록이며 현재 기능 범위는 v8 문서를 우선합니다.

@@ -1,9 +1,9 @@
 'use strict';
-const previous=require('./report-v8');
+const previous=require('./report-v7');
 const {analyze,comparePeriod,FAMILY}=require('./whole-chart');
-const {compose}=require('./context-stories');
+const {compose}=require('./whole-chart-stories');
 const flows=require('./simple-flows');
-const VERSION='ko-context-story-9';
+const VERSION='ko-whole-chart-8';
 const TITLES=['한눈에 보는 나','장점과 단점','금전운','직업운','애정운과 관계','시기별 흐름','사주 계산 근거'];
 function generate(chart,version=VERSION){
  if(version!==VERSION)return previous.generate(chart,version);
