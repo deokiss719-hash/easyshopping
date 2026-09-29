@@ -52,6 +52,9 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
   router.get(['/saju', '/saju/', '/saju/success', '/saju/fail', '/saju/recover'], (_req, res) =>
     res.sendFile(path.join(ROOT, 'index.html')),
   );
+  router.get('/saju/fonts/NanumMyeongjo-Regular.ttf', (_req, res) =>
+    res.sendFile(path.join(ROOT, 'fonts', 'NanumMyeongjo-Regular.ttf')),
+  );
   router.get('/saju/method', (_req, res) => res.sendFile(path.join(ROOT, 'method.html')));
   router.get(
     '/saju/admin',
@@ -59,7 +62,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
     (_req, res) => res.sendFile(path.join(ROOT, 'admin.html')),
   );
   router.get('/saju/:asset', (req, res, next) =>
-    ['app.js', 'style.css', 'admin.js'].includes(req.params.asset)
+    ['app.js', 'style.css', 'admin.js', 'reading-motion.js'].includes(req.params.asset)
       ? res.sendFile(path.join(ROOT, req.params.asset))
       : next(),
   );

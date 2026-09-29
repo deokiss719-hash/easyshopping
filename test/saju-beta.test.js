@@ -51,6 +51,9 @@ test('full beta requires owner access, creates no order, and keeps legacy report
  t.after(async()=>{await new Promise(r=>server.close(r));await pool.end();});
  let cookie='';
  async function req(path,body){const r=await fetch(base+'/api/saju'+path,{method:body?'POST':'GET',headers:{Origin:base,'X-Saju-Request':'1','Content-Type':'application/json',Cookie:cookie},...(body?{body:JSON.stringify(body)}:{})});if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];return {status:r.status,data:await r.json()};}
+ for(const asset of ['reading-motion.js','fonts/NanumMyeongjo-Regular.ttf']) {
+  const response=await fetch(base+'/saju/'+asset);assert.equal(response.status,200);assert.ok((await response.arrayBuffer()).byteLength>100);
+ }
  const cfg=await req('/config');assert.equal(cfg.data.accessMode,'beta');assert.equal(cfg.data.canPay,false);assert.equal(cfg.data.price,null);
  const created=await req('/reports',{...input('1990-01-01'),consent:true});assert.equal(created.status,201);
  const id=created.data.id;
