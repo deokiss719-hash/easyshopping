@@ -1,50 +1,45 @@
 'use strict';
-const previous = require('./report-v4');
-const VERSION = 'ko-story-5';
-const titles = {
- '소신인가, 결정 지연인가':'소신이 힘이 될 때와 고집이 될 때',
- '내 실력으로 벌고, 비교 때문에 쓰나요':'내 실력으로 번 돈과 비교에 쓰는 돈',
- '가까워져도 내 공간은 필요한가':'가까운 사이에도 필요한 나의 공간',
- '승부욕은 어디까지 도움이 될까':'사람 사이에서 커지는 승부욕',
- '같이 벌 때 몫도 같이 정했나요':'함께 버는 돈에 따라오는 관계의 비용',
- '완성할 시간이 주어지는가':'끝까지 완성할 수 있는 환경',
- '챙겨주는 마음이 왜 안 전해질까':'챙겨주는 마음과 상대가 받는 마음',
- '맞는 말인데 왜 부딪칠까':'옳은 말이 부딪힘으로 바뀌는 순간',
- '질문을 허용하는 조직인가':'질문이 성과로 이어지는 조직',
- '밖을 보는 역할인가, 붙잡아두는 자리인가':'새로운 접점을 만드는 역할',
- '강한 책임감인가, 상시 비상근무인가':'책임감이 긴장을 놓지 못하게 할 때',
- '어려운 일을 맡았는데 보수도 달라졌나요':'어려운 일의 무게와 그에 맞는 대가',
- '언제 무엇을 살펴볼까요':'삶의 흐름에 담긴 주제',
- '어떤 기준으로 읽었나요':'풀이에 적용한 기준'
-};
-function prose(sentences) {
- if(sentences.length!==5) return sentences.length===4
-  ? [sentences.slice(0,2).join(' '),sentences.slice(2).join(' ')] : sentences;
- const [judgment,scene,strength,weakness,response]=sentences;
- const sceneText=scene.replace(/장면이 어울립니다\.$/,'모습을 떠올릴 수 있습니다.')
-  .replace(/장면입니다\.$/,'상황에서 그 성향이 드러날 수 있습니다.')
-  .replace(/모습입니다\.$/,'모습에 가깝습니다.');
- return [`${judgment} ${sceneText} ${strength}`,`다만 ${weakness} 그래서 ${response}`];
+const previous=require('./report-v5');
+const stories=require('./grandmother-stories');
+const flows=require('./grandmother-flows');
+const VERSION='ko-grandmother-story-6';
+function setText(block,text,title=block.title){
+ block.title=title;
+ block.parts=text.split('\n\n').map(text=>({text}));
+ block.text=block.parts.map(p=>p.text).join(' ');
 }
-function generate(chart, version=VERSION) {
+function generate(chart,version=VERSION){
  if(version!==VERSION)return previous.generate(chart,version);
- const report=previous.generate(chart);
- report.version=VERSION;
- const replacements=new Map();
- for(const [i,section] of report.sections.entries()) for(const b of section.blocks){
-  b.title=titles[b.title] || b.title;
-  if(i<6 && b.parts) {
-   b.parts=prose(b.parts.map(p=>p.text)).map(text=>({text}));
-   b.text=b.parts.map(p=>p.text).join(' ');
-  }
-  if(b.id==='rules') {
-   b.parts=b.parts.map(p=>({...p,text:p.text.replaceAll('ko-pattern-4',VERSION)}));
-   b.text=b.parts.map(p=>p.text).join(' ');
-  }
-  replacements.set(b.id,b);
+ const r=previous.generate(chart),chosen=previous.selectors(chart);
+ r.version=VERSION;
+ const kinds=['summary','strength','money','work','love'];
+ const gods=[chosen.personality,chosen.strength,chosen.money,chosen.work,chosen.love];
+ const missing=[
+  ['한 가지 성격으로 묶지 않은 까닭','태어난 시간의 범위 안에서 기준이 달라지는구나. 이럴 때는 니 성향을 한쪽으로 묶어 말할 수 없단다. 모르는 자리에 그럴듯한 말을 채우면 이야기는 매끈해도 근거는 흐려지지. 확정된 부분만 이 풀이에 남겨두었단다.'],
+  ['장점과 약점의 경계가 흐린 자리','환경에 대응하는 방식을 읽을 글자가 하나로 정해지지 않았구나. 어느 쪽에나 맞을 만한 칭찬으로 이 자리를 메우지는 않으마. 장점과 약점을 짝지으려면 먼저 같은 성향을 가리키는 기준이 분명해야 하는 게다.'],
+  ['돈의 방식을 하나로 정하지 않은 자리','이번 입력에서는 수익 활동의 중심을 잡을 값이 확정되지 않았단다. 독립해서 버는 쪽인지 차근차근 관리하는 쪽인지, 니 돈의 방식을 여기서 고르지는 않으마. 흐린 근거를 분명한 돈 이야기처럼 꾸미지는 않는 게 맞지.'],
+  ['일터의 방향을 남겨둔 까닭','출생 범위 안에서 일의 역할을 읽는 기준이 바뀌는구나. 이번 결과만으로 니가 자율적인 곳에 맞는지 규칙적인 곳에 맞는지 결론내릴 수는 없단다. 어느 환경에서도 잘한다는 말로 대신하는 것도 니게 도움이 되지 않지.'],
+  ['관계의 성향을 채우지 않은 자리','가까운 관계를 읽을 기준이 확인되지 않았구나. 이 자리에서 니가 어떤 말을 하고 어떤 갈등을 겪는지 만들어낼 수는 없단다. 상대의 마음까지 대신 짐작하면 더 멀리 어긋나게 되는 게다.']
+ ];
+ for(let i=0;i<5;i++){
+  const [title,body]=gods[i] ? stories[gods[i]][kinds[i]] : missing[i];
+  setText(r.sections[i].blocks[0],body,title);
  }
- report.preview=report.preview.map(b=>replacements.get(b.id));
- report.sample=replacements.get(report.sample.id);
- return report;
+ for(const b of r.sections[5].blocks){
+  if(b.id==='flow-guide')setText(b,
+   `여기 담긴 나이와 연도는 어떤 사건이 꼭 생기는 때가 아니라, 전통 풀이에서 읽는 삶의 주제란다. 같은 주제가 돌아오는 구간은 한데 모아두었지. 실제로 그 주제가 어떤 모습이 되는지는 니가 놓인 환경과 선택에 달려 있다.\n\n성별을 받지 않아 대운의 방향은 하나로 정하지 않았단다. 순행과 역행은 서로 다른 가정이지, 둘을 동시에 겪는다는 뜻도 마음에 드는 쪽이 맞다는 뜻도 아니다. 시작 나이는 근사 범위이고, 연도별 흐름은 ${chart.referenceYear}년부터 5년을 담았단다.`, '삶의 흐름에 담긴 이야기');
+  else setText(b,flows[b.id.slice(5)]);
+ }
+ const technical=r.sections[6].blocks;
+ setText(technical[0],`달력에서 글자를 구하는 일과 그 글자로 사람의 경향을 읽는 일은 구별해야 한단다. 계산은 ${chart.version}, 이야기 버전은 ${VERSION}을 썼지. 성격·장단점·일은 월간과 일간의 관계, 인연은 일지 본기, 돈은 드러난 재성과 월간을 기준으로 문장을 골랐단다.\n\n이야기에 자신 있는 말투를 썼다고 니가 실제로 한 행동을 본 것은 아니란다. 전통 상징을 현실의 장면으로 옮긴 풀이이지, 과학적 성격 진단이나 미래의 증명은 아니지. 신강·신약·격국·용신·합화까지 종합한 감정은 아니며, 같은 선택 기준이면 일부 문단은 같을 수 있단다.`, '이 이야기를 읽은 기준');
+ setText(technical[1],'원국과 오행, 음양, 십성, 대운·세운의 값은 아래 계산표와 문단별 근거에 남겨두었단다. 오행은 확정된 겉글자의 수를 센 것이지, 지장간까지 더한 힘의 점수는 아니지.\n\n연주는 입춘, 월주는 절입, 일주는 출생지의 자정을 기준으로 했단다. 역사적 표준시와 서머타임은 적용하지만 진태양시 보정은 하지 않으니, 다른 만세력과 기준에 따른 차이가 날 수 있다.', '이야기 뒤에 남긴 계산값');
+ setText(technical[2],(chart.pillars.hour
+  ? '태어난 시각으로 시주는 계산했지만, 이번 이야기의 생활 성향 문단을 고를 때는 그 값을 쓰지 않았단다. 같은 날 같은 월주에서 시각만 달라지면 생활 이야기는 같을 수 있지.'
+  : '태어난 시각을 모르니 시주를 만들어 넣지 않았단다. 자녀나 말년처럼 그 자리에 기대는 결론도 쓰지 않았지. 확정되지 않은 기둥은 오행의 개수에도 넣지 않는 게다.')+
+ '\n\n절기 경계나 시간 범위 때문에 달라지는 값은 한쪽으로 정하지 않았단다. 오래된 표준시와 음력 변환에는 정해둔 계산 기준을 적용했지. 건강이나 재산의 크기, 결혼과 사건의 날짜를 이 이야기만으로 확정할 수는 없단다. 같은 글자를 지녀도 살아가는 조건과 선택은 다르기 때문이지.', '알 수 없는 것은 남겨두었단다');
+ technical.forEach(b=>b.collapsed=true);
+ const byId=new Map(r.sections.flatMap(s=>s.blocks).map(b=>[b.id,b]));
+ r.preview=r.preview.map(b=>byId.get(b.id));r.sample=byId.get(r.sample.id);
+ return r;
 }
 module.exports={...previous,generate,VERSION};

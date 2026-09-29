@@ -1,7 +1,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {calculate}=require('../src/saju/calculator');
-const {generate}=require('../src/saju/report');
+const {generate}=require('../src/saju/report-v5');
 const previous=require('../src/saju/report-v4');
 test('story reading preserves facts and snapshots while joining labelled answers into prose',()=>{
  for(let i=1;i<=12;i++){

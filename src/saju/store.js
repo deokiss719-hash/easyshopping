@@ -58,7 +58,7 @@ async function createStore(pool, secret) {
         !Number.isInteger(s.price) ||
         s.price < 100 ||
         s.price > 1000000 ||
-        !['ko-evidence-1', 'ko-grandmother-2', 'ko-depth-3', 'ko-pattern-4', 'ko-story-5'].includes(s.report_version) ||
+        !['ko-evidence-1', 'ko-grandmother-2', 'ko-depth-3', 'ko-pattern-4', 'ko-story-5', 'ko-grandmother-story-6'].includes(s.report_version) ||
         ![3, 4].includes(s.free_sections) ||
         typeof s.sales_enabled !== 'boolean'
       )

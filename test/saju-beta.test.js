@@ -63,10 +63,10 @@ test('full beta requires owner access, creates no order, and keeps legacy report
  const legacy=await store.create({chart,report:legacyReport},cookie.split('=')[1]);
  const row=await store.one('SELECT * FROM saju_reports WHERE id=$1',[legacy.id]);
  const order=await store.order(row,6900,'demo');
- await pool.query("DELETE FROM saju_content_migrations WHERE version IN ('ko-pattern-4','ko-story-5')");
+ await pool.query("DELETE FROM saju_content_migrations WHERE version IN ('ko-pattern-4','ko-story-5','ko-grandmother-story-6')");
  await pool.query("UPDATE saju_settings SET report_version='ko-depth-3' WHERE id=1");
  await createStore(pool,secret);
- assert.equal((await store.settings()).report_version,'ko-story-5');
+ assert.equal((await store.settings()).report_version,'ko-grandmother-story-6');
  assert.deepEqual((await req('/reports/'+legacy.id)).data.report,legacyReport);
  assert.equal((await store.one('SELECT payload FROM saju_reports WHERE id=$1',[legacy.id])).payload,row.payload);
  assert.equal((await store.one('SELECT amount FROM saju_orders WHERE id=$1',[order.id])).amount,6900);

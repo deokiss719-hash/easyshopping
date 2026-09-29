@@ -1,0 +1,164 @@
+[
+  {
+    "date": "1990-01-01",
+    "selected": {
+      "personality": "비견",
+      "strength": "비견",
+      "money": "비견",
+      "moneyPath": "pillars.month",
+      "work": "비견",
+      "love": "편인"
+    },
+    "check": {
+      "forbidden": [],
+      "introJargon": 0,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-02",
+    "selected": {
+      "personality": "겁재",
+      "strength": "겁재",
+      "money": "겁재",
+      "moneyPath": "pillars.month",
+      "work": "겁재",
+      "love": "편인"
+    },
+    "check": {
+      "forbidden": [],
+      "introJargon": 0,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-03",
+    "selected": {
+      "personality": "편인",
+      "strength": "편인",
+      "money": "편인",
+      "moneyPath": "pillars.month",
+      "work": "편인",
+      "love": "비견"
+    },
+    "check": {
+      "forbidden": [],
+      "introJargon": 0,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-06",
+    "selected": {
+      "personality": "편관",
+      "strength": "편관",
+      "money": "편관",
+      "moneyPath": "pillars.month",
+      "work": "편관",
+      "love": "편인"
+    },
+    "check": {
+      "forbidden": [],
+      "introJargon": 0,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-07",
+    "selected": {
+      "personality": "정재",
+      "strength": "정재",
+      "money": "정재",
+      "moneyPath": "pillars.month",
+      "work": "정재",
+      "love": "편인"
+    },
+    "check": {
+      "forbidden": [],
+      "introJargon": 0,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-08",
+    "selected": {
+      "personality": "편재",
+      "strength": "편재",
+      "money": "편재",
+      "moneyPath": "pillars.month",
+      "work": "편재",
+      "love": "편인"
+    },
+    "check": {
+      "forbidden": [],
+      "introJargon": 0,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-09",
+    "selected": {
+      "personality": "상관",
+      "strength": "상관",
+      "money": "정재",
+      "moneyPath": "pillars.year",
+      "work": "상관",
+      "love": "편재"
+    },
+    "check": {
+      "forbidden": [],
+      "introJargon": 0,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "near": []
+    }
+  },
+  {
+    "date": "1990-01-10",
+    "selected": {
+      "personality": "식신",
+      "strength": "식신",
+      "money": "편재",
+      "moneyPath": "pillars.year",
+      "work": "식신",
+      "love": "정인"
+    },
+    "check": {
+      "forbidden": [],
+      "introJargon": 0,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "near": []
+    }
+  },
+  {
+    "date": "1988-08-15",
+    "selected": {
+      "personality": "편인",
+      "strength": "편인",
+      "money": "편인",
+      "moneyPath": "pillars.month",
+      "work": "편인",
+      "love": "식신"
+    },
+    "check": {
+      "forbidden": [],
+      "introJargon": 0,
+      "repeatPairs": 0,
+      "nearPairs": 0,
+      "near": []
+    }
+  }
+]

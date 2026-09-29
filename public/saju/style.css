@@ -550,3 +550,6 @@ pre {
 .beta-reading .flow-timeline { border: 1px solid #554a34; padding: 14px; margin: 24px 0; }
 .beta-reading .flow-timeline ul { padding-left: 0; list-style: none; font: 14px/1.9 system-ui,sans-serif; }
 .beta-reading .flow-timeline li { margin: 10px 0; overflow-wrap: anywhere; }
+
+.story-basis { padding: 18px 0; border-bottom: 1px solid #554a34; }
+.story-basis > summary { cursor: pointer; line-height: 1.7; }
