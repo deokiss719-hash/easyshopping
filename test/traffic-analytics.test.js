@@ -69,7 +69,7 @@ test('referrer details keep search terms and sanitized URLs without secrets or f
   assert.equal(emojiSearch.searchTerm.length, 200);
 });
 
-test('tracking allowlist accepts only real homepage document GETs', () => {
+test('tracking allowlist accepts only supported public document GETs', () => {
   const request = (overrides = {}) => ({
     method: 'GET', path: '/',
     get(name) {
@@ -80,6 +80,9 @@ test('tracking allowlist accepts only real homepage document GETs', () => {
   });
   assert.equal(shouldTrackRequest(request()), true);
   assert.equal(shouldTrackRequest(request({ path: '/index.html' })), true);
+  for (const path of ['/community', '/community/posts/123', '/phone.html', '/saju']) {
+    assert.equal(shouldTrackRequest(request({ path })), true, path);
+  }
   for (const path of ['/admin', '/api/live-deals', '/styles.css', '/robots.txt', '/sitemap.xml', '/google-token.html']) {
     assert.equal(shouldTrackRequest(request({ path })), false, path);
   }
@@ -88,6 +91,33 @@ test('tracking allowlist accepts only real homepage document GETs', () => {
   assert.equal(shouldTrackRequest(request({ headers: { 'user-agent': 'Mozilla/5.0', 'purpose': 'prefetch' } })), false);
   assert.equal(shouldTrackRequest(request({ headers: { 'user-agent': 'Mozilla/5.0', 'sec-fetch-dest': 'image' } })), false);
   assert.equal(shouldTrackRequest(request({ headers: { 'user-agent': '', 'sec-fetch-dest': 'document' } })), false);
+});
+
+test('service visits are separated from hot-deal traffic without storing page inputs', async (t) => {
+  const serviceCalls = [], dealCalls = [];
+  const app = express();
+  app.use(createTrafficAnalytics({
+    store: {
+      async recordPageView(value) { dealCalls.push(value); },
+      async recordServiceVisit(value) { serviceCalls.push(value); },
+    },
+    secret: 'x'.repeat(32), production: false,
+    now: () => new Date('2026-09-11T12:00:00Z'),
+  }));
+  for (const path of ['/saju', '/community', '/community/posts/:id', '/phone.html']) app.get(path, (_req, res) => res.send('ok'));
+  const { server, origin } = await listen(app);
+  t.after(() => server.close());
+  const headers = { 'user-agent': 'Mozilla/5.0 Safari/605.1', 'sec-fetch-dest': 'document' };
+  const first = await fetch(`${origin}/saju?birth=private`, { headers });
+  const cookie = first.headers.get('set-cookie').split(';', 1)[0];
+  for (const path of ['/saju', '/community', '/community/posts/123', '/phone.html']) {
+    assert.equal((await fetch(origin + path, { headers: { ...headers, cookie } })).status, 200);
+  }
+  await waitFor(() => serviceCalls.length === 5);
+  assert.deepEqual(serviceCalls.map((row) => row.service), ['saju', 'saju', 'community', 'community', 'phone']);
+  assert.equal(new Set(serviceCalls.map((row) => row.visitorHash)).size, 1);
+  assert.equal(dealCalls.length, 0);
+  assert.equal(JSON.stringify(serviceCalls).includes('private'), false);
 });
 
 test('middleware counts same daily browser once and stores sanitized search referral details', async (t) => {

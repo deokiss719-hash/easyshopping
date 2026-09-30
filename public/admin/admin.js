@@ -20,8 +20,11 @@
     communityBannedWords: [],
     communityBlocks: [],
     communitySettings: {},
+    communityPostTotal: 0,
+    communityDeletedTotal: 0,
   };
   const byId = (id) => document.getElementById(id);
+  const setMetric = (id, value) => { const node = byId(id); if (node) node.textContent = Number(value || 0).toLocaleString('ko-KR'); };
   const normalizeHttpsUrlInput = window.AdminUrlUtils.normalizeHttpsUrlInput;
 
   function showMessage(id, message, kind = 'notice') {
@@ -124,6 +127,15 @@
     byId('stat-published').textContent = String(state.deals.filter((deal) => deal.isPublished).length);
     byId('stat-home').textContent = String(state.deals.filter((deal) => deal.isPublished && deal.showOnHome).length);
     byId('deal-count').textContent = String(state.deals.length);
+    setMetric('phone-deals-total', state.deals.length);
+    setMetric('phone-deals-published', state.deals.filter((deal) => deal.isPublished).length);
+    setMetric('phone-deals-home', state.deals.filter((deal) => deal.isPublished && deal.showOnHome).length);
+    setMetric('home-published-count', state.deals.filter((deal) => deal.isPublished && deal.showOnHome).length);
+    const homeList = byId('home-deals-list');
+    homeList.replaceChildren();
+    const homeDeals = state.deals.filter((deal) => deal.isPublished && deal.showOnHome);
+    if (!homeDeals.length) homeList.append(textNode('p', '메인에 지정된 휴대폰 상품이 없어요.', 'empty-copy'));
+    homeDeals.forEach((deal) => homeList.append(dealSummary(deal, true)));
 
     const recent = byId('recent-deals');
     const list = byId('deal-list');
@@ -151,11 +163,13 @@
     const list = byId('inquiry-list');
     if (!list) return;
     list.replaceChildren();
-    if (!state.inquiries.length) {
-      list.append(textNode('p', '접수된 광고문의가 없습니다.', 'empty'));
+    const filter = byId('ad-status-filter').value;
+    const visible = state.inquiries.filter((item) => filter === 'all' || (filter === 'pending' ? item.status !== 'done' : item.status === filter));
+    if (!visible.length) {
+      list.append(textNode('p', '해당하는 광고문의가 없습니다.', 'empty'));
       return;
     }
-    state.inquiries.forEach((inquiry) => {
+    visible.forEach((inquiry) => {
       const article = document.createElement('article');
       article.className = 'inquiry-item panel';
       const header = document.createElement('div');
@@ -188,6 +202,8 @@
             method: 'PATCH', body: JSON.stringify({ status: status.value, adminNote: note.value.trim() }),
           });
           Object.assign(inquiry, updated);
+          renderInquiryMetrics();
+          renderInquiries();
           showMessage('inquiries-message', '광고문의 상태를 저장했습니다.', 'success');
         } catch (error) {
           showMessage('inquiries-message', errorMessage(error, '광고문의 상태를 저장하지 못했습니다.'), 'error');
@@ -201,7 +217,14 @@
   async function loadInquiries() {
     const data = await api('/api/admin/advertising-inquiries');
     state.inquiries = Array.isArray(data?.inquiries) ? data.inquiries : [];
+    renderInquiryMetrics();
     renderInquiries();
+  }
+
+  function renderInquiryMetrics() {
+    for (const [status, id] of [['new', 'ad-new-count'], ['in_progress', 'ad-progress-count'], ['done', 'ad-done-count']]) {
+      setMetric(id, state.inquiries.filter((item) => item.status === status).length);
+    }
   }
 
   function communityAction(label, handler, className = 'button secondary small') {
@@ -489,11 +512,13 @@
     const list = byId('community-report-list');
     if (!list) return;
     list.replaceChildren();
-    if (!state.communityReports.length) {
+    const filter = byId('community-report-filter').value;
+    const reports = state.communityReports.filter((report) => filter === 'all' || report.status === 'open');
+    if (!reports.length) {
       list.append(textNode('p', '접수된 신고가 없습니다.', 'empty-copy'));
       return;
     }
-    state.communityReports.forEach((report) => {
+    reports.forEach((report) => {
       const item = document.createElement('article');
       item.className = 'compact-item';
       const body = document.createElement('div');
@@ -575,11 +600,19 @@
         api('/api/admin/community/settings'),
       ]);
       state.communityPosts = posts.posts || [];
+      state.communityPostTotal = Number(posts.total || 0);
       state.communityDeletedPosts = deletedPosts.posts || [];
+      state.communityDeletedTotal = Number(deletedPosts.total || 0);
       state.communityReports = reports.reports || [];
       state.communityBannedWords = banned.words || [];
       state.communityBlocks = blocks.blocks || [];
       state.communitySettings = settings.settings || {};
+      setMetric('community-post-count', state.communityPostTotal);
+      setMetric('community-deleted-total', state.communityDeletedTotal);
+      setMetric('community-open-reports', state.communityReports.filter((report) => report.status === 'open').length);
+      byId('community-metric-note').textContent = q
+        ? '게시글·삭제 보관은 현재 검색어에 맞는 전체 건수예요. 신고는 최근 200건 목록 기준이에요.'
+        : '게시글·삭제 보관은 전체 건수, 신고는 최근 200건 목록 기준이에요.';
       renderCommunityNotices(); renderCommunityPosts(); renderDeletedCommunityPosts(); renderCommunityReports(); renderCommunityBannedWords(); renderCommunityBlocks(); renderCommunitySettings();
     } catch (error) {
       showMessage('community-admin-message', errorMessage(error, '커뮤니티 관리 데이터를 불러오지 못했습니다.'), 'error');
@@ -739,6 +772,19 @@
     }
   }
 
+  async function loadServiceTraffic() {
+    try {
+      const data = await api('/api/admin/analytics/services');
+      byId('service-analytics-day').textContent = `${data.day} · 한국시간 기준 · 하루 중복 제외`;
+      for (const service of ['community', 'phone', 'saju']) {
+        setMetric(`service-${service}-visitors`, data.services?.[service]?.visitors || 0);
+      }
+      showMessage('service-analytics-message', '');
+    } catch (error) {
+      showMessage('service-analytics-message', errorMessage(error, '서비스 방문 통계를 불러오지 못했습니다.'), 'error');
+    }
+  }
+
   function renderDaily(rows) {
     const wrap = byId('daily-table');
     wrap.replaceChildren();
@@ -787,15 +833,21 @@
   function renderOperations(data) {
     const list = byId('source-status');
     list.replaceChildren();
-    (Array.isArray(data.sources) ? data.sources : []).forEach((item) => {
+    const sources = Array.isArray(data.sources) ? data.sources : [];
+    setMetric('products-active-count', sources.reduce((sum, row) => sum + Number(row.active_count || 0), 0));
+    setMetric('products-new-count', sources.reduce((sum, row) => sum + Number(row.new_today || 0), 0));
+    setMetric('products-image-count', sources.reduce((sum, row) => sum + Number(row.missing_images || 0), 0));
+    setMetric('products-failed-count', sources.filter((row) => row.latestRun?.status === 'failed').length);
+    sources.forEach((item) => {
       const card = document.createElement('article');
       card.className = 'status-card';
       card.append(textNode('strong', sourceLabels[item.source] || item.source));
       card.append(textNode('span', `활성 ${Number(item.active_count || 0).toLocaleString('ko-KR')}개 · 오늘 ${Number(item.new_today || 0).toLocaleString('ko-KR')}개`));
       card.append(textNode('span', `이미지 없음 ${Number(item.missing_images || 0).toLocaleString('ko-KR')}개`));
-      card.append(textNode('span', `최근 확인 ${formatDateTime(item.last_seen_at)}`));
+      card.append(textNode('span', `최근 상품 확인 ${formatDateTime(item.last_seen_at)}`));
       const run = item.latestRun;
-      card.append(textNode('span', run ? `최근 수집 ${run.status || '-'} · ${formatDateTime(run.finished_at || run.started_at)}` : '수집 기록 없음'));
+      const runLabels = { succeeded: '정상', failed: '실패', running: '진행 중', skipped: '건너뜀' };
+      card.append(textNode('span', run ? `최근 수집 ${runLabels[run.status] || '상태 미확인'} · ${formatDateTime(run.finished_at || run.started_at)}` : '수집 기록 없음'));
       list.append(card);
     });
     const automation = byId('automation-status');
@@ -1115,6 +1167,7 @@
 
   async function loadSettings() {
     const settings = await api('/api/admin/settings');
+    setMetric('home-limit-count', settings.home_manual_limit ?? 4);
     setValue('setting-home-limit', settings.home_manual_limit ?? 4);
     setValue('setting-searches', Array.isArray(settings.recommended_searches) ? settings.recommended_searches.join(', ') : '');
     setValue('setting-main-copy', settings.main_copy);
@@ -1135,6 +1188,7 @@
     button.disabled = true;
     try {
       await api('/api/admin/settings', { method: 'PUT', body: JSON.stringify({ values }) });
+      setMetric('home-limit-count', values.home_manual_limit);
       showMessage('settings-message', '사이트 설정을 저장했습니다.', 'success');
     } catch (error) {
       showMessage('settings-message', errorMessage(error, '설정을 저장하지 못했습니다.'), 'error');
@@ -1148,10 +1202,11 @@
   let phoneRows=[];
   function renderPhoneInquiries(){
     const list=byId('phone-inquiry-list');list.replaceChildren();
-    const counts=Object.keys(phoneStatuses).map(k=>`${phoneStatuses[k]} ${phoneRows.filter(r=>r.status===k).length}건`);byId('phone-summary').textContent=counts.join(' · ')+' (최근 500건, 최대 90일)';
+    for (const [status,id] of [['new','phone-new-count'],['consulting','phone-consulting-count'],['reserved','phone-reserved-count'],['completed','phone-completed-count']]) setMetric(id,phoneRows.filter(r=>r.status===status).length);
     const days=new Map();for(const row of phoneRows){const day=new Date(row.created_at).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});const count=days.get(day)||{all:0,reserved:0,completed:0};count.all++;if(row.status==='reserved')count.reserved++;if(row.status==='completed')count.completed++;days.set(day,count);}
     const daily=byId('phone-daily');daily.replaceChildren();for(const [day,count] of days){daily.append(textNode('p',`${day} 접수 ${count.all}건 · 현재 방문 예약 ${count.reserved}건 · 개통 완료 ${count.completed}건`));}
     const rows=phoneRows.filter(r=>!byId('phone-status-filter').value||r.status===byId('phone-status-filter').value);
+    byId('phone-summary').textContent=`현재 표시 ${rows.length.toLocaleString('ko-KR')}건 · 목록 전체 ${phoneRows.length.toLocaleString('ko-KR')}건`;
     if(!rows.length)list.append(textNode('p','해당 상담이 없습니다.'));
     for(const r of rows){const card=textNode('article','','panel');card.append(textNode('h3',r.model),textNode('p','성함: '+(r.customer_name||'미입력 (기존 접수)')),textNode('p',`${new Date(r.created_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})} · ${r.id}`),textNode('p',`${r.carrier} · ${r.change_type} · ${r.method==='phone'?'전화 상담':(r.status==='new'?'카카오 상담 시작 미확인 — 채널에서 견적번호 확인':'카카오 상담')}`));
       if(r.phone){const a=textNode('a',r.phone+' 전화 걸기');a.href='tel:'+r.phone;card.append(a,textNode('p','통화 가능: '+r.preferred_time));}
@@ -1182,14 +1237,16 @@
     byId('metadata-url').addEventListener('input', () => { state.fetchedMetadataUrl = ''; });
     byId('metadata-url').addEventListener('change', () => { if (byId('metadata-url').checkValidity()) fetchMetadata({ quiet: true }); });
     byId('settings-form')?.addEventListener('submit', saveSettings);
-    byId('refresh-traffic')?.addEventListener('click', loadTraffic);
+    byId('refresh-traffic')?.addEventListener('click', () => Promise.all([loadTraffic(), loadServiceTraffic()]));
     byId('daily-filter')?.addEventListener('submit', loadDaily);
     byId('refresh-operations')?.addEventListener('click', () => Promise.all([loadOperations(), loadProducts()]));
     byId('product-filter')?.addEventListener('submit', (event) => { event.preventDefault(); loadProducts({ resetPage: true }); });
     byId('product-prev')?.addEventListener('click', () => { if (state.productPage > 1) { state.productPage -= 1; loadProducts(); } });
     byId('product-next')?.addEventListener('click', () => { if (state.productPage * state.productSize < state.productTotal) { state.productPage += 1; loadProducts(); } });
     byId('refresh-inquiries')?.addEventListener('click', loadInquiries);
+    byId('ad-status-filter')?.addEventListener('change', renderInquiries);
     byId('refresh-community')?.addEventListener('click', loadCommunity);
+    byId('community-report-filter')?.addEventListener('change', renderCommunityReports);
     byId('community-post-filter')?.addEventListener('submit', (event) => { event.preventDefault(); loadCommunity(); });
     byId('community-notice-form')?.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -1244,7 +1301,7 @@
       const session = await api('/api/admin/auth/session');
       state.csrfToken = session.csrfToken;
       byId('admin-user').textContent = session.username || '';
-      await Promise.all([loadDeals(), loadSettings(), loadTraffic(), loadDaily(), loadOperations(), loadProducts(), loadInquiries(), loadCommunity()]);
+      await Promise.all([loadDeals(), loadSettings(), loadTraffic(), loadServiceTraffic(), loadDaily(), loadOperations(), loadProducts(), loadInquiries(), loadCommunity()]);
       window.setInterval(() => {
         const replyEditorOpen = Boolean(document.querySelector('#community-post-list .community-admin-reply-form'));
         if (!document.hidden && byId('community')?.classList.contains('active') && !replyEditorOpen) void loadCommunity();

@@ -12,12 +12,16 @@ test('every admin API is behind authentication and mutations are CSRF protected'
   const calls = [];
   const auth = { requireAuth(req, res, next) { if (req.headers.authorization !== 'ok') return res.sendStatus(401); next(); }, requireMutationProtection(req, res, next) { calls.push(req.method); if (req.headers['x-csrf-token'] !== 'ok') return res.sendStatus(403); next(); } };
   const store = { listManualDeals: async () => [], createManualDeal: async (x) => x, updateManualDeal: async (_id, x) => x, deleteManualDeal: async () => true, getSettings: async () => ({}), setSetting: async () => ({}), setSettings: async (x) => x };
-  const analyticsStore = { getDay: async (day) => ({ day, timeZone: 'Asia/Seoul', uniqueVisitors: 2, pageViews: 3, referrers: [] }) };
+  const analyticsStore = {
+    getDay: async (day) => ({ day, timeZone: 'Asia/Seoul', uniqueVisitors: 2, pageViews: 3, referrers: [] }),
+    getServiceDay: async () => ({ community: { visitors: 2, pageViews: 3 }, phone: { visitors: 0, pageViews: 0 }, saju: { visitors: 4, pageViews: 5 } }),
+  };
   const app = express(); app.use(express.json()); app.use('/api/admin', createAdminApiRouter({ store, auth, metadataFetcher: async () => ({ title: 'Phone' }) }));
   const { server, origin } = await listen(app); t.after(() => server.close());
   assert.equal((await fetch(`${origin}/api/admin/manual-deals`)).status, 401);
   assert.equal((await fetch(`${origin}/api/admin/manual-deals`, { headers: { authorization: 'ok' } })).status, 200);
   assert.equal((await fetch(`${origin}/api/admin/analytics/today`)).status, 401);
+  assert.equal((await fetch(`${origin}/api/admin/analytics/services`)).status, 401);
   assert.equal((await fetch(`${origin}/api/admin/manual-deals`, { method: 'POST', headers: { authorization: 'ok', 'content-type': 'application/json' }, body: '{}' })).status, 403);
   assert.equal((await fetch(`${origin}/api/admin/url-metadata`, { method: 'POST', headers: { authorization: 'ok', 'x-csrf-token': 'ok', 'content-type': 'application/json' }, body: JSON.stringify({ url: 'https://shop.example' }) })).status, 200);
   const settings = await fetch(`${origin}/api/admin/settings`, { method: 'PUT', headers: { authorization: 'ok', 'x-csrf-token': 'ok', 'content-type': 'application/json' }, body: JSON.stringify({ values: { home_manual_limit: 4 } }) });
@@ -31,6 +35,9 @@ test('every admin API is behind authentication and mutations are CSRF protected'
   const analytics = await fetch(`${analyticsServer.origin}/api/admin/analytics/today`, { headers: { authorization: 'ok' } });
   assert.equal(analytics.status, 200);
   assert.deepEqual(await analytics.json(), { day: '2026-09-12', timeZone: 'Asia/Seoul', uniqueVisitors: 2, pageViews: 3, referrers: [] });
+  const services = await fetch(`${analyticsServer.origin}/api/admin/analytics/services`, { headers: { authorization: 'ok' } });
+  assert.equal(services.status, 200);
+  assert.deepEqual(await services.json(), { day: '2026-09-12', timeZone: 'Asia/Seoul', services: await analyticsStore.getServiceDay() });
 });
 
 test('public settings route returns only store public values', async (t) => {

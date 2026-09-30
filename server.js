@@ -217,6 +217,8 @@ async function start() {
     const imageStorage = createR2Storage({ config: r2Config });
     communityStore = createCommunityStore(pool, { imageUrlValidator: createCommunityImageUrlValidator(imageStorage) });
     const analyticsStore = createTrafficAnalyticsStore(pool);
+    // This middleware must run before the saju and community routers, which render HTML directly.
+    app.use((req, res, next) => trafficAnalytics(req, res, next));
     const purgeTrafficDetails = () => analyticsStore.purgeBefore(koreaDay(new Date()))
       .catch(() => console.warn('traffic analytics retention cleanup failed'));
     void purgeTrafficDetails();
@@ -388,7 +390,6 @@ async function start() {
   }
 
   app.use('/admin', createAdminUiRouter({ auth: adminAuth }));
-  app.use(trafficAnalytics);
   if (store) app.use(createSeoPagesRouter(store, communityStore));
   app.use(express.static(path.join(__dirname, 'public')));
 

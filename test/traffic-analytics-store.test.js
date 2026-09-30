@@ -15,9 +15,26 @@ async function setup() {
 test('traffic migration is idempotent and creates aggregate tables', async () => {
   const { pool } = await setup();
   await migrate(pool);
-  for (const table of ['traffic_daily', 'traffic_daily_visitors', 'traffic_daily_referrers', 'cta_daily_events']) {
+  for (const table of ['traffic_daily', 'traffic_daily_visitors', 'traffic_daily_referrers', 'service_daily_views', 'service_daily_visitors', 'cta_daily_events']) {
     assert.equal((await pool.query(`SELECT * FROM ${table} LIMIT 1`)).rowCount, 0);
   }
+  await pool.end();
+});
+
+test('service counters keep each page separate and deduplicate daily visitors', async () => {
+  const { pool, store } = await setup();
+  const day = '2026-09-11', visitorHash = 'a'.repeat(64);
+  await store.recordServiceVisit({ day, service: 'saju', visitorHash });
+  await store.recordServiceVisit({ day, service: 'saju', visitorHash });
+  await store.recordServiceVisit({ day, service: 'community', visitorHash });
+  assert.deepEqual(await store.getServiceDay(day), {
+    community: { visitors: 1, pageViews: 1 },
+    phone: { visitors: 0, pageViews: 0 },
+    saju: { visitors: 1, pageViews: 2 },
+  });
+  assert.equal((await store.getDay(day)).pageViews, 0);
+  assert.equal((await pool.query('SELECT COUNT(*) count FROM service_daily_visitors')).rows[0].count, 2);
+  await assert.rejects(store.recordServiceVisit({ day, service: 'checkout', visitorHash }), TypeError);
   await pool.end();
 });
 

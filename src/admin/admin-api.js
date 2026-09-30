@@ -99,6 +99,11 @@ function createAdminApiRouter({
     if (!analyticsStore?.getDay) return res.status(503).json({ error: 'analytics_unavailable' });
     return res.json(await analyticsStore.getDay(koreaDay(now())));
   }));
+  router.get('/analytics/services', asyncRoute(async (_req, res) => {
+    if (!analyticsStore?.getServiceDay) return res.status(503).json({ error: 'analytics_unavailable' });
+    const day = koreaDay(now());
+    return res.json({ day, timeZone: 'Asia/Seoul', services: await analyticsStore.getServiceDay(day) });
+  }));
   router.get('/analytics/daily', asyncRoute(async (req, res) => {
     if (!analyticsStore?.getRange) return res.status(503).json({ error: 'analytics_unavailable' });
     const today = koreaDay(now());

@@ -94,8 +94,15 @@ function analyzeReferrer(value, siteHosts = new Set()) {
   }
 }
 
+function serviceForPath(path) {
+  if (path === '/saju' || path === '/saju/') return 'saju';
+  if (path === '/phone.html') return 'phone';
+  if (path === '/community' || path === '/community/' || /^\/community\/posts\/\d+$/.test(path)) return 'community';
+  return null;
+}
+
 function shouldTrackRequest(req) {
-  if (req.method !== 'GET' || (!['/', '/index.html'].includes(req.path) && !/^\/(?:deals\/\d+|hot-deals\/[a-z-]+)$/.test(req.path))) return false;
+  if (req.method !== 'GET' || (!['/', '/index.html'].includes(req.path) && !/^\/(?:deals\/\d+|hot-deals\/[a-z-]+)$/.test(req.path) && !serviceForPath(req.path))) return false;
   const userAgent = String(req.get('user-agent') || '').trim();
   if (!userAgent || BOT_PATTERN.test(userAgent)) return false;
   const purpose = `${req.get('purpose') || ''} ${req.get('sec-purpose') || ''}`;
@@ -146,6 +153,8 @@ function createTrafficAnalytics({
 
   return (req, res, next) => {
     if (!shouldTrackRequest(req)) return next();
+    const service = serviceForPath(req.path);
+    if (service && !store.recordServiceVisit) return next();
     const at = now();
     const cookieHeader = req.get('cookie');
     if (adminTrafficCookie.isValid(cookieHeader, key, at)) return next();
@@ -162,10 +171,12 @@ function createTrafficAnalytics({
       res.append('Set-Cookie', attributes.join('; '));
     }
     const visitorHash = hmac(key, 'traffic-db-v1', day, visitorId).toString('hex');
-    const { source, domain, searchTerm, referrerUrl } = analyzeReferrer(req.get('referer'), ownHosts);
+    const referrer = service ? null : analyzeReferrer(req.get('referer'), ownHosts);
     res.once('finish', () => {
       if (res.statusCode < 200 || res.statusCode >= 400) return;
-      Promise.resolve(store.recordPageView({ day, visitorHash, source, domain, searchTerm, referrerUrl }))
+      Promise.resolve(service
+        ? store.recordServiceVisit({ day, service, visitorHash })
+        : store.recordPageView({ day, visitorHash, ...referrer }))
         .catch(() => logger.warn('traffic analytics write failed'));
     });
     return next();

@@ -172,6 +172,21 @@ CREATE TABLE IF NOT EXISTS traffic_daily_referrers (
   PRIMARY KEY (day, source, domain)
 );
 
+-- Only fixed public service names are stored. Daily visitor hashes expire after the day.
+CREATE TABLE IF NOT EXISTS service_daily_views (
+  day DATE NOT NULL,
+  service TEXT NOT NULL CHECK (service IN ('community', 'phone', 'saju')),
+  page_views BIGINT NOT NULL DEFAULT 0,
+  visitors BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, service)
+);
+CREATE TABLE IF NOT EXISTS service_daily_visitors (
+  day DATE NOT NULL,
+  service TEXT NOT NULL CHECK (service IN ('community', 'phone', 'saju')),
+  visitor_hash VARCHAR(64) NOT NULL,
+  PRIMARY KEY (day, service, visitor_hash)
+);
+
 -- Public ranking metadata and first-party, daily-deduplicated product clicks.
 ALTER TABLE deals ADD COLUMN IF NOT EXISTS toss_rank INTEGER;
 ALTER TABLE deals ADD COLUMN IF NOT EXISTS review_score NUMERIC;

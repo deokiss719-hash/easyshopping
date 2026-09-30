@@ -58,10 +58,47 @@ function createTrafficAnalyticsStore(pool, { detailLimit = 200, resultLimit = 10
   async function purgeOldVisitorHashes(day) {
     if (lastPurgedDay === day) return;
     await timedQuery(pool, 'DELETE FROM traffic_daily_visitors WHERE day < $1::date', [day]);
+    await timedQuery(pool, 'DELETE FROM service_daily_visitors WHERE day < $1::date', [day]);
     lastPurgedDay = day;
   }
 
   return {
+    async recordServiceVisit({ day, service, visitorHash }) {
+      if (!validDay(day) || !['community', 'phone', 'saju'].includes(service) || !HASH_PATTERN.test(String(visitorHash))) {
+        throw new TypeError('invalid service analytics input');
+      }
+      const client = await pool.connect();
+      try {
+        await timedQuery(client, 'BEGIN');
+        const first = await timedQuery(client,
+          `INSERT INTO service_daily_visitors(day,service,visitor_hash)
+           VALUES($1::date,$2,$3) ON CONFLICT DO NOTHING RETURNING visitor_hash`,
+          [day, service, visitorHash]);
+        await timedQuery(client,
+          `INSERT INTO service_daily_views(day,service,page_views,visitors) VALUES($1::date,$2,1,$3)
+           ON CONFLICT(day,service) DO UPDATE SET
+             page_views=service_daily_views.page_views+1,
+             visitors=service_daily_views.visitors+EXCLUDED.visitors`,
+          [day, service, first.rows.length ? 1 : 0]);
+        await timedQuery(client, 'COMMIT');
+      } catch (error) {
+        try { await timedQuery(client, 'ROLLBACK'); } catch { /* preserve the original error */ }
+        throw error;
+      } finally { client.release(); }
+      await purgeOldVisitorHashes(day);
+    },
+    async getServiceDay(day) {
+      if (!validDay(day)) throw new TypeError('invalid analytics day');
+      const result = await timedQuery(pool,
+        'SELECT service,page_views,visitors FROM service_daily_views WHERE day=$1::date', [day]);
+      return Object.fromEntries(['community', 'phone', 'saju'].map((service) => {
+        const row = result.rows.find((item) => item.service === service);
+        return [service, {
+          visitors: safeCount(row?.visitors, `${service} visitors`),
+          pageViews: safeCount(row?.page_views, `${service} pageViews`),
+        }];
+      }));
+    },
     async recordPageView(value) {
       const { day, visitorHash, source, domain, searchTerm, referrerUrl } = normalizeInput(value);
       const insertMarker = crypto.randomBytes(16).toString('hex');
