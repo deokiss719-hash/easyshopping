@@ -176,12 +176,13 @@ async function load(id) {
   show('recovery-panel', false);
   show('result-panel', true);
   $('result-title').textContent = (current.name ? current.name + '님의 ' : '나의 ') + '사주 이야기';
+  $('reading-intro').textContent = '자, 니 사주에 담긴 돈과 사랑 이야기를 들려주마.';
   $('chart-meta').textContent = '양력 ' + current.chart.solarDate +
     (current.chart.pillars.hour ? ' · 시주 포함' : ' · 시주 미확정');
   renderChart(current.chart);
   $('count-note').textContent =
     `확정된 ${current.chart.visibleCount}글자만 집계해요. 지장간 가중치·계절 강약은 제외한 분포예요.`;
-  $('preview').replaceChildren(...current.report.preview.map((b) => { const section=document.createElement('section'); if(b.title)section.append(text('h3',b.title)); section.append(block(b,current.report));return section; }));
+  $('preview').replaceChildren(...current.report.preview.map((b) => { const section=document.createElement('section');  section.append(block(b,current.report));return section; }));
   $('warnings').replaceChildren(...current.chart.warnings.map((w) => text('li', w)));
   show('chart-details', false);
   if ((current?.accessMode || config.accessMode) === 'beta') {
@@ -219,7 +220,7 @@ async function load(id) {
   show('purchase-controls', !current.paid);
   $('continue-reading').textContent = config.mode === 'demo'
     ? '이어서 보기 · 과금 없는 체험'
-    : `전체 풀이 이어 읽기 · ${config.price.toLocaleString()}원${config.mode === 'test' ? ' (테스트)' : ''}`;
+    : `내 이야기 이어 읽기 · ${config.price.toLocaleString()}원${config.mode === 'test' ? ' (테스트)' : ''}`;
   $('continue-reading').disabled = !config.canPay;
   if (current.paid) {
     $('book-version').textContent = `해석 버전 ${current.report.version} · 구매 시 저장된 내용`;

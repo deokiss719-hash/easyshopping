@@ -651,14 +651,6 @@ pre {
 .saju-experience #paid-offer { border-top:0; margin:0; padding:0 0 20px; }
 #paid-offer .offer-intro { margin:0 0 24px; }
 #paid-offer .offer-price { margin-top:24px; padding-top:0; border-top:0; }
-/* Start with the reading itself; compact title and one short purchase invitation. */
-.saju-experience .reading-title { padding:16px 0 6px; margin:0; }
-.saju-experience .reading-title .eyebrow,.saju-experience .reading-title .red-rule { display:none; }
-.saju-experience .reading-title h1 { font-size:20px; margin:0 0 24px; }
-.saju-experience #preview > section { margin:0; padding:0 0 16px; }
-.saju-experience #preview h3 { font-size:22px; margin:20px 0; }
-.saju-experience #preview article { margin:0; }
-.money-story-mask { margin:0 auto -22px; max-height:130px; }
-#paid-offer .offer-intro { margin:0; }
-#paid-offer .offer-intro > p { font-size:18px; color:#dfcba7; }
-#paid-offer .offer-price { margin-top:18px; }
+/* Preview topics flow as paragraphs without chapter headings. */
+.saju-experience #preview > section + section { margin-top:28px; }
+.saju-experience #preview > section { padding:0; }
