@@ -837,7 +837,8 @@
     setMetric('products-active-count', sources.reduce((sum, row) => sum + Number(row.active_count || 0), 0));
     setMetric('products-new-count', sources.reduce((sum, row) => sum + Number(row.new_today || 0), 0));
     setMetric('products-image-count', sources.reduce((sum, row) => sum + Number(row.missing_images || 0), 0));
-    setMetric('products-failed-count', sources.filter((row) => row.latestRun?.status === 'failed').length);
+    setMetric('products-failed-count', sources.filter((row) => row.latestRun?.status === 'failed'
+      && (!row.last_seen_at || new Date(row.latestRun.started_at).getTime() > new Date(row.last_seen_at).getTime())).length);
     sources.forEach((item) => {
       const card = document.createElement('article');
       card.className = 'status-card';
@@ -847,7 +848,11 @@
       card.append(textNode('span', `최근 상품 확인 ${formatDateTime(item.last_seen_at)}`));
       const run = item.latestRun;
       const runLabels = { succeeded: '정상', failed: '실패', running: '진행 중', skipped: '건너뜀' };
-      card.append(textNode('span', run ? `최근 수집 ${runLabels[run.status] || '상태 미확인'} · ${formatDateTime(run.finished_at || run.started_at)}` : '수집 기록 없음'));
+      const recoveredAfterFailure = run?.status === 'failed' && item.last_seen_at
+        && new Date(item.last_seen_at).getTime() >= new Date(run.started_at).getTime();
+      card.append(textNode('span', run
+        ? `마지막 수집 기록 ${recoveredAfterFailure ? '과거 실패 후 상품 확인' : runLabels[run.status] || '상태 미확인'} · ${formatDateTime(run.finished_at || run.started_at)}`
+        : '수집 실행 기록 없음'));
       list.append(card);
     });
     const automation = byId('automation-status');
