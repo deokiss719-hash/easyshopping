@@ -18,15 +18,14 @@ test('free projection shows useful complete sections but omits paid payload, ana
  assert.ok(!JSON.stringify(f).includes(privateWork));
  assert.equal(freeOffer(r,c,4).preview[2].parts.length,2);
 });
-test('KakaoPay and TossPay SDK requests use direct easy-pay and no personal input',()=>{
- const o={id:'local_order_123',amount:6900,successUrl:'http://localhost/saju/success',failUrl:'http://localhost/saju/fail'};
- for(const method of ['KAKAOPAY','TOSSPAY']){
-  const r=paymentRequest(o,method);assert.deepEqual(r.card,{flowMode:'DIRECT',easyPay:method});
-  assert.equal(r.amount.value,6900);assert.equal(r.windowTarget,'self');
-  assert.equal(r.customerMobilePhone,undefined);assert.equal(r.customerName,undefined);
- }
+test('card SDK request uses the approved hosted card window and no personal input',()=>{
+ const o={id:'local_order_123',amount:4900,successUrl:'http://localhost/saju/success',failUrl:'http://localhost/saju/fail'};
+ const r=paymentRequest(o,'CARD');assert.deepEqual(r.card,{flowMode:'DEFAULT'});
+ assert.equal(r.amount.value,4900);assert.equal(r.windowTarget,'self');
+ assert.equal(r.customerMobilePhone,undefined);assert.equal(r.customerName,undefined);
  assert.throws(()=>paymentRequest(o,'BANK'));
- assert.throws(()=>paymentRequest({...o,amount:0},'TOSSPAY'));
+ assert.throws(()=>paymentRequest(o,'KAKAOPAY'));
+ assert.throws(()=>paymentRequest({...o,amount:0},'CARD'));
 });
 test('beta entitlement stays with report while new paid reports stay locked after store restart',async t=>{
  const pool=await testPool();t.after(()=>pool.end());const secret='beta-preserve-test-'.repeat(4),store=await createStore(pool,secret),owner=token();

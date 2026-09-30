@@ -222,7 +222,7 @@ async function load(id) {
       ? '현재 체험 모드예요. PG 결제창 없이 모의 승인하며 실제 돈이 청구되지 않아요.'
       : config.mode === 'test'
         ? '토스페이먼츠 테스트 결제예요. 실제 과금·정산이 없어요.'
-        : '카카오페이 또는 토스페이로 결제해요.';
+        : '토스페이먼츠 신용·체크카드 결제창으로 결제해요.';
   show('paid-offer', !current.paid);
   show('full-report', current.paid);
   show('free-reading', !current.paid);
@@ -296,7 +296,7 @@ async function checkout(fail = false) {
       body: { amount: order.amount },
     });
     await load(current.id);
-    tell('모의 결제가 완료됐어요. 카카오페이·토스페이에 실제 승인 요청을 보내지 않았어요.');
+    tell('모의 결제가 완료됐어요. 카드사에 실제 승인 요청을 보내지 않았어요.');
     $('full-report').scrollIntoView({block:'start'});
     return;
   }
