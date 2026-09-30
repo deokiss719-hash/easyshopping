@@ -64,7 +64,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
     (_req, res) => res.sendFile(path.join(ROOT, 'admin.html')),
   );
   router.get('/saju/:asset', (req, res, next) =>
-    ['app.js', 'style.css', 'admin.js', 'reading-motion.js', 'payment-options.js'].includes(req.params.asset)
+    ['app.js', 'style.css', 'admin.js', 'reading-motion.js', 'payment-options.js', 'grandmother.png'].includes(req.params.asset)
       ? res.sendFile(path.join(ROOT, req.params.asset))
       : next(),
   );

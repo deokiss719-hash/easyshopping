@@ -455,7 +455,6 @@ async function init() {
     route = location.pathname;
   history.replaceState(null, '', route);
   config = await api('/config');
-  $('opening-note').textContent = config.accessMode === 'beta' ? '전체 무료 베타 · 회원가입 없이' : '금전·연애 맛보기 무료 · 회원가입 없이';
   if ((current?.accessMode || config.accessMode) === 'beta') document.body.classList.add('beta-reading');
   $('seller-info').textContent = config.seller?.name
     ? `판매자: ${config.seller.name} / 대표: ${config.seller.representative} / 사업자등록번호: ${config.seller.registration} / 통신판매: ${config.seller.commerce} / 주소: ${config.seller.address} / 연락처: ${config.seller.contact}`
