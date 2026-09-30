@@ -42,9 +42,9 @@
       <section id="input-panel" class="card" hidden>
         <button id="back-opening" type="button" class="text-button">← 처음으로</button>
         <p class="eyebrow">첫 번째 장 · 나의 시작</p>
-        <h2>어느 날, 어느 시간에<br />태어나셨나요?</h2>
+        <h2>니가 태어난 날과 시간을<br />할미에게 알려주렴</h2>
         <p class="muted">
-          회원가입·전화번호 없이 이용해요. 만 14세 이상, 1900년 이후 출생을 지원해요.
+          가입하거나 전화번호를 남길 필요는 없단다. 만 14세 이상이고, 1900년 이후에 태어났다면 풀이를 볼 수 있지.
         </p>
         <form id="birth-form">
           <label
@@ -57,7 +57,7 @@
               maxlength="10"
               required
               autocomplete="off"
-            /><small>양력·음력 모두 YYYY-MM-DD로 입력해 주세요.</small></label
+            /><small>1990년 1월 1일에 태어났다면 1990-01-01처럼 적으면 된단다. 양력인지 음력인지는 아래에서 골라주렴.</small></label
           >
           <div class="two">
             <label
@@ -77,7 +77,7 @@
               <option value="unknown">모름</option>
               <option value="exact">정확한 시각</option>
               <option value="range">대략적인 시간대</option>
-            </select></label
+            </select><small>시간을 모르면 모름으로 두어도 괜찮단다. 아는 만큼만 알려주렴.</small></label
           >
           <label id="exact-label" hidden
             >출생 기록의 현지 시각<input name="time" type="time"
@@ -86,8 +86,7 @@
           <label
             >출생 국가·지역<select name="zone" id="zones" required></select
             ><small
-              >현재 거주지가 아닌 태어난 지역이에요. 목록에 없는 지역은 아직 지원하지 않아요. 음력
-              입력은 한국 음력 기준이에요.</small
+              >지금 사는 곳 말고 태어난 곳을 골라주렴. 목록에 없는 지역은 아직 풀어줄 수 없단다. 음력은 한국 달력을 기준으로 본단다.</small
             ></label
           >
           <label
@@ -96,30 +95,24 @@
               name="name"
               maxlength="30"
               autocomplete="off"
-              placeholder="보고서에서만 표시해요"
-          /></label>
+              placeholder="할미가 불러줄 이름이 있으면 적어주렴"
+          /><small>이름은 안 적어도 괜찮아. 적어주면 풀이 화면에서만 보여준단다.</small></label>
           <details>
             <summary>계산 기준과 개인정보 안내</summary>
             <p>
-              출생일·시각·지역은 사주 계산에, 별명은 화면 표시에만 사용해요. 개인정보를 외부 AI에
-              전송하지 않습니다. 무료 결과는 7일, 구매 보고서는 결제 후 1년 보관합니다. 기존 보고서는 원래 보관 기간을 유지합니다.
-              아래 결과 화면에서 즉시 삭제도 가능해요.
+              태어난 날과 시간, 지역은 사주를 계산할 때만 쓴단다. 이름이나 별명은 화면에 보여줄 때만 쓰지. 이 정보는 외부 AI에 보내지 않는단다. 무료 결과는 7일, 구매한 보고서는 결제한 날부터 1년 동안 보관해. 예전에 만든 보고서는 처음 정한 기간을 그대로 지킨단다. 결과 화면에서 바로 지울 수도 있지.
             </p>
             <p>
-              연주는 입춘, 월주는 절입, 일주는 현지 자정 기준이에요. 역사적 표준시·서머타임을
-              적용하며 진태양시는 사용하지 않아요. 다른 만세력과 기준에 따른 차이가 있을 수 있어요.
-              대운은 성별을 추측하지 않고 순행·역행 두 경우를 보여줘요.
+              사주에서 해가 바뀌는 때는 입춘이라는 봄의 시작점을 쓰고, 달이 바뀌는 때도 계절이 바뀌는 날짜로 정한단다. 하루는 태어난 곳의 밤 12시에 바뀌는 것으로 봐. 그때 그 지역에서 쓰던 시계와 여름에 시계를 앞당겼던 제도도 반영하지. 해의 위치에 맞춰 시간을 다시 바꾸지는 않는단다. 그래서 다른 곳의 풀이와 계산이 다를 수 있어. 긴 세월의 흐름은 성별을 짐작하지 않고 두 가지 방향을 모두 보여준단다.
             </p>
             <p>
-              명리 해석은 과학적 성격 검사나 미래 예측이 아니에요. 중요한 건강·금전·관계 결정의
-              근거로 사용하지 마세요.
+              이 이야기는 옛 사주 풀이를 바탕으로 한 것이란다. 과학으로 성격이나 앞날을 알아낸 것은 아니지. 건강이나 돈, 사람 사이의 큰일을 이 풀이만 믿고 정하지는 말아주렴.
             </p>
             <a href="/saju/method">자료 출처와 상세 기준</a>
           </details>
           <label class="check"
             ><input type="checkbox" name="consent" required /><span
-              >사주 계산·결과 보관을 위한 위 개인정보 수집·이용에 동의해요. 동의하지 않으면 분석을
-              이용할 수 없어요.</span
+              >위에서 알려준 대로 사주 계산과 결과 보관을 위해 개인정보를 모으고 쓰는 데 동의한다면 표시해주렴. 동의하지 않으면 풀이를 해줄 수 없단다.</span
             ></label
           >
           <button type="submit" id="analyze">나의 무료 풀이 열기 →</button>
@@ -141,9 +134,9 @@
       <section id="analysis-panel" class="analysis-scene" aria-labelledby="analysis-title" aria-busy="true" hidden>
         <div class="analysis-book" aria-hidden="true"><div class="book-cover"></div><div class="book-left">四柱<br>陰陽<br>五行</div><div class="book-right">天干<br>地支<br>命理</div><div class="book-leaf leaf-one"><span>春夏<br>秋冬</span></div><div class="book-leaf leaf-two"><span>甲乙<br>丙丁</span></div><div class="book-leaf leaf-three"><span>子丑<br>寅卯</span></div></div>
         <p class="eyebrow">나의 이야기를 여는 중</p>
-        <h2 id="analysis-title">사주를 풀고 있습니다</h2>
-        <p id="analysis-status" role="status">입력한 날짜와 시각을 바탕으로 원국을 계산하고 있어요.</p>
-        <div class="analysis-notes"><p>입력한 출생 정보에 맞는<br />계산값과 풀이를 연결합니다.</p><p>시간을 모르면 추측해서 채우지 않습니다.</p></div>
+        <h2 id="analysis-title">할미가 니 사주를 풀고 있단다</h2>
+        <p id="analysis-status" role="status">니가 알려준 날과 시간으로 사주를 계산하고 있단다.</p>
+        <div class="analysis-notes"><p>니가 태어난 때를 살펴<br />그에 맞는 이야기를 준비한단다.</p><p>태어난 시간을 모른다고 할미가 지어내지는 않는단다.</p></div>
       </section>
       <section id="result-panel" hidden>
         <div class="reading-title"><p class="eyebrow">이지핫딜 · 나를 읽는 시간</p><h1 id="result-title" tabindex="-1">나의 사주 이야기</h1><span class="red-rule" aria-hidden="true"></span></div>

@@ -340,6 +340,22 @@ for (let i = 0; i < 12; i++) {
   o.textContent = `${String(i * 2).padStart(2, '0')}:00 ~ ${String(i * 2 + 1).padStart(2, '0')}:59`;
   form.elements.period.append(o);
 }
+const inputStoryErrors = {
+  "날짜 구분, 출생 지역, 시각 구분을 확인해 주세요.": "양력인지 음력인지, 태어난 곳과 시간을 다시 골라주렴.",
+  "생년월일을 확인해 주세요.": "태어난 날짜를 다시 살펴주렴.",
+  "1900년 이후의 생년월일을 입력해 주세요.": "1900년 이후에 태어난 사람의 풀이만 볼 수 있단다.",
+  "존재하지 않는 음력 날짜 또는 윤달이에요.": "그 음력 날짜나 윤달은 달력에 없구나. 태어난 기록을 다시 살펴주렴.",
+  "해당 연월에는 요청한 윤달이 없어요.": "그해 그달에는 윤달이 없구나. 평달인지 다시 살펴주렴.",
+  "존재하지 않는 양력 날짜예요.": "그 날짜는 양력 달력에 없구나. 날짜를 다시 살펴주렴.",
+  "미래 날짜 또는 존재하지 않는 날짜예요.": "아직 오지 않은 날이거나 달력에 없는 날이구나. 날짜를 다시 적어주렴.",
+  "현재 서비스는 만 14세 이상만 이용할 수 있어요.": "이 풀이는 만 14세가 지난 뒤부터 볼 수 있단다.",
+  "태어난 시각을 확인해 주세요.": "태어난 시간을 다시 살펴주렴. 잘 모르면 모름을 골라도 괜찮단다.",
+  "두 시간 단위의 시간대를 선택해 주세요.": "목록에서 태어난 시간대를 하나 골라주렴.",
+  "표준시 변경으로 존재하지 않는 시각이에요. 출생 기록을 확인해 주세요.": "그 지역에서 시계를 바꾸던 때라 적어준 시간이 실제로 없었구나. 출생 기록을 다시 살펴주렴.",
+  "서머타임 종료로 두 번 존재하는 시각이에요. 대략적인 시간대를 선택하면 두 가능성을 표시해요.": "그날은 시계를 뒤로 돌려 같은 시간이 두 번 있었단다. 대략적인 시간대를 고르면 두 경우를 보여줄 수 있지.",
+  "이 시간 범위에서는 일주도 달라져요. 정확한 날짜와 지역을 확인해 주세요.": "고른 시간 안에서 사주의 날짜도 달라지는구나. 태어난 날짜와 지역을 다시 살펴주렴.",
+  "절기 경계 2분 이내예요. 계산 자료의 초 단위 차이로 원국이 달라질 수 있어 유료 분석을 제공하지 않아요.": "사주에서 계절을 나누는 순간과 2분도 차이가 나지 않는구나. 몇 초 차이로 풀이의 바탕이 달라질 수 있어서 이때는 유료 풀이를 해줄 수 없단다."
+};
 let started = false;
 form.addEventListener('input', () => {
   if (!started) {
@@ -352,7 +368,7 @@ form.onsubmit = (e) => {
   busy($('analyze'), async () => {
     show('input-panel', false);
     show('analysis-panel', true);
-    $('analysis-status').textContent = '입력한 날짜와 시각을 바탕으로 원국과 풀이를 계산하고 있어요.';
+    $('analysis-status').textContent = '니가 알려준 날과 시간으로 사주를 계산하고 있단다.';
     $('analysis-panel').scrollIntoView();
     try {
       const body = Object.fromEntries(new FormData(form));
@@ -364,12 +380,13 @@ form.onsubmit = (e) => {
       sessionStorage.setItem('saju-access-' + r.id, JSON.stringify(access));
       // Preserve the created report for retry if its subsequent read fails.
       sessionStorage.setItem('saju-current', r.id);
-      $('analysis-status').textContent = '계산을 마쳤어요. 저장된 풀이를 불러오고 있어요.';
+      $('analysis-status').textContent = '계산은 마쳤단다. 니 이야기를 불러오고 있으니 잠깐만 기다려주렴.';
       await load(r.id);
       $('result-title').focus({ preventScroll: true });
       $('result-panel').scrollIntoView();
     } catch (e) {
       show('input-panel', true);
+      if (inputStoryErrors[e.message]) e.message = inputStoryErrors[e.message];
       throw e;
     } finally {
       show('analysis-panel', false);
