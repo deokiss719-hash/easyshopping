@@ -679,6 +679,7 @@
     const impressions = sections.reduce((sum, row) => sum + Number(row.impressions || 0), 0);
     const clicks = sections.reduce((sum, row) => sum + Number(row.clicks || 0), 0);
     byId('stat-impressions-today').textContent = impressions.toLocaleString('ko-KR');
+    byId('stat-clicks-today').textContent = clicks.toLocaleString('ko-KR');
     byId('stat-ctr-today').textContent = impressions ? `${(clicks / impressions * 100).toFixed(1)}%` : '0%';
     const ctaMetrics = Array.isArray(data.ctaMetrics) ? data.ctaMetrics : [];
     const ctaImpressions = ctaMetrics.reduce((sum, row) => sum + Number(row.impressions || 0), 0);

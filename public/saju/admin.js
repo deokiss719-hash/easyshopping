@@ -1,6 +1,7 @@
 'use strict';
 const $ = (id) => document.getElementById(id);
 let csrf = '';
+let dashboardData = null;
 const cell = (t) => {
   const e = document.createElement('td');
   e.textContent = t;
@@ -29,6 +30,9 @@ async function run(fn) {
 }
 async function load() {
   const x = await api('/api/admin/saju');
+  dashboardData = x;
+  renderSummary();
+  $('sale-summary').textContent = `현재 가격 ${Number(x.settings.price).toLocaleString('ko-KR')}원 · 판매 ${x.settings.sales_enabled ? '허용' : '중지'}`;
   if(x.meta)$('meta-status').textContent=`추적 ${x.meta.enabled?'활성':'비활성'} · Pixel ${x.meta.pixelId||'미설정'} · 대기 ${x.meta.queue.pending} · 수신 확인 ${x.meta.queue.sent} · 재시도 소진 ${x.meta.queue.failed}`;
   $('mode').textContent =
     x.accessMode === 'beta' ? '전체 무료 베타입니다. 가격·무료 범위·판매 설정은 현재 고객 흐름에 적용되지 않습니다.' : x.mode === 'live' ? '실결제 환경이에요.' : '테스트/체험 환경이에요. 실제 과금은 없어요.';
@@ -39,6 +43,15 @@ async function load() {
       else e.value = v;
     }
   }
+  renderOrders();
+  renderEvents(x.events);
+}
+function renderOrders() {
+  if (!dashboardData) return;
+  const mode = $('order-mode').value;
+  const status = $('order-status').value;
+  const rows = dashboardData.orders.filter(o => (mode === 'all' || (mode === 'live' ? o.mode === 'live' : o.mode !== 'live')) && (status === 'all' || (status === 'attention' ? ['confirming','refund_requested','refunding'].includes(o.status) : o.status === status)));
+  $('order-count').textContent = `${rows.length.toLocaleString('ko-KR')}건`;
   $('orders').replaceChildren();
   const names = {
     pending: '결제 대기',
@@ -49,10 +62,10 @@ async function load() {
     refunded: '환불 완료',
     failed: '결제 실패',
   };
-  for (const o of x.orders) {
+  for (const o of rows) {
     const tr = document.createElement('tr');
     tr.append(
-      cell(o.id + ' / ' + new Date(o.created_at).toLocaleString('ko-KR')),
+      cell(o.id + ' / ' + new Date(o.created_at).toLocaleString('ko-KR', {timeZone:'Asia/Seoul'})),
       cell(o.amount.toLocaleString() + '원 / ' + o.mode),
       cell(names[o.status] || o.status),
     );
@@ -92,8 +105,11 @@ async function load() {
     tr.append(actions);
     $('orders').append(tr);
   }
+  if (!rows.length) { const tr=document.createElement('tr'); const td=cell('해당하는 주문이 없어요.'); td.colSpan=4; tr.append(td); $('orders').append(tr); }
+}
+function renderEvents(events) {
   $('events').replaceChildren(
-    ...x.events.map((e) => {
+    ...events.map((e) => {
       const tr = document.createElement('tr');
       tr.append(
         cell(String(e.day).slice(0, 10)),
@@ -137,3 +153,18 @@ run(async () => {
 });
 
 $('meta-test').onsubmit=e=>{e.preventDefault();run(async()=>{const r=await api('/api/admin/saju/meta/test','POST',{testCode:e.target.elements.testCode.value.trim()});$('meta-test-result').textContent=`Meta 테스트 수신 ${r.received}건 · ${r.value} ${r.currency} · 실제 구매 아님 · 이벤트 관리자에서도 확인해 주세요.`;});};
+
+function renderSummary() {
+  const s=dashboardData?.summary;
+  const period=$('period').value;
+  for (const [id,key,suffix] of [['paid-count','paid_count','건'],['paid-amount','paid_amount','원'],['refund-amount','refund_amount','원']]) {
+    $(id).textContent=s ? Number(s[`${period}_${key}`] || 0).toLocaleString('ko-KR')+suffix : '집계 불가';
+  }
+  const events=(dashboardData?.events || []).filter(e=>e.mode==='live' && (period!=='today' || String(e.day).slice(0,10)===s?.day));
+  $('funnel-summary').textContent=[['visit','방문'],['input_complete','풀이 생성'],['checkout','결제 진입']].map(([key,label])=>`${label} ${events.filter(e=>e.event===key).reduce((sum,e)=>sum+Number(e.count),0).toLocaleString('ko-KR')}회`).join(' → ');
+  $('attention-count').textContent=s ? Number(s.attention_count || 0).toLocaleString('ko-KR')+'건' : '집계 불가';
+  $('summary-period').textContent=s ? `${s.day} 기준 · ${period==='today'?'오늘':'오늘 포함 최근 30일'} · 한국시간 · 테스트 제외` : '통계를 불러오지 못했어요.';
+}
+$('period').onchange=renderSummary;
+$('order-mode').onchange=renderOrders;
+$('order-status').onchange=renderOrders;

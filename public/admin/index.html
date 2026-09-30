@@ -1,183 +1,172 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex, nofollow">
-  <title>이지쇼핑 관리자</title>
-  <link rel="stylesheet" href="/admin/admin.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>이지쇼핑 관리자</title>
+<link rel="stylesheet" href="/admin/admin.css">
 </head>
 <body>
-  <header class="mobile-header"><button id="menu-toggle" class="icon-button" type="button" aria-label="메뉴 열기" aria-expanded="false">☰</button><strong>easyshopping admin</strong></header>
-  <div class="admin-layout">
-    <aside id="sidebar" class="sidebar">
-      <a class="brand inverse" href="/admin">easyshopping</a>
-      <p class="admin-label">ADMIN CONSOLE</p>
-      <nav id="admin-nav" aria-label="관리자 메뉴">
-        <a class="nav-item" href="/saju/admin">사주 보고서·결제 관리</a>
-        <button type="button" class="nav-item active" data-view="dashboard">대시보드</button>
-        <button type="button" class="nav-item" data-view="phone-deals">휴대폰 핫딜 관리</button>
-        <button type="button" class="nav-item" data-view="products">상품 관리</button>
-        <button type="button" class="nav-item" data-view="home-display">메인 노출 관리</button>
-        <button type="button" class="nav-item" data-view="phone-inquiries">휴대폰 상담관리</button>
-        <button type="button" class="nav-item" data-view="advertising-inquiries">광고문의</button>
-        <button type="button" class="nav-item" data-view="community">커뮤니티 관리</button>
-        <button type="button" class="nav-item" data-view="settings">사이트 설정</button>
-      </nav>
-      <div class="sidebar-footer"><span id="admin-user"></span><button id="logout" class="text-button" type="button">로그아웃</button></div>
-    </aside>
-    <main class="admin-main">
-      <section id="dashboard" class="view active" aria-labelledby="dashboard-title">
-        <div class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1 id="dashboard-title">대시보드</h1><p>오늘 트래픽과 수동 휴대폰 핫딜 현황을 확인하세요.</p></div><button class="button primary" type="button" data-open-deals>핫딜 등록</button></div>
-        <section class="panel traffic-panel" aria-labelledby="traffic-title">
-          <div class="panel-title"><div><h2 id="traffic-title">오늘 트래픽</h2><p id="analytics-day" class="panel-subtitle">한국시간 기준</p></div><button id="refresh-traffic" class="text-button" type="button">새로고침</button></div>
-          <div id="analytics-message" class="message notice" role="status" aria-live="polite"></div>
-          <div class="stat-grid traffic-stats"><article><span>오늘 방문자</span><strong id="stat-visitors-today">-</strong></article><article><span>페이지 조회수</span><strong id="stat-pageviews-today">-</strong></article><article><span>상품 노출</span><strong id="stat-impressions-today">-</strong></article><article><span>상품 클릭률</span><strong id="stat-ctr-today">-</strong></article><article><span>카카오 클릭</span><strong id="stat-kakao-clicks">-</strong></article><article><span>카카오 버튼 클릭률</span><strong id="stat-kakao-ctr">-</strong></article></div>
-          <div class="traffic-sources"><h3>카카오 버튼 위치별 성과</h3><div id="kakao-performance" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
-          <div class="traffic-sources"><h3>클릭 상위 상품</h3><div id="deal-performance" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
-          <div class="traffic-sources"><h3>유입 경로 요약</h3><div id="referrer-breakdown" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
-          <details id="referrer-all" class="traffic-details">
-            <summary><span>전체 유입경로·세부 URL 보기</span><small id="referrer-detail-count"></small></summary>
-            <div class="traffic-sources compact"><h3>전체 유입 사이트</h3><div id="referrer-all-sites" class="referrer-list"></div></div>
-            <div class="traffic-sources compact"><h3>검색어 · 유입 URL <small>(최대 100개)</small></h3><div id="referrer-details" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
-          </details>
-          <div class="traffic-sources"><div class="panel-title"><div><h3>일자별 방문·클릭</h3><p class="panel-subtitle">최대 366일까지 조회할 수 있어요.</p></div></div>
-            <form id="daily-filter" class="filter-row"><label>시작일<input id="daily-start" type="date"></label><label>종료일<input id="daily-end" type="date"></label><button class="button secondary" type="submit">조회</button></form>
-            <div id="daily-table" class="table-wrap"><p class="empty-copy">최근 7일 통계를 불러오는 중...</p></div>
-          </div>
-        </section>
-        <div class="stat-grid"><article><span>전체 핫딜</span><strong id="stat-total">-</strong></article><article><span>게시 중</span><strong id="stat-published">-</strong></article><article><span>메인 노출</span><strong id="stat-home">-</strong></article></div>
-        <div class="panel"><div class="panel-title"><h2>최근 휴대폰 핫딜</h2><button class="text-button" type="button" data-open-deals>전체 보기</button></div><div id="recent-deals" class="compact-list"></div></div>
-      </section>
+<header class="mobile-header"><button id="menu-toggle" class="icon-button" type="button" aria-label="메뉴 열기" aria-expanded="false">☰</button><strong>easyshopping admin</strong></header>
+<div class="admin-layout">
+<aside id="sidebar" class="sidebar">
+<a class="brand inverse" href="/admin">easyshopping</a>
+<p class="admin-label">ADMIN CONSOLE</p>
+<nav id="admin-nav" aria-label="관리자 메뉴"><p class="nav-group-label">운영</p><button type="button" class="nav-item active" data-view="dashboard">대시보드</button><button type="button" class="nav-item" data-view="products">상품 관리</button><button type="button" class="nav-item" data-view="phone-inquiries">휴대폰 상담관리</button><button type="button" class="nav-item" data-view="community">커뮤니티 관리</button><button type="button" class="nav-item" data-view="advertising-inquiries">광고문의</button><p class="nav-group-label">상품·설정</p><button type="button" class="nav-item" data-view="phone-deals">휴대폰 핫딜 관리</button><button type="button" class="nav-item" data-view="home-display">메인 노출 관리</button><button type="button" class="nav-item" data-view="settings">사이트 설정</button><a class="nav-item" href="/saju/admin">사주 보고서·결제 관리</a></nav>
+<div class="sidebar-footer"><span id="admin-user"></span><button id="logout" class="text-button" type="button">로그아웃</button></div>
+</aside>
+<main class="admin-main">
+<section id="dashboard" class="view active" aria-labelledby="dashboard-title">
+<div class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1 id="dashboard-title">운영 현황</h1><p>방문과 클릭을 확인하고 필요한 업무로 바로 이동하세요.</p></div><button class="button primary" type="button" data-open-deals>핫딜 등록</button></div><div aria-label="업무 바로가기" class="admin-shortcuts"><button class="button secondary" data-view="products">상품·자동화</button><button class="button secondary" data-view="phone-inquiries">휴대폰 상담</button><button class="button secondary" data-view="community">게시글·댓글</button><a class="button secondary" href="/saju/admin">사주 결제·환불</a></div>
+<section class="panel traffic-panel" aria-labelledby="traffic-title">
+<div class="panel-title"><div><h2 id="traffic-title">오늘의 핵심 지표</h2><p id="analytics-day" class="panel-subtitle">한국시간 기준</p></div><button id="refresh-traffic" class="text-button" type="button">새로고침</button></div>
+<div id="analytics-message" class="message notice" role="status" aria-live="polite"></div>
+<div class="stat-grid traffic-stats"><article><span>오늘 방문자</span><strong id="stat-visitors-today">-</strong></article><article><span>상품 클릭</span><strong id="stat-clicks-today">-</strong></article><article><span>상품 클릭률</span><strong id="stat-ctr-today">-</strong></article><article><span>카카오 클릭</span><strong id="stat-kakao-clicks">-</strong></article></div><p class="panel-subtitle">방문자는 하루 중복 제외 · 클릭은 발생 횟수 · 상품 클릭률은 상품 노출 대비 클릭 비율이에요.</p><div class="traffic-sources"><div class="panel-title"><div><h3>일자별 방문·클릭</h3><p class="panel-subtitle">최대 366일까지 조회할 수 있어요.</p></div></div>
+<form id="daily-filter" class="filter-row"><label>시작일<input id="daily-start" type="date"></label><label>종료일<input id="daily-end" type="date"></label><button class="button secondary" type="submit">조회</button></form>
+<div id="daily-table" class="table-wrap"><p class="empty-copy">최근 7일 통계를 불러오는 중...</p></div>
+</div>
+<details class="admin-fold panel"><summary>카카오 버튼별 성과</summary><div class="fold-content"><h3>카카오 버튼 위치별 성과</h3><div id="kakao-performance" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div></details>
+<details class="admin-fold panel"><summary>클릭 상위 상품</summary><div class="fold-content"><h3>클릭 상위 상품</h3><div id="deal-performance" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div></details>
+<details class="admin-fold panel"><summary>유입 경로</summary><div class="fold-content"><h3>유입 경로 요약</h3><div id="referrer-breakdown" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div></details>
+<details id="referrer-all" class="traffic-details">
+<summary><span>전체 유입경로·세부 URL 보기</span><small id="referrer-detail-count"></small></summary>
+<div class="traffic-sources compact"><h3>전체 유입 사이트</h3><div id="referrer-all-sites" class="referrer-list"></div></div>
+<div class="traffic-sources compact"><h3>검색어 · 유입 URL <small>(최대 100개)</small></h3><div id="referrer-details" class="referrer-list"><p class="empty-copy">불러오는 중...</p></div></div>
+</details>
 
-      <section id="phone-deals" class="view" aria-labelledby="phone-title">
-        <div class="page-heading"><div><p class="eyebrow">MANUAL DEALS</p><h1 id="phone-title">휴대폰 핫딜 관리</h1><p>상품 정보를 가져오거나 직접 입력해 게시할 수 있어요.</p></div><button id="new-deal" class="button primary" type="button">새 핫딜</button></div>
-        <div id="status-message" class="message notice" role="status" aria-live="polite"></div>
-        <div class="deal-workspace">
-          <form id="deal-form" class="panel form-panel">
-            <div class="panel-title"><h2 id="form-title">새 핫딜 등록</h2><button id="cancel-edit" class="text-button hidden" type="button">편집 취소</button></div>
-            <input id="deal-id" type="hidden">
-            <div class="metadata-row"><label>상품 URL<input id="metadata-url" type="url" inputmode="url" placeholder="선택 사항: 참고할 상품 URL"></label><button id="metadata-fetch" class="button secondary" type="button">URL 정보 가져오기</button></div>
-            <p id="metadata-message" class="field-help" aria-live="polite">HTTPS 상품 URL을 입력하면 제목, 가격, 이미지 등을 자동으로 채워요.</p>
-            <div class="form-grid">
-              <label class="span-2">상품명<input id="title" maxlength="300" required></label>
-              <label>현재 가격<input id="current-price" type="number" min="0" step="1" inputmode="numeric"></label>
-              <label>정상 가격<input id="original-price" type="number" min="0" step="1" inputmode="numeric"></label>
-              <label class="span-2">이미지 파일<input id="image-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label>
-              <div class="span-2 image-upload"><img id="image-preview" alt="선택한 상품 이미지 미리보기" hidden><p id="image-upload-status" class="field-help" aria-live="polite">이미지를 선택하면 안전한 WebP 파일로 업로드합니다. (최대 10 MiB)</p></div>
-              <label class="span-2">이미지 URL<input id="image-url" type="url" inputmode="url" placeholder="https://..."></label>
-              <label>판매처<input id="merchant" maxlength="200"></label>
-              <label>카테고리<select id="category"><option selected>디지털/가전</option><option>식품</option><option>생활/주방</option><option>패션/의류</option><option>뷰티</option><option>건강</option><option>육아/아동</option><option>게임</option><option>스포츠/레저</option><option>반려동물</option><option>자동차</option><option>여행/숙박</option><option>상품권/쿠폰</option><option>기타</option></select></label>
-              <label class="span-2">구매 조건 · 상세 설명 (통신사, 요금제·유지 기간, 부가서비스, 카드·반납 조건)<textarea id="description" maxlength="2000" rows="4"></textarea></label>
-              <label class="span-2">이동할 URL<input id="target-url" type="url" inputmode="url" placeholder="비워두면 휴대폰 상담 페이지로 연결"></label>
-              <label>노출 우선순위<input id="priority" type="number" min="-100000" max="100000" step="1" value="0" required></label>
-              <div class="switches"><label class="check"><input id="is-published" type="checkbox"><span>게시 활성화</span></label><label class="check"><input id="show-on-home" type="checkbox"><span>메인에 노출</span></label></div>
-            </div>
-            <button id="save-deal" class="button primary wide" type="submit">저장하기</button>
-          </form>
-          <section class="panel list-panel" aria-labelledby="deal-list-title"><div class="panel-title"><h2 id="deal-list-title">등록된 핫딜</h2><span id="deal-count" class="count-pill">0</span></div><div id="deal-list" class="deal-list"></div></section>
-        </div>
-      </section>
+<details class="admin-fold"><summary>노출·조회 상세 지표</summary><div class="stat-grid"><article><span>페이지 조회수</span><strong id="stat-pageviews-today">-</strong></article><article><span>상품 노출</span><strong id="stat-impressions-today">-</strong></article><article><span>카카오 버튼 클릭률</span><strong id="stat-kakao-ctr">-</strong></article></div></details></section>
+<details class="admin-fold panel"><summary>휴대폰 상품 현황</summary><div class="fold-content"><div class="stat-grid"><article><span>등록 휴대폰 상품</span><strong id="stat-total">-</strong></article><article><span>게시 중</span><strong id="stat-published">-</strong></article><article><span>메인 노출</span><strong id="stat-home">-</strong></article></div><div class="panel"><div class="panel-title"><h2>최근 휴대폰 핫딜</h2><button class="text-button" type="button" data-open-deals>전체 보기</button></div><div id="recent-deals" class="compact-list"></div></div></div></details>
 
-      <section id="products" class="view" aria-labelledby="products-title">
-        <div class="page-heading"><div><p class="eyebrow">OPERATIONS</p><h1 id="products-title">상품 · 자동화 관리</h1><p>수집 상태와 상품 노출 상태를 한 번에 확인하고 조정하세요.</p></div><button id="refresh-operations" class="button secondary" type="button">새로고침</button></div>
-        <div id="operations-message" class="message notice" role="status" aria-live="polite"></div>
-        <section class="panel">
-          <div class="panel-title"><div><h2>수집 상태</h2><p class="panel-subtitle">소스별 최근 수집과 이미지 누락 현황</p></div></div>
-          <div id="source-status" class="status-grid"><p class="empty-copy">불러오는 중...</p></div>
-        </section>
-        <section class="panel">
-          <div class="panel-title"><div><h2>자동화 상태</h2><p class="panel-subtitle">백필 등 자동 작업의 마지막 실행 결과</p></div></div>
-          <div id="automation-status" class="status-grid"><p class="empty-copy">불러오는 중...</p></div>
-        </section>
-        <section class="panel">
-          <div class="panel-title"><div><h2>상품 찾기</h2><p class="panel-subtitle">숨기기와 종료 처리는 다음 수집 후에도 유지됩니다.</p></div></div>
-          <form id="product-filter" class="filter-row">
-            <input id="product-q" type="search" maxlength="100" placeholder="상품명 검색">
-            <select id="product-source"><option value="">전체 소스</option><option value="ppomppu">뽐뿌</option><option value="fmkorea">FM코리아</option><option value="ruliweb">루리웹</option><option value="toss">토스</option></select>
-            <select id="product-status"><option value="">전체 상태</option><option value="active">노출 중</option><option value="hidden">숨김</option><option value="ended">종료</option><option value="missing-image">이미지 없음</option></select>
-            <button class="button primary" type="submit">조회</button>
-          </form>
-          <div id="product-count" class="panel-subtitle"></div>
-          <div id="product-results" class="deal-list"><p class="empty-copy">조건을 선택해 조회하세요.</p></div>
-          <div class="pager"><button id="product-prev" class="button secondary" type="button">이전</button><span id="product-page">1페이지</span><button id="product-next" class="button secondary" type="button">다음</button></div>
-        </section>
-      </section>
-      <section id="home-display" class="view scaffold"><p class="eyebrow">COMING SOON</p><h1>메인 노출 관리</h1><p>통합 메인 편집 기능을 준비하고 있어요. 휴대폰 핫딜의 메인 노출은 핫딜 편집에서 설정해 주세요.</p></section>
-      <section id="phone-inquiries" class="view"><div class="page-heading"><div><h1>휴대폰 상담관리</h1><p>전화 요청 고객에게 연락하고 상담 결과를 기록하세요. 개인정보는 접수 90일 후 자동 삭제됩니다.</p></div><button id="refresh-phone" class="button secondary" type="button">새로고침</button></div><section class="panel"><form id="phone-channel-form"><label>카카오채널 1:1 상담 주소<input id="phone-channel-url" type="text" inputmode="url" placeholder="https://pf.kakao.com/_채널ID/chat"></label><button class="button primary">주소 저장</button><p>채널 홈 주소를 넣으면 1:1 상담 주소로 자동 변환해요. 비워두면 전화 상담만 제공해요. 단체 오픈채팅 주소는 사용할 수 없어요.</p></form></section><div id="phone-admin-message" role="status"></div><section class="panel"><label>상태 필터<select id="phone-status-filter"><option value="">전체</option><option value="new">신규</option><option value="consulting">상담 중</option><option value="reserved">방문 예약</option><option value="completed">개통 완료</option><option value="absent">부재중</option><option value="closed">상담 종료</option></select></label><p id="phone-summary"></p><details><summary>접수일별 상담 현황</summary><p>접수 날짜별 문의의 현재 상태입니다.</p><div id="phone-daily"></div></details><div id="phone-inquiry-list"></div></section></section>
-      <section id="advertising-inquiries" class="view" aria-labelledby="inquiries-title">
-        <div class="page-heading"><div><p class="eyebrow">ADVERTISING</p><h1 id="inquiries-title">광고문의</h1><p>홈페이지에서 접수된 광고 및 제휴 문의를 확인하고 처리 상태를 관리하세요.</p></div><button id="refresh-inquiries" class="button secondary" type="button">새로고침</button></div>
-        <div id="inquiries-message" class="message notice" role="status" aria-live="polite"></div>
-        <div id="inquiry-list" class="deal-list"></div>
-      </section>
-      <section id="community" class="view" aria-labelledby="community-admin-title">
-        <div class="page-heading"><div><p class="eyebrow">COMMUNITY</p><h1 id="community-admin-title">커뮤니티 관리</h1><p>게시글, 댓글, 신고, 금칙어와 차단 사용자를 한곳에서 관리하세요.</p></div><button id="refresh-community" class="button secondary" type="button">새로고침</button></div>
-        <div id="community-admin-message" class="message notice" role="status" aria-live="polite"></div>
-        <section class="panel">
-          <div class="panel-title"><div><h2>공지글 등록</h2><p class="panel-subtitle">등록한 공지는 커뮤니티 상단에 고정되고 공지 표시가 붙어요.</p></div></div>
-          <form id="community-notice-form" class="stack-form">
-            <label>제목<input id="community-notice-title" maxlength="160" required placeholder="공지 제목"></label>
-            <label>내용<textarea id="community-notice-body" rows="5" maxlength="10000" required placeholder="공지 내용을 입력하세요."></textarea></label>
-            <div class="deal-actions"><button class="button primary" type="submit">공지글 등록</button></div>
-          </form>
-          <div id="community-notice-list" class="deal-list"><p class="empty-copy">등록된 공지를 불러오는 중...</p></div>
-        </section>
-        <section class="panel">
-          <div class="panel-title"><div><h2>게시글 관리</h2><p class="panel-subtitle">게시글을 검색하고 숨김·삭제·댓글 관리·사용자 차단을 처리할 수 있어요.</p></div></div>
-          <form id="community-post-filter" class="filter-row"><input id="community-post-q" type="search" maxlength="100" placeholder="제목·내용 검색"><button class="button primary" type="submit">조회</button></form>
-          <div id="community-post-list" class="deal-list"><p class="empty-copy">불러오는 중...</p></div>
-        </section>
-        <section class="panel">
-          <div class="panel-title"><div><h2>삭제된 게시글</h2><p class="panel-subtitle">삭제 처리한 게시글은 이곳에 따로 보관되며 필요하면 복구할 수 있어요.</p></div><span id="community-deleted-count" class="status-pill">0개</span></div>
-          <div id="community-deleted-post-list" class="deal-list"><p class="empty-copy">불러오는 중...</p></div>
-        </section>
-        <section class="panel">
-          <div class="panel-title"><h2>신고 관리</h2></div>
-          <div id="community-report-list" class="deal-list"><p class="empty-copy">불러오는 중...</p></div>
-        </section>
-        <div class="deal-workspace">
-          <section class="panel">
-            <div class="panel-title"><h2>금칙어</h2></div>
-            <form id="community-banned-form" class="filter-row"><input id="community-banned-word" maxlength="100" placeholder="금칙어" required><button class="button primary" type="submit">추가</button></form>
-            <div id="community-banned-list" class="deal-list"></div>
-          </section>
-        </div>
-        <div class="deal-workspace">
-          <section class="panel">
-            <div class="panel-title"><h2>차단 사용자</h2></div>
-            <div id="community-block-list" class="deal-list"><p class="empty-copy">불러오는 중...</p></div>
-          </section>
-          <section class="panel">
-            <div class="panel-title"><h2>커뮤니티 기본 설정</h2></div>
-            <form id="community-settings-form" class="form-grid">
-              <label>추천 가중치<input id="community-rank-up" type="number" min="0" max="100" step="0.01"></label>
-              <label>비추천 감점<input id="community-rank-down" type="number" min="0" max="100" step="0.01"></label>
-              <label>댓글 가중치<input id="community-rank-comment" type="number" min="0" max="100" step="0.01"></label>
-              <label>조회 가중치<input id="community-rank-view" type="number" min="0" max="100" step="0.001"></label>
-              <label>시간 감쇠<input id="community-rank-age" type="number" min="0" max="100" step="0.01"></label>
-              <button class="button primary" type="submit">설정 저장</button>
-            </form>
-          </section>
-        </div>
-      </section>
-      <section id="settings" class="view" aria-labelledby="settings-title">
-        <div class="page-heading"><div><p class="eyebrow">SITE SETTINGS</p><h1 id="settings-title">사이트 설정</h1><p>공개 화면의 문구와 수동 핫딜 노출 수를 관리하세요.</p></div></div>
-        <div id="settings-message" class="message notice" role="status" aria-live="polite"></div>
-        <form id="settings-form" class="panel form-panel">
-          <div class="form-grid">
-            <label>메인 수동 핫딜 수<input id="setting-home-limit" type="number" min="0" max="20" step="1" value="4" required></label>
-            <label>추천 검색어 (쉼표로 구분)<input id="setting-searches" maxlength="380" placeholder="아이폰, 갤럭시, 노트북"></label>
-            <label class="span-2">메인 문구<textarea id="setting-main-copy" maxlength="300" rows="3" required></textarea></label>
-            <label class="span-2">휴대폰 섹션 제목<input id="setting-phone-title" maxlength="100" required></label>
-            <label class="span-2">관리자 메모 (비공개)<textarea id="setting-admin-note" maxlength="500" rows="3"></textarea></label>
-          </div>
-          <button id="save-settings" class="button primary" type="submit">설정 저장</button>
-        </form>
-      </section>
-    </main>
-  </div>
-  <div id="scrim" class="scrim"></div>
-  <script src="/admin/url-utils.js" defer></script>
-  <script src="/admin/admin.js" defer></script>
+</section>
+<section id="phone-deals" class="view" aria-labelledby="phone-title">
+<div class="page-heading"><div><p class="eyebrow">MANUAL DEALS</p><h1 id="phone-title">휴대폰 핫딜 관리</h1><p>상품 정보를 가져오거나 직접 입력해 게시할 수 있어요.</p></div><button id="new-deal" class="button primary" type="button">새 핫딜</button></div>
+<div id="status-message" class="message notice" role="status" aria-live="polite"></div>
+<div class="deal-workspace">
+<form id="deal-form" class="panel form-panel">
+<div class="panel-title"><h2 id="form-title">새 핫딜 등록</h2><button id="cancel-edit" class="text-button hidden" type="button">편집 취소</button></div>
+<input id="deal-id" type="hidden">
+<div class="metadata-row"><label>상품 URL<input id="metadata-url" type="url" inputmode="url" placeholder="선택 사항: 참고할 상품 URL"></label><button id="metadata-fetch" class="button secondary" type="button">URL 정보 가져오기</button></div>
+<p id="metadata-message" class="field-help" aria-live="polite">HTTPS 상품 URL을 입력하면 제목, 가격, 이미지 등을 자동으로 채워요.</p>
+<div class="form-grid">
+<label class="span-2">상품명<input id="title" maxlength="300" required></label>
+<label>현재 가격<input id="current-price" type="number" min="0" step="1" inputmode="numeric"></label>
+<label>정상 가격<input id="original-price" type="number" min="0" step="1" inputmode="numeric"></label>
+<label class="span-2">이미지 파일<input id="image-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"></label>
+<div class="span-2 image-upload"><img id="image-preview" alt="선택한 상품 이미지 미리보기" hidden><p id="image-upload-status" class="field-help" aria-live="polite">이미지를 선택하면 안전한 WebP 파일로 업로드합니다. (최대 10 MiB)</p></div>
+<label class="span-2">이미지 URL<input id="image-url" type="url" inputmode="url" placeholder="https://..."></label>
+<label>판매처<input id="merchant" maxlength="200"></label>
+<label>카테고리<select id="category"><option selected>디지털/가전</option><option>식품</option><option>생활/주방</option><option>패션/의류</option><option>뷰티</option><option>건강</option><option>육아/아동</option><option>게임</option><option>스포츠/레저</option><option>반려동물</option><option>자동차</option><option>여행/숙박</option><option>상품권/쿠폰</option><option>기타</option></select></label>
+<label class="span-2">구매 조건 · 상세 설명 (통신사, 요금제·유지 기간, 부가서비스, 카드·반납 조건)<textarea id="description" maxlength="2000" rows="4"></textarea></label>
+<label class="span-2">이동할 URL<input id="target-url" type="url" inputmode="url" placeholder="비워두면 휴대폰 상담 페이지로 연결"></label>
+<label>노출 우선순위<input id="priority" type="number" min="-100000" max="100000" step="1" value="0" required></label>
+<div class="switches"><label class="check"><input id="is-published" type="checkbox"><span>게시 활성화</span></label><label class="check"><input id="show-on-home" type="checkbox"><span>메인에 노출</span></label></div>
+</div>
+<button id="save-deal" class="button primary wide" type="submit">저장하기</button>
+</form>
+<section class="panel list-panel" aria-labelledby="deal-list-title"><div class="panel-title"><h2 id="deal-list-title">등록된 핫딜</h2><span id="deal-count" class="count-pill">0</span></div><div id="deal-list" class="deal-list"></div></section>
+</div>
+</section>
+<section id="products" class="view" aria-labelledby="products-title">
+<div class="page-heading"><div><p class="eyebrow">OPERATIONS</p><h1 id="products-title">상품 · 자동화 관리</h1><p>수집 상태와 상품 노출 상태를 한 번에 확인하고 조정하세요.</p></div><button id="refresh-operations" class="button secondary" type="button">새로고침</button></div>
+<div id="operations-message" class="message notice" role="status" aria-live="polite"></div>
+<section class="panel">
+<div class="panel-title"><div><h2>수집 상태</h2><p class="panel-subtitle">소스별 최근 수집과 이미지 누락 현황</p></div></div>
+<div id="source-status" class="status-grid"><p class="empty-copy">불러오는 중...</p></div>
+</section>
+<details class="admin-fold panel"><summary>자동 작업 실행 기록</summary><section class="fold-content">
+<div class="panel-title"><div><h2>자동화 상태</h2><p class="panel-subtitle">백필 등 자동 작업의 마지막 실행 결과</p></div></div>
+<div id="automation-status" class="status-grid"><p class="empty-copy">불러오는 중...</p></div>
+</section></details>
+<section class="panel">
+<div class="panel-title"><div><h2>상품 찾기</h2><p class="panel-subtitle">숨기기와 종료 처리는 다음 수집 후에도 유지됩니다.</p></div></div>
+<form id="product-filter" class="filter-row">
+<input id="product-q" type="search" maxlength="100" placeholder="상품명 검색">
+<select id="product-source"><option value="">전체 소스</option><option value="ppomppu">뽐뿌</option><option value="fmkorea">FM코리아</option><option value="ruliweb">루리웹</option><option value="toss">토스</option></select>
+<select id="product-status"><option value="">전체 상태</option><option value="active">노출 중</option><option value="hidden">숨김</option><option value="ended">종료</option><option value="missing-image">이미지 없음</option></select>
+<button class="button primary" type="submit">조회</button>
+</form>
+<div id="product-count" class="panel-subtitle"></div>
+<div id="product-results" class="deal-list"><p class="empty-copy">조건을 선택해 조회하세요.</p></div>
+<div class="pager"><button id="product-prev" class="button secondary" type="button">이전</button><span id="product-page">1페이지</span><button id="product-next" class="button secondary" type="button">다음</button></div>
+</section>
+</section>
+<section id="home-display" class="view scaffold"><p class="eyebrow">COMING SOON</p><h1>메인 노출 관리</h1><p>통합 메인 편집 기능을 준비하고 있어요. 휴대폰 핫딜의 메인 노출은 핫딜 편집에서 설정해 주세요.</p></section>
+<section id="phone-inquiries" class="view"><div class="page-heading"><div><h1>휴대폰 상담관리</h1><p>전화 요청 고객에게 연락하고 상담 결과를 기록하세요. 개인정보는 접수 90일 후 자동 삭제됩니다.</p></div><button id="refresh-phone" class="button secondary" type="button">새로고침</button></div><details class="admin-fold panel"><summary>카카오 상담 주소 설정</summary><section class="fold-content"><form id="phone-channel-form"><label>카카오채널 1:1 상담 주소<input id="phone-channel-url" type="text" inputmode="url" placeholder="https://pf.kakao.com/_채널ID/chat"></label><button class="button primary">주소 저장</button><p>채널 홈 주소를 넣으면 1:1 상담 주소로 자동 변환해요. 비워두면 전화 상담만 제공해요. 단체 오픈채팅 주소는 사용할 수 없어요.</p></form></section></details><div id="phone-admin-message" role="status"></div><section class="panel"><label>상태 필터<select id="phone-status-filter"><option value="">전체</option><option value="new">신규</option><option value="consulting">상담 중</option><option value="reserved">방문 예약</option><option value="completed">개통 완료</option><option value="absent">부재중</option><option value="closed">상담 종료</option></select></label><p id="phone-summary"></p><details><summary>접수일별 상담 현황</summary><p>접수 날짜별 문의의 현재 상태입니다.</p><div id="phone-daily"></div></details><div id="phone-inquiry-list"></div></section></section>
+<section id="advertising-inquiries" class="view" aria-labelledby="inquiries-title">
+<div class="page-heading"><div><p class="eyebrow">ADVERTISING</p><h1 id="inquiries-title">광고문의</h1><p>홈페이지에서 접수된 광고 및 제휴 문의를 확인하고 처리 상태를 관리하세요.</p></div><button id="refresh-inquiries" class="button secondary" type="button">새로고침</button></div>
+<div id="inquiries-message" class="message notice" role="status" aria-live="polite"></div>
+<div id="inquiry-list" class="deal-list"></div>
+</section>
+<section id="community" class="view" aria-labelledby="community-admin-title">
+<div class="page-heading"><div><p class="eyebrow">COMMUNITY</p><h1 id="community-admin-title">커뮤니티 관리</h1><p>게시글, 댓글, 신고, 금칙어와 차단 사용자를 한곳에서 관리하세요.</p></div><button id="refresh-community" class="button secondary" type="button">새로고침</button></div>
+<div id="community-admin-message" class="message notice" role="status" aria-live="polite"></div>
+<details class="admin-fold panel"><summary>공지 작성·관리</summary><section class="fold-content">
+<div class="panel-title"><div><h2>공지글 등록</h2><p class="panel-subtitle">등록한 공지는 커뮤니티 상단에 고정되고 공지 표시가 붙어요.</p></div></div>
+<form id="community-notice-form" class="stack-form">
+<label>제목<input id="community-notice-title" maxlength="160" required placeholder="공지 제목"></label>
+<label>내용<textarea id="community-notice-body" rows="5" maxlength="10000" required placeholder="공지 내용을 입력하세요."></textarea></label>
+<div class="deal-actions"><button class="button primary" type="submit">공지글 등록</button></div>
+</form>
+<div id="community-notice-list" class="deal-list"><p class="empty-copy">등록된 공지를 불러오는 중...</p></div>
+</section></details>
+<section class="panel">
+<div class="panel-title"><div><h2>게시글 관리</h2><p class="panel-subtitle">게시글을 검색하고 숨김·삭제·댓글 관리·사용자 차단을 처리할 수 있어요.</p></div></div>
+<form id="community-post-filter" class="filter-row"><input id="community-post-q" type="search" maxlength="100" placeholder="제목·내용 검색"><button class="button primary" type="submit">조회</button></form>
+<div id="community-post-list" class="deal-list"><p class="empty-copy">불러오는 중...</p></div>
+</section>
+<details class="admin-fold panel"><summary>삭제된 게시글 보관함</summary><section class="fold-content">
+<div class="panel-title"><div><h2>삭제된 게시글</h2><p class="panel-subtitle">삭제 처리한 게시글은 이곳에 따로 보관되며 필요하면 복구할 수 있어요.</p></div><span id="community-deleted-count" class="status-pill">0개</span></div>
+<div id="community-deleted-post-list" class="deal-list"><p class="empty-copy">불러오는 중...</p></div>
+</section></details>
+<section class="panel">
+<div class="panel-title"><h2>신고 관리</h2></div>
+<div id="community-report-list" class="deal-list"><p class="empty-copy">불러오는 중...</p></div>
+</section>
+<div class="deal-workspace">
+<details class="admin-fold panel"><summary>금칙어 관리</summary><section class="fold-content">
+<div class="panel-title"><h2>금칙어</h2></div>
+<form id="community-banned-form" class="filter-row"><input id="community-banned-word" maxlength="100" placeholder="금칙어" required><button class="button primary" type="submit">추가</button></form>
+<div id="community-banned-list" class="deal-list"></div>
+</section></details>
+</div>
+<div class="deal-workspace">
+<details class="admin-fold panel"><summary>차단 사용자</summary><section class="fold-content">
+<div class="panel-title"><h2>차단 사용자</h2></div>
+<div id="community-block-list" class="deal-list"><p class="empty-copy">불러오는 중...</p></div>
+</section></details>
+<details class="admin-fold panel"><summary>커뮤니티 상세 설정</summary><section class="fold-content">
+<div class="panel-title"><h2>커뮤니티 기본 설정</h2></div>
+<form id="community-settings-form" class="form-grid">
+<label>추천 가중치<input id="community-rank-up" type="number" min="0" max="100" step="0.01"></label>
+<label>비추천 감점<input id="community-rank-down" type="number" min="0" max="100" step="0.01"></label>
+<label>댓글 가중치<input id="community-rank-comment" type="number" min="0" max="100" step="0.01"></label>
+<label>조회 가중치<input id="community-rank-view" type="number" min="0" max="100" step="0.001"></label>
+<label>시간 감쇠<input id="community-rank-age" type="number" min="0" max="100" step="0.01"></label>
+<button class="button primary" type="submit">설정 저장</button>
+</form>
+</section></details>
+</div>
+</section>
+<section id="settings" class="view" aria-labelledby="settings-title">
+<div class="page-heading"><div><p class="eyebrow">SITE SETTINGS</p><h1 id="settings-title">사이트 설정</h1><p>공개 화면의 문구와 수동 핫딜 노출 수를 관리하세요.</p></div></div>
+<div id="settings-message" class="message notice" role="status" aria-live="polite"></div>
+<form id="settings-form" class="panel form-panel">
+<div class="form-grid">
+<label>메인 수동 핫딜 수<input id="setting-home-limit" type="number" min="0" max="20" step="1" value="4" required></label>
+<label>추천 검색어 (쉼표로 구분)<input id="setting-searches" maxlength="380" placeholder="아이폰, 갤럭시, 노트북"></label>
+<label class="span-2">메인 문구<textarea id="setting-main-copy" maxlength="300" rows="3" required></textarea></label>
+<label class="span-2">휴대폰 섹션 제목<input id="setting-phone-title" maxlength="100" required></label>
+<label class="span-2">관리자 메모 (비공개)<textarea id="setting-admin-note" maxlength="500" rows="3"></textarea></label>
+</div>
+<button id="save-settings" class="button primary" type="submit">설정 저장</button>
+</form>
+</section>
+</main>
+</div>
+<div id="scrim" class="scrim"></div>
+<script src="/admin/url-utils.js" defer></script>
+<script src="/admin/admin.js" defer></script>
 </body>
 </html>

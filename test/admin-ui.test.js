@@ -39,7 +39,7 @@ test('admin login is public and noindex while management HTML remains authentica
   const shell = await fetch(`${origin}/admin`, { headers: { authorization: 'ok' } });
   assert.equal(shell.status, 200);
   const html = await shell.text();
-  for (const text of ['대시보드', '오늘 트래픽', '오늘 방문자', '페이지 조회수', '유입 경로', '휴대폰 핫딜 관리', '상품 관리', '메인 노출 관리', '사이트 설정']) assert.match(html, new RegExp(text));
+  for (const text of ['대시보드', '오늘의 핵심 지표', '오늘 방문자', '페이지 조회수', '유입 경로', '휴대폰 핫딜 관리', '상품 관리', '메인 노출 관리', '사이트 설정']) assert.match(html, new RegExp(text));
   for (const control of ['stat-visitors-today', 'stat-pageviews-today', 'analytics-day', 'referrer-breakdown', 'referrer-all', 'referrer-all-sites', 'referrer-detail-count', 'analytics-message']) assert.match(html, new RegExp(`id="${control}"`));
   assert.match(html, /유입 경로 요약/);
   assert.match(html, /전체 유입경로·세부 URL 보기/);

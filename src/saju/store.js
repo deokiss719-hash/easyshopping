@@ -194,14 +194,28 @@ async function createStore(pool, secret) {
     async dashboard() {
       return {
         settings: await this.settings(),
+        summary: (await pool.query(`
+          WITH bounds AS (
+            SELECT (NOW() AT TIME ZONE 'Asia/Seoul')::date AS day
+          )
+          SELECT day::text AS day,
+            COUNT(*) FILTER (WHERE paid_at AT TIME ZONE 'Asia/Seoul' >= day)::int AS today_paid_count,
+            COALESCE(SUM(amount) FILTER (WHERE paid_at AT TIME ZONE 'Asia/Seoul' >= day),0)::bigint AS today_paid_amount,
+            COALESCE(SUM(amount) FILTER (WHERE refunded_at AT TIME ZONE 'Asia/Seoul' >= day AND status='refunded'),0)::bigint AS today_refund_amount,
+            COUNT(*) FILTER (WHERE paid_at AT TIME ZONE 'Asia/Seoul' >= day-29)::int AS month_paid_count,
+            COALESCE(SUM(amount) FILTER (WHERE paid_at AT TIME ZONE 'Asia/Seoul' >= day-29),0)::bigint AS month_paid_amount,
+            COALESCE(SUM(amount) FILTER (WHERE refunded_at AT TIME ZONE 'Asia/Seoul' >= day-29 AND status='refunded'),0)::bigint AS month_refund_amount,
+            COUNT(*) FILTER (WHERE status IN ('confirming','refund_requested','refunding'))::int AS attention_count
+          FROM bounds LEFT JOIN saju_orders ON mode='live' GROUP BY day
+        `)).rows[0],
         orders: (
           await pool.query(
-            'SELECT id,amount,mode,status,created_at,paid_at,refund_requested_at,refunded_at FROM saju_orders ORDER BY created_at DESC LIMIT 200',
+            'SELECT id,amount,mode,status,created_at,paid_at,refund_requested_at,refunded_at FROM saju_orders WHERE id IN (SELECT id FROM saju_orders ORDER BY created_at DESC LIMIT 200) OR status IN (\'confirming\',\'refund_requested\',\'refunding\') ORDER BY created_at DESC',
           )
         ).rows,
         events: (
           await pool.query(
-            "SELECT day,event,mode,count FROM saju_events WHERE day>=CURRENT_DATE-INTERVAL '30 days' ORDER BY day DESC,event",
+            "SELECT day,event,mode,count FROM saju_events WHERE day>=(NOW() AT TIME ZONE 'Asia/Seoul')::date-29 ORDER BY day DESC,event",
           )
         ).rows,
       };
