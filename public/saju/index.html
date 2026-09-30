@@ -9,11 +9,11 @@
     <script src="/saju/reading-motion.js" defer></script>
     <script src="/saju/payment-options.js" defer></script>
     <script src="/saju/app.js" defer></script>
-  </head>
+  <link rel="stylesheet" href="/service-navigation.css"></head>
   <body class="saju-experience">
-    <header>
+    <header class="ehd-header">
       <a href="/">이지핫딜</a>
-      <nav><a href="/saju">사주풀이</a></nav>
+<nav class="ehd-service-nav" aria-label="주요 서비스"><a href="/">핫딜</a><a href="/community">커뮤니티</a><a href="/phone.html">휴대폰 상담</a><a href="/saju" aria-current="page">이지사주</a></nav>
     </header>
     <main>
       <section id="opening" class="opening" aria-labelledby="opening-title">
@@ -208,7 +208,7 @@
             <p id="capture-help" role="status"></p>
             <p class="muted">열람 인증이 끝나면 다시 열지 못할 수 있어요. 화면을 닫기 전에 저장해 주세요.</p>
           </div>
-        </section>
+<aside class="ehd-next" aria-label="함께 이용하기"><h2>이야기를 다 읽었다면</h2><div><a href="/"><strong>오늘의 핫딜 보러 가기 <span aria-hidden="true">→</span></strong><span>이지핫딜에 새로 올라온 할인 상품을 만나보세요.</span></a><a href="/community"><strong>커뮤니티 둘러보기 <span aria-hidden="true">→</span></strong><span>출생 정보나 보고서를 공개하지 않고도 일상 이야기를 나눌 수 있어요.</span></a></div></aside>        </section>
         <div class="reading-tools"><button type="button" id="new-analysis" class="secondary">다른 출생 정보로 새 분석</button></div>
         <div id="order-panel" class="card" hidden>
           <h2>구매 내역</h2>
@@ -231,5 +231,5 @@
         <p>사주는 전통적 해석 콘텐츠예요. 전화번호·회원가입은 받지 않아요.</p>
       </footer>
     </main>
-  </body>
+  <nav class="ehd-mobile-nav" aria-label="모바일 주요 메뉴"><a href="/"><span aria-hidden="true">⌂</span>핫딜</a><a href="/community"><span aria-hidden="true">☷</span>커뮤니티</a><a href="/phone.html"><span aria-hidden="true">☎</span>휴대폰 상담</a><a href="/saju" aria-current="page"><span aria-hidden="true">✦</span>이지사주</a></nav></body>
 </html>

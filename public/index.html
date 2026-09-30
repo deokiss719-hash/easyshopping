@@ -64,6 +64,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="/phone.css"><link rel="stylesheet" href="/styles.css" />
+<link rel="stylesheet" href="/service-navigation.css">
 </head>
 <body>
   <!-- Meta Pixel Code -->
@@ -76,14 +77,7 @@
         <span class="wordmark-symbol">E</span>
         <span class="wordmark-name">이지핫딜</span>
       </a>
-      <nav class="desktop-nav" aria-label="주요 메뉴">
-        <a class="active" href="#all-deals">핫딜</a>
-        <a href="#popular">실시간</a>
-        <a href="#latest">최신</a>
-        <a href="#categories">카테고리</a>
-        <a href="/community">커뮤니티</a><a href="/saju">무료 사주</a>
-        <a href="/phone.html">휴대폰 특가</a>
-      </nav>
+<nav class="ehd-service-nav" aria-label="주요 서비스"><a href="/" aria-current="page">핫딜</a><a href="/community">커뮤니티</a><a href="/phone.html">휴대폰 상담</a><a href="/saju">이지사주</a></nav>
       <div class="header-actions">
         <button class="icon-button search-trigger" type="button" aria-label="검색창으로 이동">
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.35-4.35m2.35-5.15A7.5 7.5 0 1 1 4 11.5a7.5 7.5 0 0 1 15 0Z"/></svg>
@@ -119,7 +113,11 @@
           <button type="button">아이폰</button><button type="button">갤럭시</button><button type="button">에어팟</button><button type="button">노트북</button><button type="button">닌텐도</button><button type="button">생필품</button>
         </div>
       </div>
-      <aside class="phone-banner"><div><strong>내 휴대폰, 지금 바꾸면 얼마일까?</strong><p>특가와 구매 조건을 확인하고 맞춤 상담을 받아보세요.</p></div><a href="/phone.html">휴대폰 특가 · 상담 신청 →</a></aside>
+<section class="ehd-hub" aria-labelledby="ehd-hub-title"><div class="ehd-hub-heading"><h2 id="ehd-hub-title">쇼핑도, 이야기도. 이지핫딜에서</h2><p>필요한 곳으로 바로 이어가세요.</p></div><div class="ehd-hub-grid">
+<a href="/community"><span class="ehd-hub-tag">함께 나누기</span><h3>커뮤니티 <span aria-hidden="true">→</span></h3><p>쇼핑 이야기부터 일상까지<br> 익명으로 편하게 나눠요.</p></a>
+<a href="/phone.html"><span class="ehd-hub-tag">바꾸기 전에</span><h3>휴대폰 상담 <span aria-hidden="true">→</span></h3><p>기종과 통신사에 맞춰<br> 가격과 구매 조건을 물어보세요.</p></a>
+<a href="/saju"><span class="ehd-hub-tag">잠깐 쉬어가기</span><h3>이지사주 <span aria-hidden="true">→</span></h3><p>내 성향부터 돈·일·관계까지.<br> 핵심 풀이 무료 · 상세 풀이 유료</p></a>
+</div></section>
       <section class="phone-deals" id="phone-deals" aria-labelledby="phone-deal-title" hidden>
         <div class="section-head compact">
           <div>
@@ -229,18 +227,12 @@
         <a class="wordmark footer-wordmark" href="/"><span class="wordmark-symbol">E</span><span class="wordmark-name">이지핫딜</span></a>
         <p>어렵게 찾지 말고, 쉽게 비교하세요.</p>
       </div>
-      <div class="footer-links"><a href="/saju">무료 사주풀이</a><a href="/hot-deals/food">식품 핫딜</a><a href="/hot-deals/digital">디지털 핫딜</a><a href="/hot-deals/living">생활 핫딜</a><a href="/hot-deals/fashion">패션 핫딜</a><a href="/community">커뮤니티</a><a href="/advertise.html">광고문의</a></div>
+      <div class="footer-links"><a href="/phone.html">휴대폰 상담</a><a href="/saju">이지사주 · 무료 미리보기</a><a href="/hot-deals/food">식품 핫딜</a><a href="/hot-deals/digital">디지털 핫딜</a><a href="/hot-deals/living">생활 핫딜</a><a href="/hot-deals/fashion">패션 핫딜</a><a href="/community">커뮤니티</a><a href="/advertise.html">광고문의</a></div>
       <div class="footer-note"><span>EASY HOT DEAL by EASY</span><p>상품 정보는 판매처 사정에 따라 변경될 수 있으며, 구매는 각 판매처에서 진행됩니다.</p><small>© 2026 EASY HOT DEAL</small></div>
     </div>
   </footer>
 
-  <nav class="bottom-nav" aria-label="모바일 메뉴">
-    <a class="active" href="/"><span>⌂</span>홈</a>
-    <a href="/saju"><span aria-hidden="true">✦</span>무료 사주</a>
-    <button class="mobile-search-trigger" type="button"><span>⌕</span>검색</button>
-    <a href="/community"><span>☷</span>커뮤니티</a>
-    <a href="/phone.html"><span>☎</span>휴대폰 특가</a>
-  </nav>
+<nav class="ehd-mobile-nav" aria-label="모바일 주요 메뉴"><a href="/" aria-current="page"><span aria-hidden="true">⌂</span>핫딜</a><a href="/community"><span aria-hidden="true">☷</span>커뮤니티</a><a href="/phone.html"><span aria-hidden="true">☎</span>휴대폰 상담</a><a href="/saju"><span aria-hidden="true">✦</span>이지사주</a></nav>
 
   <a class="kakao-mobile-cta" href="https://open.kakao.com/o/pQIoypNi" target="_blank" rel="noopener noreferrer" data-kakao-placement="mobile" aria-label="카카오톡으로 핫딜 알림받기 (새 창)">카톡으로 핫딜 알림받기</a>
 

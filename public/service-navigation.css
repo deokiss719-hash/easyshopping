@@ -1,0 +1,57 @@
+/* Shared public-service navigation. Keep service names and order consistent. */
+.ehd-service-nav { display:flex; align-items:center; gap:24px; font:600 14px/1.4 -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif; }
+.ehd-service-nav a { padding:12px 0; white-space:nowrap; text-decoration:none; color:#596579; }
+.ehd-service-nav a[aria-current="page"] { color:#2455e8; box-shadow:0 2px currentColor; }
+.ehd-service-nav a:hover { color:#2455e8; }
+.ehd-service-nav a:focus-visible,.ehd-mobile-nav a:focus-visible,.ehd-hub a:focus-visible,.ehd-next a:focus-visible { outline:3px solid #658bff; outline-offset:4px; }
+.ehd-header { display:flex; justify-content:space-between; align-items:center; gap:24px; padding:16px max(20px,calc((100% - 1120px)/2)); border-bottom:1px solid #e7ebf2; background:#fff; }
+.ehd-brand { color:#14224b; font-size:22px; font-weight:800; text-decoration:none; white-space:nowrap; }
+.ehd-breadcrumb { color:#69758a; font-size:13px; margin:0 0 24px; }
+.ehd-breadcrumb a { color:inherit; }
+.ehd-mobile-nav { display:none; }
+.ehd-hub { width:100%; margin:28px 0 0; text-align:left; }
+.ehd-hub-heading { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.ehd-hub-heading h2 { font-size:20px; letter-spacing:-.04em; color:#14224b; margin:0; }
+.ehd-hub-heading p { font-size:13px; color:#707d90; margin:0; }
+.ehd-hub-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.ehd-hub-grid a { display:block; padding:22px; border:1px solid #e4e9f3; border-radius:16px; background:#f7f9fd; color:#14224b; text-decoration:none; transition:border-color .15s,background .15s; }
+.ehd-hub-grid a:hover { background:#eff4ff; border-color:#b4c7fc; }
+.ehd-hub-tag { color:#5c6d8b; font-size:12px; font-weight:600; }
+.ehd-hub-grid h3 { font-size:19px; margin:10px 0; }
+.ehd-hub-grid h3 span { float:right; color:#496ee0; }
+.ehd-hub-grid p { font-size:14px; line-height:1.7; color:#68758a; margin:0; }
+.ehd-next { margin:40px auto; padding:24px; max-width:1120px; border:1px solid #e4e9f3; border-radius:16px; background:#f7f9fd; text-align:left; }
+.ehd-next h2 { font-size:18px; line-height:1.5; margin:0 0 16px; color:#14224b; }
+.ehd-next > div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.ehd-next a { text-decoration:none; color:#2446a0; min-width:0; padding:4px 0; }
+.ehd-next strong { display:block; font-size:15px; }
+.ehd-next a > span { display:block; color:#68758a; font-size:13px; line-height:1.7; margin-top:6px; }
+.saju-experience .ehd-service-nav a { color:#c8bea9; }
+.saju-experience .ehd-service-nav a[aria-current] { color:#e8d2a3; }
+.saju-experience .ehd-next { background:#171611; border-color:#453a27; font-family:system-ui,sans-serif; }
+.saju-experience .ehd-next h2,.saju-experience .ehd-next strong { color:#e8d2a3; }
+.saju-experience .ehd-next a > span { color:#c8bea9; }
+@media(max-width:767px) {
+ body { padding-bottom:calc(78px + env(safe-area-inset-bottom)); }
+ .ehd-service-nav { display:none; }
+ .ehd-mobile-nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); position:fixed; bottom:0; left:0; right:0; z-index:60; gap:0; height:calc(64px + env(safe-area-inset-bottom)); padding:5px 8px env(safe-area-inset-bottom); border-top:1px solid #e4e9f3; background:#fff; font:600 11px/1.4 system-ui,sans-serif; }
+ .ehd-mobile-nav a { display:flex; align-items:center; justify-content:center; flex-direction:column; gap:3px; color:#69758a; text-decoration:none; min-width:0; min-height:50px; }
+ .ehd-mobile-nav a > span { font-size:20px; line-height:24px; }
+ .ehd-mobile-nav a[aria-current] { color:#2455e8; }
+ .ehd-hub-heading { display:block; }
+ .ehd-hub-heading h2 { font-size:18px; }
+ .ehd-hub-heading p { margin-top:6px; }
+ .ehd-hub-grid { grid-template-columns:1fr; gap:8px; }
+ .ehd-hub-grid a { padding:15px 18px; }
+ .ehd-hub-grid h3 { font-size:17px; margin:5px 0; }
+ .ehd-hub-grid p { font-size:13px; }
+ .ehd-hub-grid br { display:none; }
+ .ehd-hub-tag { font-size:11px; }
+ .ehd-next { margin:28px 0; padding:20px; }
+ .ehd-next > div { grid-template-columns:1fr; gap:18px; }
+ .saju-experience .ehd-mobile-nav { background:#15140f; border-color:#453a27; }
+ .saju-experience .ehd-mobile-nav a { color:#b5aa95; }
+ .saju-experience .ehd-mobile-nav a[aria-current] { color:#efd39b; }
+}
+@media print { .ehd-mobile-nav,.ehd-service-nav,.ehd-next { display:none !important; } }
+@media(max-width:720px) { body:has(.kakao-mobile-cta) { padding-bottom:calc(128px + env(safe-area-inset-bottom)); } }
