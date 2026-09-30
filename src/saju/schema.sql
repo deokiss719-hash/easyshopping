@@ -36,6 +36,14 @@ WITH first_apply AS (
 )
 UPDATE saju_settings SET price=4900
 WHERE id=1 AND price=6900 AND EXISTS(SELECT 1 FROM first_apply);
+
+-- Merchant-approved launch switch. Beta runtime still takes precedence until live keys are ready.
+WITH first_apply AS (
+ INSERT INTO saju_content_migrations(version) VALUES('saju-sales-launch-4900')
+ ON CONFLICT(version) DO NOTHING RETURNING version
+)
+UPDATE saju_settings SET sales_enabled=TRUE
+WHERE id=1 AND price=4900 AND EXISTS(SELECT 1 FROM first_apply);
 WITH first_apply AS (
  INSERT INTO saju_content_migrations(version) VALUES('ko-grandmother-2')
  ON CONFLICT(version) DO NOTHING RETURNING version

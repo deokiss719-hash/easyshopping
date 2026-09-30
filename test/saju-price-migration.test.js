@@ -8,9 +8,11 @@ test('launch price is 4,900 won and later operator changes survive schema startu
   try {
     let store = await createStore(pool, 'price-test-secret-'.repeat(3));
     assert.equal((await store.settings()).price, 4900);
-    await pool.query('UPDATE saju_settings SET price=5900 WHERE id=1');
+    assert.equal((await store.settings()).sales_enabled, true);
+    await pool.query('UPDATE saju_settings SET price=5900,sales_enabled=false WHERE id=1');
     store = await createStore(pool, 'price-test-secret-'.repeat(3));
     assert.equal((await store.settings()).price, 5900);
+    assert.equal((await store.settings()).sales_enabled, false);
   } finally {
     await pool.end();
   }
