@@ -654,3 +654,6 @@ pre {
 /* Preview topics flow as paragraphs without chapter headings. */
 .saju-experience #preview > section + section { margin-top:28px; }
 .saju-experience #preview > section { padding:0; }
+
+.saju-experience .continuous-story .story-section { padding:12px 0; }
+.saju-experience .continuous-story .story-section > .reading-accessible { margin:0; padding:0; }

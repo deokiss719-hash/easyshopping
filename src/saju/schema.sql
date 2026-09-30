@@ -112,3 +112,11 @@ WITH first_apply AS (
 UPDATE saju_reports SET beta_access=TRUE
 WHERE EXISTS(SELECT 1 FROM first_apply)
 AND NOT EXISTS(SELECT 1 FROM saju_orders WHERE report_id=saju_reports.id);
+
+-- New reports use the revised narrator; no existing encrypted report is rewritten.
+WITH first_apply AS (
+ INSERT INTO saju_content_migrations(version) VALUES('ko-lived-story-10')
+ ON CONFLICT(version) DO NOTHING RETURNING version
+)
+UPDATE saju_settings SET report_version='ko-lived-story-10'
+WHERE id=1 AND EXISTS(SELECT 1 FROM first_apply);

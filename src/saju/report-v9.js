@@ -1,9 +1,9 @@
 'use strict';
-const previous=require('./report-v9');
+const previous=require('./report-v8');
 const {analyze,comparePeriod,FAMILY}=require('./whole-chart');
-const {compose}=require('./narrative-stories');
+const {compose}=require('./context-stories');
 const flows=require('./simple-flows');
-const VERSION='ko-lived-story-10';
+const VERSION='ko-context-story-9';
 const TITLES=['한눈에 보는 나','장점과 단점','금전운','직업운','애정운과 관계','시기별 흐름','사주 계산 근거'];
 function generate(chart,version=VERSION){
  if(version!==VERSION)return previous.generate(chart,version);
@@ -69,8 +69,6 @@ function generate(chart,version=VERSION){
  for(const group of timingGroups.values())timing.push(block(`timing-${groupIndex++}`,group.claims,[...new Set(group.labels)]));
  sections.push({id:'flow',title:TITLES[5],blocks:timing});
  sections.push({id:'basis',title:TITLES[6],blocks:[block('method',[{id:'method-limit',text:'월령 지장간과 투출 후보, 통근, 생조·설기·극의 구조, 천간합·지지육합·육충·완전삼합 후보 및 원국과 시기 간 관계를 기록합니다. 가중 점수로 신강약·용신·격국 성패나 합화를 확정하지 않습니다. 생활 문장은 전통 상징을 편집한 비유이며 전문가 감정·적중률 검증을 대신하지 않습니다.',paths:all,sources:Object.keys(analysis.sources)}]) ]});
- const order=['summary','money','work','love','strength','flow','basis'];
- sections.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id));
- return {version:VERSION,title:'나의 사주 이야기',toc:TITLES,sections,preview:['summary','strength','love'].map(id=>sections.find(s=>s.id===id).blocks[0]),sample:sections.find(s=>s.id==='money').blocks[0],evidence,analysis,traces};
+ return {version:VERSION,title:'나의 사주 이야기',toc:TITLES,sections,preview:[sections[0].blocks[0],sections[1].blocks[0],sections[4].blocks[0]],sample:sections[2].blocks[0],evidence,analysis,traces};
 }
 module.exports={...previous,generate,VERSION};

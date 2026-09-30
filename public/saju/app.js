@@ -135,11 +135,13 @@ function renderStory() {
   $('full-report').after($('chart-details'));
   show('chart-details', false);
   $('book-title').textContent = '태어난 날에 담긴 이야기';
+  $('chapter-content').classList.toggle('continuous-story', current.report.version === 'ko-lived-story-10');
   const sections = current.report.sections.filter(section => section.id !== 'basis');
   $('chapter-content').replaceChildren(...sections.map((section, index) => {
     const part = document.createElement('section');
     part.className = 'story-section';
     const heading = text('h3', section.title);
+    if(current.report.version === 'ko-lived-story-10') heading.className='reading-accessible';
     heading.id = `story-section-${index}`;
     part.setAttribute('aria-labelledby', heading.id);
     part.append(heading, ...section.blocks.map(b => block(b, current.report)));
