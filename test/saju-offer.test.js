@@ -9,8 +9,12 @@ const {createStore,token}=require('../src/saju/store');
 test('free projection shows useful complete sections but omits paid payload, analysis and traces',()=>{
  const c=calculate({date:'1988-08-15',calendar:'solar',timeType:'unknown',zone:'Asia/Seoul'}),r=generate(c),original=JSON.stringify(r),f=freeOffer(r,c);
  const money=r.sections.find(s=>s.id==='money').blocks[0];
- assert.equal(f.preview.length,1);
- assert.equal(f.preview[0].title,'나의 금전운');
+ assert.equal(f.preview.length,2);
+ assert.equal(f.preview[0].title,'돈 이야기');
+ assert.equal(f.preview[1].title,'연애 이야기');
+ const love=r.sections.find(s=>s.id==='love').blocks[0];
+ assert.deepEqual(f.preview[1].parts,[{text:love.parts[0].text}]);
+ for(const part of love.parts.slice(1))assert.ok(!JSON.stringify(f).includes(part.text));
  assert.deepEqual(f.preview[0].parts,[{text:money.parts[0].text}]);
  assert.equal(f.sections,undefined);assert.equal(f.analysis,undefined);assert.equal(f.traces,undefined);
  assert.equal(f.sample,undefined);assert.equal(f.teaser,undefined);
