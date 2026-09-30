@@ -1,21 +1,15 @@
 'use strict';
-// Explicit server-side projection: never send hidden sections/analysis/traces before purchase.
+// Explicit projection: masked text is decorative; locked prose never leaves the server.
 function freeOffer(report, chart, scope = 3) {
-  const sections=report.sections;
-  const extract=(section,limit)=>{
-    const b=section.blocks[0],parts=b.parts||[{text:b.text}];
-    const visible=limit?parts.slice(0,limit):parts;
-    return {id:b.id,title:section.title,parts:visible.map(p=>({text:p.text})),text:visible.map(p=>p.text).join(' ')};
-  };
-  // A useful, short opening; detailed life areas stay behind server authorization.
-  const preview=[extract(sections[0], scope === 4 ? 3 : 2)];
-  const money=sections.find(s=>s.id==='money').blocks[0];
-  const sampleText=(money.parts?.at(-1)||{text:money.text}).text;
-  // Quote a real money-pattern paragraph; never invent an alarming prediction for the offer.
-  const tension=money.parts?.[1]?.text || '';
-  const teaser=tension.match(/^.*?[.!?。！？](?:\s|$)/u)?.[0]?.trim() || '';
-  return {version:report.version,title:report.title,teaser,
+  const money=report.sections.find(s=>s.id==='money').blocks[0];
+  const parts=money.parts?.length ? money.parts : money.text.split(/(?<=[.!?。！？])\s+/u).map(text=>({text}));
+  const opening=parts[0]?.text || '';
+  const turn=(parts[1]?.text || '').match(/^.*?[.!?。！？](?:\s|$)/u)?.[0]?.trim() || '';
+  const visible=[{text:opening}];
+  if(scope===4 && turn)visible.push({text:turn});
+  return {version:report.version,title:report.title,
     toc:['금전운 상세 이야기','직업운 상세 이야기','애정운과 관계 상세 이야기','시기별 흐름과 해석의 한계'],
-    preview,sample:{id:'paid-sample',title:'금전운 상세 풀이 중',parts:[{text:sampleText}],text:sampleText},evidence:{}};
+    preview:[{id:money.id,title:'나의 금전운',parts:visible,text:visible.map(p=>p.text).join(' ')}],
+    evidence:{}};
 }
 module.exports={freeOffer};

@@ -8,15 +8,19 @@ const {testPool}=require('./helpers/saju-db');
 const {createStore,token}=require('../src/saju/store');
 test('free projection shows useful complete sections but omits paid payload, analysis and traces',()=>{
  const c=calculate({date:'1988-08-15',calendar:'solar',timeType:'unknown',zone:'Asia/Seoul'}),r=generate(c),original=JSON.stringify(r),f=freeOffer(r,c);
+ const money=r.sections.find(s=>s.id==='money').blocks[0];
  assert.equal(f.preview.length,1);
- assert.equal(f.preview[0].parts.length,2);
- assert.deepEqual(f.preview[0].parts,r.sections[0].blocks[0].parts.slice(0,2).map(p=>({text:p.text})));
- assert.ok(f.preview[0].text.length < r.sections[0].blocks[0].text.length);
+ assert.equal(f.preview[0].title,'나의 금전운');
+ assert.deepEqual(f.preview[0].parts,[{text:money.parts[0].text}]);
  assert.equal(f.sections,undefined);assert.equal(f.analysis,undefined);assert.equal(f.traces,undefined);
+ assert.equal(f.sample,undefined);assert.equal(f.teaser,undefined);
  assert.deepEqual(f.evidence,{});assert.equal(JSON.stringify(r),original);
- const privateWork=r.sections[3].blocks[0].parts.at(-1).text;
- assert.ok(!JSON.stringify(f).includes(privateWork));
- assert.equal(freeOffer(r,c,4).preview[0].parts.length,3);
+ for(const section of r.sections.filter(s=>s.id!=='money'))assert.ok(!JSON.stringify(f).includes(section.blocks[0].text));
+ for(const part of money.parts.slice(1))assert.ok(!JSON.stringify(f).includes(part.text));
+ const expanded=freeOffer(r,c,4);
+ assert.equal(expanded.preview[0].parts.length,2);
+ assert.ok(money.parts[1].text.startsWith(expanded.preview[0].parts[1].text));
+ assert.ok(!JSON.stringify(expanded).includes(money.parts.at(-1).text));
 });
 test('card SDK request uses the approved hosted card window and no personal input',()=>{
  const o={id:'local_order_123',amount:4900,successUrl:'http://localhost/saju/success',failUrl:'http://localhost/saju/fail'};

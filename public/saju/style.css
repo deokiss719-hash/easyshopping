@@ -643,3 +643,11 @@ pre {
 @keyframes saju-page-turn { 0%,12% { transform:rotateY(0deg); z-index:4; } 48%,82% { transform:rotateY(-178deg); z-index:4; } 83%,100% { transform:rotateY(-178deg); z-index:1; } }
 .saju-experience #personal-teaser { margin:24px auto; padding:20px 16px; max-width:520px; border-top:1px solid #665131; border-bottom:1px solid #665131; color:#efd5a4; font-size:19px; line-height:1.9; word-break:keep-all; }
 @media(prefers-reduced-motion:reduce) { .book-leaf { animation:none; } .leaf-one,.leaf-two { display:none; } }
+/* Continuous reading into a decorative lock; no paid text in the masked DOM. */
+.money-story-mask { max-width:510px; margin:20px auto -18px; padding:0 12px; overflow:hidden; user-select:none; pointer-events:none; -webkit-mask-image:linear-gradient(#0008,#0000); mask-image:linear-gradient(#0008,#0000); }
+.money-story-mask span { display:block; height:15px; margin:20px auto; width:94%; filter:blur(4px); opacity:.55; background:repeating-linear-gradient(90deg,#b8a782 0 9px,transparent 9px 14px); }
+.money-story-mask span:nth-child(2n) { width:78%; }
+.money-story-mask span:nth-child(3n) { width:87%; }
+.saju-experience #paid-offer { border-top:0; margin:0; padding:0 0 20px; }
+#paid-offer .offer-intro { margin:0 0 24px; }
+#paid-offer .offer-price { margin-top:24px; padding-top:0; border-top:0; }

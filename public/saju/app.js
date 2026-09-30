@@ -178,7 +178,7 @@ async function load(id) {
   $('result-title').textContent = (current.name ? current.name + '님의 ' : '나의 ') + '사주 이야기';
   $('chart-meta').textContent = '양력 ' + current.chart.solarDate +
     (current.chart.pillars.hour ? ' · 시주 포함' : ' · 시주 미확정');
-  $('reading-intro').textContent = ['ko-grandmother-2', 'ko-depth-3'].includes(current.report.version) ? '자, 네가 태어난 날에 담긴 이야기를 들려주마.' : '태어난 날의 글자에서, 나를 알아가는 이야기가 시작됩니다.';
+  $('reading-intro').textContent = '자, 니 사주에 담긴 돈 이야기를 먼저 들려주마.';
   renderChart(current.chart);
   $('count-note').textContent =
     `확정된 ${current.chart.visibleCount}글자만 집계해요. 지장간 가중치·계절 강약은 제외한 분포예요.`;
@@ -197,9 +197,6 @@ async function load(id) {
     return;
   }
   renderContents(current.report.toc);
-  $('personal-teaser').textContent = current.report.teaser || '';
-  show('personal-teaser', !!current.report.teaser);
-  $('sample').replaceChildren(block(current.report.sample, current.report));
   $('price').textContent = config.price.toLocaleString() + '원 (부가세 포함)';
   $('pay').textContent =
     config.mode === 'demo'
@@ -439,7 +436,7 @@ async function init() {
     route = location.pathname;
   history.replaceState(null, '', route);
   config = await api('/config');
-  $('opening-note').textContent = config.accessMode === 'beta' ? '전체 무료 베타 · 회원가입 없이' : '핵심 성향 무료 · 회원가입 없이';
+  $('opening-note').textContent = config.accessMode === 'beta' ? '전체 무료 베타 · 회원가입 없이' : '금전운 맛보기 무료 · 회원가입 없이';
   if ((current?.accessMode || config.accessMode) === 'beta') document.body.classList.add('beta-reading');
   $('seller-info').textContent = config.seller?.name
     ? `판매자: ${config.seller.name} / 대표: ${config.seller.representative} / 사업자등록번호: ${config.seller.registration} / 통신판매: ${config.seller.commerce} / 주소: ${config.seller.address} / 연락처: ${config.seller.contact}`
