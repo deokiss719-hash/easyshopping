@@ -11,7 +11,10 @@ function freeOffer(report, chart, scope = 3) {
   const preview=[extract(sections[0], scope === 4 ? 3 : 2)];
   const money=sections.find(s=>s.id==='money').blocks[0];
   const sampleText=(money.parts?.at(-1)||{text:money.text}).text;
-  return {version:report.version,title:report.title,
+  // Quote a real money-pattern paragraph; never invent an alarming prediction for the offer.
+  const tension=money.parts?.[1]?.text || '';
+  const teaser=tension.match(/^.*?[.!?。！？](?:\s|$)/u)?.[0]?.trim() || '';
+  return {version:report.version,title:report.title,teaser,
     toc:['금전운 상세 이야기','직업운 상세 이야기','애정운과 관계 상세 이야기','시기별 흐름과 해석의 한계'],
     preview,sample:{id:'paid-sample',title:'금전운 상세 풀이 중',parts:[{text:sampleText}],text:sampleText},evidence:{}};
 }

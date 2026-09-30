@@ -629,3 +629,17 @@ pre {
  .saju-experience .story-section { break-inside: auto; }
  .saju-experience .story-section > h3 { break-after: avoid; }
 }
+/* Lightweight book animation while the real calculation/request is pending. */
+.analysis-book { position:relative; width:220px; height:152px; margin:12px auto 42px; perspective:750px; filter:drop-shadow(0 14px 22px #0008); }
+.book-cover { position:absolute; inset:3px -7px -7px; border-radius:5px 10px 10px 5px; background:#554128; border:1px solid #a58a55; transform:rotateX(12deg); }
+.book-left,.book-right,.book-leaf { position:absolute; top:0; width:110px; height:144px; padding:22px; box-sizing:border-box; background:#e4d3ab; color:#705936; font:22px/1.45 'SajuMyeongjo',serif; letter-spacing:6px; border:1px solid #ad9363; }
+.book-left { left:0; border-radius:7px 0 0 7px; background:linear-gradient(90deg,#decca4,#eee0c1 80%,#b9a17c); }
+.book-right { right:0; border-radius:0 7px 7px 0; background:linear-gradient(90deg,#baa07a,#eee0c1 20%,#decca4); }
+.book-leaf { left:50%; border-radius:0 7px 7px 0; transform-origin:left center; backface-visibility:visible; animation:saju-page-turn 3.6s ease-in-out infinite; }
+.book-leaf span { display:block; opacity:.7; }
+.leaf-one { animation-delay:-2.4s; }
+.leaf-two { animation-delay:-1.2s; }
+.leaf-three { animation-delay:0s; }
+@keyframes saju-page-turn { 0%,12% { transform:rotateY(0deg); z-index:4; } 48%,82% { transform:rotateY(-178deg); z-index:4; } 83%,100% { transform:rotateY(-178deg); z-index:1; } }
+.saju-experience #personal-teaser { margin:24px auto; padding:20px 16px; max-width:520px; border-top:1px solid #665131; border-bottom:1px solid #665131; color:#efd5a4; font-size:19px; line-height:1.9; word-break:keep-all; }
+@media(prefers-reduced-motion:reduce) { .book-leaf { animation:none; } .leaf-one,.leaf-two { display:none; } }

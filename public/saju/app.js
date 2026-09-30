@@ -183,7 +183,6 @@ async function load(id) {
   $('count-note').textContent =
     `확정된 ${current.chart.visibleCount}글자만 집계해요. 지장간 가중치·계절 강약은 제외한 분포예요.`;
   $('preview').replaceChildren(...current.report.preview.map((b) => { const section=document.createElement('section'); if(b.title)section.append(text('h3',b.title)); section.append(block(b,current.report));return section; }));
-  $('free-limits').textContent = '전통 해석이며 실제 삶은 환경과 선택에 따라 달라져요. 나이별 흐름은 방향을 확정할 정보가 없어 두 가정으로 제공하며, 특정 사건을 예측하지 않아요. ' + (!current.chart.pillars.hour ? '태어난 시각을 몰라 달라질 수 있는 부분은 확정하지 않아요. ' : '') + (!current.chart.pillars.month ? '계산이 바뀌는 날짜라 일부 성향과 시기별 해석을 제한해요.' : '');
   $('warnings').replaceChildren(...current.chart.warnings.map((w) => text('li', w)));
   show('chart-details', false);
   if ((current?.accessMode || config.accessMode) === 'beta') {
@@ -198,6 +197,8 @@ async function load(id) {
     return;
   }
   renderContents(current.report.toc);
+  $('personal-teaser').textContent = current.report.teaser || '';
+  show('personal-teaser', !!current.report.teaser);
   $('sample').replaceChildren(block(current.report.sample, current.report));
   $('price').textContent = config.price.toLocaleString() + '원 (부가세 포함)';
   $('pay').textContent =
@@ -438,7 +439,7 @@ async function init() {
     route = location.pathname;
   history.replaceState(null, '', route);
   config = await api('/config');
-  $('opening-note').textContent = config.accessMode === 'beta' ? '전체 무료 베타 · 회원가입 없이' : `핵심 성향 무료 · 상세 보고서 ${config.price.toLocaleString()}원${config.mode !== 'live' ? ' (테스트 · 실제 과금 없음)' : ''} · 회원가입 없이`;
+  $('opening-note').textContent = config.accessMode === 'beta' ? '전체 무료 베타 · 회원가입 없이' : '핵심 성향 무료 · 회원가입 없이';
   if ((current?.accessMode || config.accessMode) === 'beta') document.body.classList.add('beta-reading');
   $('seller-info').textContent = config.seller?.name
     ? `판매자: ${config.seller.name} / 대표: ${config.seller.representative} / 사업자등록번호: ${config.seller.registration} / 통신판매: ${config.seller.commerce} / 주소: ${config.seller.address} / 연락처: ${config.seller.contact}`
