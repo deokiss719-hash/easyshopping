@@ -73,7 +73,7 @@ test('커뮤니티 공개 화면은 모바일 폭에서 목록·검색·상세·
 });
 
 test('공개 화면은 이지핫딜 브랜드명을 표시한다', () => {
-  assert.match(html, /<title>실시간 핫딜 모음·오늘의 특가 \| 이지핫딜<\/title>/);
+  assert.match(html, /<title>실시간 핫딜·휴대폰 구매 상담 \| 이지핫딜<\/title>/);
   assert.match(html, /<h1 id="hero-title">실시간 핫딜, 오늘 뭐가 싸지\?<\/h1>/);
   assert.match(html, /aria-label="이지핫딜 홈"/);
   assert.equal((html.match(/<span class="wordmark-name">이지핫딜<\/span>/g) || []).length, 2);
@@ -103,7 +103,7 @@ test('검색봇에 대표 URL, 사이트맵, 이지핫딜 구조화 데이터를
   assert.match(robots, /^Disallow: \/admin\/$/m);
   assert.match(robots, /^Sitemap: https:\/\/easyshoopping\.com\/sitemap\.xml$/m);
   assert.match(sitemap, /<loc>https:\/\/easyshoopping\.com\/<\/loc>/);
-  assert.match(sitemap, /<lastmod>2026-09-16<\/lastmod>/);
+  assert.doesNotMatch(sitemap, /<lastmod>/);
   for (const slug of ['food', 'digital', 'living', 'fashion']) assert.match(html, new RegExp(`href="/hot-deals/${slug}"`));
 });
 

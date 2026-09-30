@@ -2,3 +2,5 @@
 [hidden]{display:none!important}
 
 .phone-offer[role="link"]{cursor:pointer}.phone-offer[role="link"]:focus-visible{outline:3px solid #005bff;outline-offset:3px}
+
+.phone-guide{margin-top:28px;line-height:1.8;overflow-wrap:anywhere}.phone-guide h3{margin-top:24px;font-size:18px}.phone-guide p{color:#374151}

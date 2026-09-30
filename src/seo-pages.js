@@ -48,15 +48,15 @@ function categoryPage(slug, category, deals) {
 }
 
 function sitemapXml(deals, communityPosts = []) {
-  const today = new Date().toISOString().slice(0, 10);
   const urls = [
-    { loc: 'https://easyshoopping.com/', lastmod: today, priority: '1.0' },
-    { loc: 'https://easyshoopping.com/community', lastmod: today, priority: '0.8' },
-    ...Object.keys(CATEGORY_PATHS).map((slug) => ({ loc: `https://easyshoopping.com/hot-deals/${slug}`, lastmod: today, priority: '0.8' })),
+    { loc: 'https://easyshoopping.com/', priority: '1.0' },
+    { loc: 'https://easyshoopping.com/community', priority: '0.8' },
+    ...['/phone.html', '/saju', '/advertise.html'].map(path => ({ loc: `https://easyshoopping.com${path}`, priority: '0.8' })),
+    ...Object.keys(CATEGORY_PATHS).map((slug) => ({ loc: `https://easyshoopping.com/hot-deals/${slug}`, priority: '0.8' })),
     ...deals.map((deal) => ({ loc: `https://easyshoopping.com/deals/${deal.id}`, lastmod: deal.updatedAt.slice(0, 10), priority: '0.6' })),
     ...communityPosts.map((post) => ({ loc: `https://easyshoopping.com/community/posts/${post.id}`, lastmod: new Date(post.updatedAt).toISOString().slice(0, 10), priority: '0.5' })),
   ];
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((entry) => `  <url><loc>${entry.loc}</loc><lastmod>${entry.lastmod}</lastmod><changefreq>${entry.priority === '1.0' ? 'hourly' : 'daily'}</changefreq><priority>${entry.priority}</priority></url>`).join('\n')}\n</urlset>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map((entry) => `  <url><loc>${entry.loc}</loc>${entry.lastmod ? `<lastmod>${entry.lastmod}</lastmod>` : ''}<changefreq>${entry.priority === '1.0' ? 'hourly' : 'daily'}</changefreq><priority>${entry.priority}</priority></url>`).join('\n')}\n</urlset>\n`;
 }
 
 function createSeoPagesRouter(store, communityStore = null) {

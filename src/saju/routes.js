@@ -44,7 +44,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
     res.set({
       'Cache-Control': 'no-store',
       'Referrer-Policy': 'no-referrer',
-      'X-Robots-Tag': 'noindex, nofollow',
+      'X-Robots-Tag': ['/saju', '/saju/'].includes(req.originalUrl) ? 'index, follow' : 'noindex, nofollow',
       'Content-Security-Policy':
         "default-src 'self'; script-src 'self' https://js.tosspayments.com; connect-src 'self' https://*.tosspayments.com; frame-src https://*.tosspayments.com https://*.toss.im; img-src 'self' data: https://*.tosspayments.com; style-src 'self'; form-action 'self' https://*.tosspayments.com; base-uri 'none'; frame-ancestors 'none'; object-src 'none'",
     });

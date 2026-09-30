@@ -1,9 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://easyshoopping.com/</loc>
-    <lastmod>2026-09-16</lastmod>
-    <changefreq>hourly</changefreq>
-    <priority>1.0</priority>
-  </url>
+  <url><loc>https://easyshoopping.com/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://easyshoopping.com/community</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/phone.html</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/saju</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/advertise.html</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/digital</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/food</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/living</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/fashion</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/beauty</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/health</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/baby</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/game</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/leisure</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/pet</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/car</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/travel</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/coupon</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://easyshoopping.com/hot-deals/other</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
 </urlset>
