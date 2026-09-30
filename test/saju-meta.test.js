@@ -26,3 +26,17 @@ test('no consent, demo payment, or missing configuration cannot send a Purchase'
  let writes=0;await meta.enqueue({query:async()=>writes++},{mode:'demo',meta_context:{},amount:5900});assert.equal(writes,0);
  assert.deepEqual(await meta.drain({},meta.metaConfig({})),{disabled:true});
 });
+test('uncertain delivery retries the same event ID and test events require a test code',async t=>{
+ const pool=await testPool();t.after(()=>pool.end());await createStore(pool,'s'.repeat(64));
+ const payload={event_name:'Purchase',event_id:'stable-retry',event_time:Math.floor(Date.now()/1000),user_data:{external_id:['abc']},custom_data:{value:5900,currency:'KRW'}};
+ await pool.query('INSERT INTO saju_meta_outbox(event_id,payload) VALUES($1,$2)',[payload.event_id,JSON.stringify(payload)]);
+ const cfg={enabled:true,pixelId:'123456',accessToken:'test',version:'v23.0'};const ids=[];
+ await meta.drain(pool,cfg,async(_url,o)=>{ids.push(JSON.parse(o.body).data[0].event_id);throw Error('timeout')});
+ assert.equal((await pool.query('SELECT attempts FROM saju_meta_outbox')).rows[0].attempts,1);
+ await pool.query("UPDATE saju_meta_outbox SET next_attempt_at=NOW()-INTERVAL '1 minute'");
+ await meta.drain(pool,cfg,async(_url,o)=>{ids.push(JSON.parse(o.body).data[0].event_id);return{ok:true,json:async()=>({events_received:1})}});
+ assert.deepEqual(ids,['stable-retry','stable-retry']);
+ await assert.rejects(()=>meta.testEvent(cfg,'',5900));
+ let testPayload;await meta.testEvent(cfg,'TEST12345',5900,async(_u,o)=>{testPayload=JSON.parse(o.body);return{ok:true,json:async()=>({events_received:1})}});
+ assert.equal(testPayload.test_event_code,'TEST12345');assert.match(testPayload.data[0].event_id,/^saju-test-/);
+});
