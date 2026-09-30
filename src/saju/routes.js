@@ -56,6 +56,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
   router.get('/saju/fonts/NanumMyeongjo-Regular.ttf', (_req, res) =>
     res.sendFile(path.join(ROOT, 'fonts', 'NanumMyeongjo-Regular.ttf')),
   );
+  router.get(['/saju/refund', '/saju/refund/'], (_req, res) => res.sendFile(path.join(ROOT, 'refund.html')));
   router.get('/saju/method', (_req, res) => res.sendFile(path.join(ROOT, 'method.html')));
   router.get(
     '/saju/admin',
