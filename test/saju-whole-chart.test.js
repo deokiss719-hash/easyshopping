@@ -52,7 +52,7 @@ test('reports preserve saved versions and every new paragraph has resolvable pro
  for(const [date,time] of [['1990-01-09','12:00'],['1988-08-15','04:00'],['1975-11-21','19:30'],['2000-04-17','08:00'],['1996-07-12','16:00'],['1990-01-05',null]]){
   const c=make(date,time),r=generate(c);
   assert.deepEqual(generate(c),r);assert.deepEqual(generate(c,old.VERSION),old.generate(c));
-  assert.equal(r.version,'ko-lived-story-10');
+  assert.equal(r.version,'ko-easy-story-11');
   for(const s of r.sections)for(const b of s.blocks){
    assert.equal(b.parts.length,r.traces[b.id].length);
    for(const trace of r.traces[b.id])for(const path of trace.paths)assert.notEqual(path.split('.').reduce((v,k)=>v?.[k],c),undefined,path);

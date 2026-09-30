@@ -7,7 +7,7 @@ test('narrator migration runs once and preserves subsequent admin choice', async
   try {
     const secret = 'content-version-test-secret-'.repeat(3);
     const store = await createStore(pool, secret);
-    assert.equal((await store.settings()).report_version, 'ko-lived-story-10');
+    assert.equal((await store.settings()).report_version, 'ko-easy-story-11');
     const saved = { price: 6900, report_version: 'ko-evidence-1', free_sections: 3, sales_enabled: false };
     await store.updateSettings(saved);
     await createStore(pool, secret);
