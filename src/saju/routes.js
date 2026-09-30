@@ -6,10 +6,12 @@ const { generate } = require('./report');
 const { token } = require('./store');
 const { createPayments, paymentConfig } = require('./payments');
 const { freeOffer } = require('./offer');
+const meta=require('./meta-conversions');
 const ROOT = path.join(__dirname, '../../public/saju');
 function createSajuRouter({ store, auth, env = process.env, provider }) {
   const router = express.Router(),
     config = paymentConfig(env),
+    metaSettings=meta.metaConfig(env),
     payments = createPayments(store, config, provider);
   const seller = {
     name: env.SAJU_SELLER_NAME || '',
@@ -46,7 +48,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
       'Referrer-Policy': 'no-referrer',
       'X-Robots-Tag': ['/saju', '/saju/'].includes(req.originalUrl) ? 'index, follow' : 'noindex, nofollow',
       'Content-Security-Policy':
-        "default-src 'self'; script-src 'self' https://js.tosspayments.com; connect-src 'self' https://*.tosspayments.com; frame-src https://*.tosspayments.com https://*.toss.im; img-src 'self' data: https://*.tosspayments.com; style-src 'self'; form-action 'self' https://*.tosspayments.com; base-uri 'none'; frame-ancestors 'none'; object-src 'none'",
+        "default-src 'self'; script-src 'self' https://js.tosspayments.com https://connect.facebook.net; connect-src 'self' https://*.tosspayments.com https://www.facebook.com; frame-src https://*.tosspayments.com https://*.toss.im; img-src 'self' data: https://*.tosspayments.com https://www.facebook.com; style-src 'self'; form-action 'self' https://*.tosspayments.com; base-uri 'none'; frame-ancestors 'none'; object-src 'none'",
     });
     next();
   });
@@ -64,7 +66,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
     (_req, res) => res.sendFile(path.join(ROOT, 'admin.html')),
   );
   router.get('/saju/:asset', (req, res, next) =>
-    ['app.js', 'style.css', 'admin.js', 'reading-motion.js', 'payment-options.js', 'grandmother.png'].includes(req.params.asset)
+    ['app.js', 'style.css', 'admin.js', 'reading-motion.js', 'payment-options.js', 'grandmother.png', 'ads-measurement.js'].includes(req.params.asset)
       ? res.sendFile(path.join(ROOT, req.params.asset))
       : next(),
   );
@@ -96,6 +98,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
         canPay: !beta && (config.mode !== 'live' || (s.sales_enabled && sellerReady)),
         seller,
         zones: ZONES,
+        metaPixelId:metaSettings.enabled&&config.mode==='live'?metaSettings.pixelId:null,
       });
     }),
   );
@@ -192,6 +195,12 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
       res.json({ link: base + '/saju/recover#' + (await store.reissue(req.params.id)) });
     }),
   );
+  router.delete('/api/saju/reports/:id/ad-consent',wrap(async(req,res)=>{
+    await authorize(req);
+    await store.pool.query('UPDATE saju_orders SET meta_context=NULL WHERE report_id=$1',[req.params.id]);
+    await store.pool.query("DELETE FROM saju_meta_outbox WHERE sent_at IS NULL AND event_id IN (SELECT 'saju-purchase-' || id FROM saju_orders WHERE report_id=$1)",[req.params.id]);
+    res.sendStatus(204);
+  }));
   router.delete(
     '/api/saju/reports/:id',
     wrap(async (req, res) => {
@@ -212,6 +221,8 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
       if (config.mode === 'live' && (!s.sales_enabled || !sellerReady))
         return res.status(503).json({ error: '실결제 판매 준비 중이에요.' });
       const o = await store.order(r, s.price, config.mode);
+      const attribution=metaSettings.enabled&&config.mode==='live'?meta.context(req.body?.adAttribution,req.get('user-agent')):null;
+      if(attribution&&o.status==='pending')await store.pool.query('UPDATE saju_orders SET meta_context=$2 WHERE id=$1 AND meta_context IS NULL',[o.id,JSON.stringify(attribution)]);
       await store.event('checkout', config.mode);
       res.json({
         id: o.id,
@@ -291,8 +302,12 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
     router.use('/api/admin/saju', auth.requireAuth);
     router.get(
       '/api/admin/saju',
-      wrap(async (_req, res) => res.json({ ...(await store.dashboard()), mode: config.mode, accessMode: beta ? 'beta' : 'paid' })),
+      wrap(async (_req, res) => res.json({ ...(await store.dashboard()), mode: config.mode, accessMode: beta ? 'beta' : 'paid',meta:{enabled:metaSettings.enabled,pixelId:metaSettings.pixelId,queue:(await store.pool.query("SELECT COUNT(*) FILTER (WHERE sent_at IS NULL AND attempts<8) AS pending,COUNT(*) FILTER (WHERE sent_at IS NOT NULL) AS sent,COUNT(*) FILTER (WHERE sent_at IS NULL AND attempts>=8) AS failed FROM saju_meta_outbox")).rows[0]} })),
     );
+    router.post('/api/admin/saju/meta/test',auth.requireMutationProtection,wrap(async(req,res)=>{
+      const settings=await store.settings();
+      res.json(await meta.testEvent(metaSettings,String(req.body?.testCode||''),settings.price));
+    }));
     router.patch(
       '/api/admin/saju/settings',
       auth.requireMutationProtection,
@@ -322,6 +337,6 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
             : '처리를 완료하지 못했어요. 잠시 후 같은 화면에서 다시 시도해 주세요.',
       });
   });
-  return { router, payments };
+  return { router, payments, drainMeta:()=>meta.drain(store.pool,metaSettings) };
 }
 module.exports = { createSajuRouter };

@@ -1,4 +1,5 @@
 'use strict';
+const {enqueue}=require('./meta-conversions');
 function paymentConfig(env = process.env) {
   const mode = env.SAJU_PAYMENT_MODE || 'demo';
   if (!['demo', 'test', 'live'].includes(mode)) throw Error('invalid saju payment mode');
@@ -195,6 +196,8 @@ function createPayments(store, config, provider = gateway(config)) {
           "UPDATE saju_reports SET paid=TRUE,expires_at=NOW()+INTERVAL '1 year' WHERE id=$1",
           [o.report_id],
         );
+        const paidOrder=(await db.query('SELECT * FROM saju_orders WHERE id=$1',[o.id])).rows[0];
+        await enqueue(db,paidOrder);
         await metric(db, 'paid', o.mode);
         return { status: 'paid', reportId: o.report_id };
       });

@@ -29,6 +29,7 @@ async function run(fn) {
 }
 async function load() {
   const x = await api('/api/admin/saju');
+  if(x.meta)$('meta-status').textContent=`추적 ${x.meta.enabled?'활성':'비활성'} · Pixel ${x.meta.pixelId||'미설정'} · 대기 ${x.meta.queue.pending} · 수신 확인 ${x.meta.queue.sent} · 재시도 소진 ${x.meta.queue.failed}`;
   $('mode').textContent =
     x.accessMode === 'beta' ? '전체 무료 베타입니다. 가격·무료 범위·판매 설정은 현재 고객 흐름에 적용되지 않습니다.' : x.mode === 'live' ? '실결제 환경이에요.' : '테스트/체험 환경이에요. 실제 과금은 없어요.';
   for (const [k, v] of Object.entries(x.settings)) {
@@ -134,3 +135,5 @@ run(async () => {
   csrf = s.csrfToken;
   await load();
 });
+
+$('meta-test').onsubmit=e=>{e.preventDefault();run(async()=>{const r=await api('/api/admin/saju/meta/test','POST',{testCode:e.target.elements.testCode.value.trim()});$('meta-test-result').textContent=`Meta 테스트 수신 ${r.received}건 · ${r.value} ${r.currency} · 실제 구매 아님 · 이벤트 관리자에서도 확인해 주세요.`;});};

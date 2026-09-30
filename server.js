@@ -253,6 +253,7 @@ async function start() {
       sajuMaintenanceRunning = true;
       try {
       await sajuStore.purge();
+      await saju.drainMeta().catch(()=>console.warn('saju conversion delivery unavailable'));
       const pending = await sajuStore.pool.query("SELECT id FROM saju_orders WHERE status IN ('confirming','refunding') ORDER BY last_checked_at LIMIT 20");
       for (const order of pending.rows) {
         await saju.payments.reconcile(order.id).catch(() => {});

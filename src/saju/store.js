@@ -177,6 +177,8 @@ async function createStore(pool, secret) {
       }
     },
     async purge() {
+      await pool.query("UPDATE saju_orders SET meta_context=NULL WHERE meta_context IS NOT NULL AND created_at<NOW()-INTERVAL '7 days'");
+      await pool.query("DELETE FROM saju_meta_outbox WHERE created_at<NOW()-INTERVAL '7 days'");
       await pool.query(
         'UPDATE saju_reports SET payload=NULL,deleted_at=NOW(),session_hash=NULL,link_hash=NULL WHERE expires_at<NOW() AND payload IS NOT NULL',
       );

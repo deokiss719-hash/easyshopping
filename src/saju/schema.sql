@@ -127,3 +127,10 @@ WITH first_apply AS (
 )
 UPDATE saju_settings SET report_version='ko-easy-story-11'
 WHERE id=1 AND EXISTS(SELECT 1 FROM first_apply);
+
+-- Optional, consented conversion attribution; never store birth inputs in ad payloads.
+ALTER TABLE saju_orders ADD COLUMN IF NOT EXISTS meta_context JSONB;
+CREATE TABLE IF NOT EXISTS saju_meta_outbox (
+ event_id TEXT PRIMARY KEY, payload JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+ sent_at TIMESTAMPTZ, attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

@@ -151,6 +151,7 @@ function renderStory() {
 }
 function openCheckout() {
   show('checkout-panel', true);
+  window.SajuAds?.event('SajuCheckoutView',false,config.price);
   $('checkout-summary').textContent = `나의 사주 기본 보고서 · ${config.price.toLocaleString()}원 (부가세 포함) · 전체 풀이 · 일회 결제${config.mode === 'live' ? '' : ' · 현재 실제 과금 없음'}`;
   $('close-checkout').textContent = current.paid ? '← 보고서로 돌아가기' : '← 무료 풀이로 돌아가기';
   $('checkout-title').focus({ preventScroll: true });
@@ -253,7 +254,7 @@ async function checkout(fail = false) {
     throw Error('상품·환불 안내에 동의해 주세요.');
   const order = await api('/reports/' + current.id + '/orders', {
     method: 'POST',
-    body: { terms: true },
+    body: { terms: true, adAttribution:window.SajuAds?.context() },
   });
   sessionStorage.setItem('saju-order', order.id);
   if (order.amount !== config.price) {
@@ -301,6 +302,7 @@ async function checkout(fail = false) {
     });
   const payment = TossPayments(order.clientKey).payment({ customerKey: TossPayments.ANONYMOUS });
   try {
+    window.SajuAds?.event('InitiateCheckout',true,order.amount);
     await payment.requestPayment(window.SajuPaymentOptions.paymentRequest(order, 'CARD'));
   } catch (e) {
     throw Error('결제가 취소되었거나 결제창을 열지 못했어요. 같은 주문으로 다시 시도할 수 있어요.');
@@ -360,6 +362,7 @@ let started = false;
 form.addEventListener('input', () => {
   if (!started) {
     started = true;
+    window.SajuAds?.event('SajuInputStart');
     api('/events', { method: 'POST', body: { event: 'input_start' } }).catch(() => {});
   }
 });
@@ -376,6 +379,7 @@ form.onsubmit = (e) => {
       body.period = Number(body.period);
       body.consent = body.consent === 'on';
       const r = await api('/reports', { method: 'POST', body });
+      window.SajuAds?.event('SajuInputComplete');
       access = { link: r.link, recovery: r.recovery };
       sessionStorage.setItem('saju-access-' + r.id, JSON.stringify(access));
       // Preserve the created report for retry if its subsequent read fails.
@@ -455,6 +459,7 @@ async function init() {
     route = location.pathname;
   history.replaceState(null, '', route);
   config = await api('/config');
+  window.SajuAds?.init(config.metaPixelId);
   if ((current?.accessMode || config.accessMode) === 'beta') document.body.classList.add('beta-reading');
   $('seller-info').textContent = config.seller?.name
     ? `판매자: ${config.seller.name} / 대표: ${config.seller.representative} / 사업자등록번호: ${config.seller.registration} / 통신판매: ${config.seller.commerce} / 주소: ${config.seller.address} / 연락처: ${config.seller.contact}`
