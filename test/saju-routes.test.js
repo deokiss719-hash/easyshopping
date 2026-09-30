@@ -94,7 +94,6 @@ test('HTTP funnel, privacy, admin protections, recovery, refund and erasure', as
   jar = originalJar;
   const a = await request('/api/saju/reports/' + id + '/orders', {
     terms: true,
-    recoverySaved: true,
   });
   assert.equal(a.data.amount, 4900);
   const order = a.data.id;

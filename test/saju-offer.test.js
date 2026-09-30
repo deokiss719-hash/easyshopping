@@ -8,15 +8,15 @@ const {testPool}=require('./helpers/saju-db');
 const {createStore,token}=require('../src/saju/store');
 test('free projection shows useful complete sections but omits paid payload, analysis and traces',()=>{
  const c=calculate({date:'1988-08-15',calendar:'solar',timeType:'unknown',zone:'Asia/Seoul'}),r=generate(c),original=JSON.stringify(r),f=freeOffer(r,c);
- assert.equal(f.preview[0].text,r.sections[0].blocks[0].text);
- assert.equal(f.preview[1].text,r.sections[1].blocks[0].text);
- for(const i of [2,3,4])assert.equal(f.preview[i].parts.length,1);
- assert.equal(f.preview[5].id,'free-year');
+ assert.equal(f.preview.length,1);
+ assert.equal(f.preview[0].parts.length,2);
+ assert.deepEqual(f.preview[0].parts,r.sections[0].blocks[0].parts.slice(0,2).map(p=>({text:p.text})));
+ assert.ok(f.preview[0].text.length < r.sections[0].blocks[0].text.length);
  assert.equal(f.sections,undefined);assert.equal(f.analysis,undefined);assert.equal(f.traces,undefined);
  assert.deepEqual(f.evidence,{});assert.equal(JSON.stringify(r),original);
  const privateWork=r.sections[3].blocks[0].parts.at(-1).text;
  assert.ok(!JSON.stringify(f).includes(privateWork));
- assert.equal(freeOffer(r,c,4).preview[2].parts.length,2);
+ assert.equal(freeOffer(r,c,4).preview[0].parts.length,3);
 });
 test('card SDK request uses the approved hosted card window and no personal input',()=>{
  const o={id:'local_order_123',amount:4900,successUrl:'http://localhost/saju/success',failUrl:'http://localhost/saju/fail'};

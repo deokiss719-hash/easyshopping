@@ -615,3 +615,17 @@ pre {
 .payment-methods .check { padding: 12px; border: 1px solid #51432e; border-radius: 8px; cursor: pointer; }
 .payment-methods .check:has(input:checked) { border-color: #ceb27c; background: #302719; }
 #free-limits { margin: 24px 0; line-height: 1.8; }
+.report-save { margin: 48px 0; padding: 24px 16px; border: 1px solid #51432e; border-radius: 12px; text-align: center; }
+.report-save p { line-height: 1.8; }
+.report-save button { display: block; width: 100%; margin: 12px 0; }
+@media print {
+ body.saju-experience { background: white !important; color: black !important; }
+ body.saju-experience header, body.saju-experience footer, main > :not(#result-panel),
+ #result-panel > :not(#full-report), #full-report > :not(#chapter-content):not(#book-title),
+ #report-save { display: none !important; }
+ body.saju-experience main, #full-report { max-width: none; width: auto; margin: 0; padding: 0; }
+ .saju-experience .narrative *, .saju-experience .story-section > h3, #book-title { color: black !important; background: white !important; }
+ .saju-experience .narrative article > p { font-size: 12pt; line-height: 1.8; }
+ .saju-experience .story-section { break-inside: auto; }
+ .saju-experience .story-section > h3 { break-after: avoid; }
+}

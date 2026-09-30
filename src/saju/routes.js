@@ -207,8 +207,8 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
       const r = await authorize(req),
         s = await store.settings();
       if (r.beta_access) return res.status(409).json({error:'무료 베타로 발급된 보고서는 결제하지 않아도 열람할 수 있어요.'});
-      if (req.body?.terms !== true || req.body?.recoverySaved !== true)
-        throw new TypeError('가격·환불·복구 안내 확인과 복구 코드 저장이 필요해요.');
+      if (req.body?.terms !== true)
+        throw new TypeError('상품·가격·환불 안내 동의가 필요해요.');
       if (config.mode === 'live' && (!s.sales_enabled || !sellerReady))
         return res.status(503).json({ error: '실결제 판매 준비 중이에요.' });
       const o = await store.order(r, s.price, config.mode);

@@ -74,12 +74,6 @@ function block(b, report) {
   }
   return wrap;
 }
-function accessUi() {
-  $('private-link').value = access.link || '';
-  $('recovery-code').value = access.recovery || '';
-  show('recovery-code-label', !!access.recovery);
-  $('save-access').disabled = !access.link;
-}
 const elementClass = { 목: 'wood', 화: 'fire', 토: 'earth', 금: 'metal', 수: 'water' };
 function renderChart(chart) {
   const table = document.createElement('table');
@@ -154,23 +148,20 @@ function renderStory() {
   stopReadingMotion = window.startSajuReadingMotion($('chapter-content'), $('skip-reading-motion'));
 }
 function openCheckout() {
-  if ((current?.accessMode || config.accessMode) === 'beta') {
-    show('checkout-panel', true); show('purchase-controls', false);
-    $('checkout-title').textContent = '다시 읽고 싶다면 · 선택 저장';
-    $('checkout-summary').textContent = '지금은 저장하지 않고 전체 내용을 읽어도 됩니다. 무료 결과는 생성 후 7일 동안 보관합니다.';
-    $('close-checkout').textContent = '← 보고서로 돌아가기';
-    $('checkout-panel').scrollIntoView(); return;
-  }
   show('checkout-panel', true);
-  $('checkout-summary').textContent = current.paid
-    ? '구매한 보고서를 다시 열 수 있도록 개인용 조회 수단을 보관해 주세요.'
-    : `나의 사주 기본 보고서 · ${config.price.toLocaleString()}원 (부가세 포함) · 1년 열람${config.mode === 'live' ? '' : ' · 현재 실제 과금 없음'}`;
+  $('checkout-summary').textContent = `나의 사주 기본 보고서 · ${config.price.toLocaleString()}원 (부가세 포함) · 전체 풀이 · 일회 결제${config.mode === 'live' ? '' : ' · 현재 실제 과금 없음'}`;
   $('close-checkout').textContent = current.paid ? '← 보고서로 돌아가기' : '← 무료 풀이로 돌아가기';
   $('checkout-title').focus({ preventScroll: true });
   $('checkout-panel').scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 $('continue-reading').onclick = openCheckout;
-$('manage-access').onclick = openCheckout;
+$('capture-report').onclick = () => {
+  stopReadingMotion();
+  $('capture-help').textContent = '전체 풀이가 펼쳐졌어요. 휴대폰 화면 캡처 또는 스크롤 캡처를 사용하세요. 전체 저장은 PDF 버튼을 이용하세요.';
+  $('full-report').scrollIntoView({block:'start'});
+};
+$('print-report').onclick = () => { stopReadingMotion(); window.print(); };
+window.addEventListener('beforeprint', () => stopReadingMotion());
 $('close-checkout').onclick = () => {
   show('checkout-panel', false);
   $(current.fullAccess || current.paid ? 'full-report' : 'paid-offer').scrollIntoView({ block: 'start' });
@@ -204,7 +195,7 @@ async function load(id) {
       : '이전 버전으로 저장된 보고서입니다. 아래 새 분석 버튼으로 개편된 풀이를 볼 수 있습니다.';
     renderStory();
     $('expiry').textContent = '이 결과의 보관 기한: ' + new Date(current.expiresAt).toLocaleDateString('ko-KR');
-    accessUi(); return;
+    return;
   }
   renderContents(current.report.toc);
   $('sample').replaceChildren(block(current.report.sample, current.report));
@@ -214,15 +205,16 @@ async function load(id) {
       ? '모의 결제 승인 · 실제 과금 없음'
       : config.mode === 'test'
         ? '테스트 결제하기 (실제 과금 없음)'
-        : `${config.price.toLocaleString()}원 결제하기`;
+        : `토스로 결제하기 · ${config.price.toLocaleString()}원`;
   $('pay').disabled = !config.canPay;
   show('demo-fail', config.mode === 'demo');
+  show('provider-note', config.mode !== 'demo');
   $('checkout-mode').textContent =
     config.mode === 'demo'
       ? '현재 체험 모드예요. PG 결제창 없이 모의 승인하며 실제 돈이 청구되지 않아요.'
       : config.mode === 'test'
         ? '토스페이먼츠 테스트 결제예요. 실제 과금·정산이 없어요.'
-        : '토스페이먼츠 신용·체크카드 결제창으로 결제해요.';
+        : '토스페이먼츠 · 카드 결제';
   show('paid-offer', !current.paid);
   show('full-report', current.paid);
   show('free-reading', !current.paid);
@@ -255,14 +247,13 @@ async function load(id) {
   }
   $('expiry').textContent =
     '보고서 보관·열람 기한: ' + new Date(current.expiresAt).toLocaleDateString('ko-KR');
-  accessUi();
 }
 async function checkout(fail = false) {
-  if (!$('saved').checked || !$('terms').checked)
-    throw Error('복구 수단 저장과 구매 안내 확인란을 체크해 주세요.');
+  if (!$('terms').checked)
+    throw Error('상품·환불 안내에 동의해 주세요.');
   const order = await api('/reports/' + current.id + '/orders', {
     method: 'POST',
-    body: { terms: true, recoverySaved: true },
+    body: { terms: true },
   });
   sessionStorage.setItem('saju-order', order.id);
   if (order.amount !== config.price) {
@@ -310,7 +301,7 @@ async function checkout(fail = false) {
     });
   const payment = TossPayments(order.clientKey).payment({ customerKey: TossPayments.ANONYMOUS });
   try {
-    await payment.requestPayment(window.SajuPaymentOptions.paymentRequest(order, document.querySelector('input[name="payment-method"]:checked').value));
+    await payment.requestPayment(window.SajuPaymentOptions.paymentRequest(order, 'CARD'));
   } catch (e) {
     throw Error('결제가 취소되었거나 결제창을 열지 못했어요. 같은 주문으로 다시 시도할 수 있어요.');
   }
@@ -402,7 +393,6 @@ $('new-analysis').onclick = () => {
   sessionStorage.removeItem('saju-current');
   current = null;
   access = {};
-  $('saved').checked = false;
   $('terms').checked = false;
   $('chart-details').open = false;
   show('result-panel', false);
@@ -415,23 +405,6 @@ $('new-analysis').onclick = () => {
 };
 $('pay').onclick = () => busy($('pay'), () => checkout());
 $('demo-fail').onclick = () => busy($('demo-fail'), () => checkout(true));
-$('save-access').onclick = () => {
-  const contents = `이지핫딜 개인용 보고서\n조회 링크 (7일·1회): ${access.link}\n복구 코드: ${access.recovery || '최초 발급 시 저장한 코드를 사용해 주세요.'}\n보고서 ID: ${current.id}\n${$('expiry').textContent}\n다른 사람에게 공유하지 마세요.\n`;
-  const url = URL.createObjectURL(new Blob([contents], { type: 'text/plain;charset=utf-8' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = '이지핫딜-보고서-조회수단.txt';
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-};
-$('reissue').onclick = () =>
-  busy($('reissue'), async () => {
-    const r = await api('/reports/' + current.id + '/link', { method: 'POST', body: {} });
-    access.link = r.link;
-    sessionStorage.setItem('saju-access-' + current.id, JSON.stringify(access));
-    accessUi();
-    tell('이전 링크를 무효화하고 새 링크를 만들었어요. 새 링크를 저장해 주세요.');
-  });
 $('recheck').onclick = () =>
   busy($('recheck'), async () => {
     const r = paymentReturn
@@ -465,7 +438,7 @@ async function init() {
     route = location.pathname;
   history.replaceState(null, '', route);
   config = await api('/config');
-  $('opening-note').textContent = config.accessMode === 'beta' ? '전체 무료 베타 · 회원가입 없이' : `성격·장단점 무료 · 상세 보고서 ${config.price.toLocaleString()}원${config.mode !== 'live' ? ' (테스트 · 실제 과금 없음)' : ''} · 회원가입 없이`;
+  $('opening-note').textContent = config.accessMode === 'beta' ? '전체 무료 베타 · 회원가입 없이' : `핵심 성향 무료 · 상세 보고서 ${config.price.toLocaleString()}원${config.mode !== 'live' ? ' (테스트 · 실제 과금 없음)' : ''} · 회원가입 없이`;
   if ((current?.accessMode || config.accessMode) === 'beta') document.body.classList.add('beta-reading');
   $('seller-info').textContent = config.seller?.name
     ? `판매자: ${config.seller.name} / 대표: ${config.seller.representative} / 사업자등록번호: ${config.seller.registration} / 통신판매: ${config.seller.commerce} / 주소: ${config.seller.address} / 연락처: ${config.seller.contact}`
