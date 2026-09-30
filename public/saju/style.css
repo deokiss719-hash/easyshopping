@@ -666,3 +666,5 @@ pre {
 .saju-experience .opening-button{margin-top:8px}
 .grandmother-avatar{display:block;width:80px;height:80px;object-fit:cover;object-position:70% 40%;border-radius:50%;margin:24px auto 12px}
 @media(max-width:540px){.grandmother-hero{height:280px}.opening-brand{letter-spacing:2px}.opening-story{font-size:15px}}
+
+.saju-experience .input-seal{width:100px;height:124px;margin:28px auto}.input-seal span{font-size:30px}.input-seal small{font-size:9px}
