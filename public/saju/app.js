@@ -122,14 +122,10 @@ function renderChart(chart) {
 }
 function renderContents(titles) {
   const descriptions = [
-    '태어난 연·월·일·시의 글자와 각각의 의미를 살펴봅니다.',
-    '다섯 오행과 음양이 어떻게 분포하는지 읽어봅니다.',
-    '내가 자연스럽게 발휘하는 강점과 점검할 경향을 짚습니다.',
-    '관계를 맺고 대화할 때 돌아볼 만한 주제를 살펴봅니다.',
-    '일을 해내는 방식과 자원을 관리하는 관점을 읽습니다.',
-    '대운의 두 시나리오와 세운별 참고 주제를 확인합니다.',
-    '각 해석이 어떤 계산값에서 나왔는지 확인합니다.',
-    '출생시각 등으로 확정할 수 없는 부분을 구분합니다.',
+    '돈을 버는 방식과 비용·분배 때문에 돈이 새는 지점을 읽어요.',
+    '잘 맞는 역할과 지치기 쉬운 환경을 구체적인 장면으로 읽어요.',
+    '마음을 표현하는 방식과 반복되기 쉬운 갈등을 읽어요.',
+    '나이별 두 가정과 해마다의 참고 주제를 읽어요. 확정된 예언이 아니에요.',
   ];
   $('toc').replaceChildren(...titles.map((title, i) => {
     const li = document.createElement('li');
@@ -158,7 +154,7 @@ function renderStory() {
   stopReadingMotion = window.startSajuReadingMotion($('chapter-content'), $('skip-reading-motion'));
 }
 function openCheckout() {
-  if (config.accessMode === 'beta') {
+  if ((current?.accessMode || config.accessMode) === 'beta') {
     show('checkout-panel', true); show('purchase-controls', false);
     $('checkout-title').textContent = '다시 읽고 싶다면 · 선택 저장';
     $('checkout-summary').textContent = '지금은 저장하지 않고 전체 내용을 읽어도 됩니다. 무료 결과는 생성 후 7일 동안 보관합니다.';
@@ -195,9 +191,11 @@ async function load(id) {
   renderChart(current.chart);
   $('count-note').textContent =
     `확정된 ${current.chart.visibleCount}글자만 집계해요. 지장간 가중치·계절 강약은 제외한 분포예요.`;
-  $('preview').replaceChildren(...current.report.preview.map((b) => block(b, current.report)));
+  $('preview').replaceChildren(...current.report.preview.map((b) => { const section=document.createElement('section'); if(b.title)section.append(text('h3',b.title)); section.append(block(b,current.report));return section; }));
+  $('free-limits').textContent = '전통 해석이며 실제 삶은 환경과 선택에 따라 달라져요. 나이별 흐름은 방향을 확정할 정보가 없어 두 가정으로 제공하며, 특정 사건을 예측하지 않아요. ' + (!current.chart.pillars.hour ? '태어난 시각을 몰라 달라질 수 있는 부분은 확정하지 않아요. ' : '') + (!current.chart.pillars.month ? '계산이 바뀌는 날짜라 일부 성향과 시기별 해석을 제한해요.' : '');
   $('warnings').replaceChildren(...current.chart.warnings.map((w) => text('li', w)));
-  if (config.accessMode === 'beta') {
+  show('chart-details', false);
+  if ((current?.accessMode || config.accessMode) === 'beta') {
     document.body.classList.add('beta-reading');
     show('paid-offer', false); show('free-reading', false); show('full-report', true);
     show('checkout-panel', false); show('purchase-controls', false); show('order-panel', false);
@@ -213,7 +211,7 @@ async function load(id) {
   $('price').textContent = config.price.toLocaleString() + '원 (부가세 포함)';
   $('pay').textContent =
     config.mode === 'demo'
-      ? '결제 없이 체험 보고서 열기'
+      ? '모의 결제 승인 · 실제 과금 없음'
       : config.mode === 'test'
         ? '테스트 결제하기 (실제 과금 없음)'
         : `${config.price.toLocaleString()}원 결제하기`;
@@ -224,7 +222,7 @@ async function load(id) {
       ? '현재 체험 모드예요. PG 결제창 없이 모의 승인하며 실제 돈이 청구되지 않아요.'
       : config.mode === 'test'
         ? '토스페이먼츠 테스트 결제예요. 실제 과금·정산이 없어요.'
-        : '토스페이먼츠 결제창에서 카드 결제를 진행해요.';
+        : '카카오페이 또는 토스페이로 결제해요.';
   show('paid-offer', !current.paid);
   show('full-report', current.paid);
   show('free-reading', !current.paid);
@@ -232,7 +230,7 @@ async function load(id) {
   show('purchase-controls', !current.paid);
   $('continue-reading').textContent = config.mode === 'demo'
     ? '이어서 보기 · 과금 없는 체험'
-    : `이어서 보기 · ${config.price.toLocaleString()}원${config.mode === 'test' ? ' (테스트)' : ''}`;
+    : `내 이야기 이어 읽기 · ${config.price.toLocaleString()}원${config.mode === 'test' ? ' (테스트)' : ''}`;
   $('continue-reading').disabled = !config.canPay;
   if (current.paid) {
     $('book-version').textContent = `해석 버전 ${current.report.version} · 구매 시 저장된 내용`;
@@ -298,8 +296,8 @@ async function checkout(fail = false) {
       body: { amount: order.amount },
     });
     await load(current.id);
-    tell('과금 없는 체험 승인이 완료되었어요.');
-    renderChapter(0, true);
+    tell('모의 결제가 완료됐어요. 카카오페이·토스페이에 실제 승인 요청을 보내지 않았어요.');
+    $('full-report').scrollIntoView({block:'start'});
     return;
   }
   if (!window.TossPayments)
@@ -312,14 +310,7 @@ async function checkout(fail = false) {
     });
   const payment = TossPayments(order.clientKey).payment({ customerKey: TossPayments.ANONYMOUS });
   try {
-    await payment.requestPayment({
-      method: 'CARD',
-      amount: { currency: 'KRW', value: order.amount },
-      orderId: order.id,
-      orderName: '나의 사주 기본 보고서',
-      successUrl: order.successUrl,
-      failUrl: order.failUrl,
-    });
+    await payment.requestPayment(window.SajuPaymentOptions.paymentRequest(order, document.querySelector('input[name="payment-method"]:checked').value));
   } catch (e) {
     throw Error('결제가 취소되었거나 결제창을 열지 못했어요. 같은 주문으로 다시 시도할 수 있어요.');
   }
@@ -474,7 +465,8 @@ async function init() {
     route = location.pathname;
   history.replaceState(null, '', route);
   config = await api('/config');
-  if (config.accessMode === 'beta') document.body.classList.add('beta-reading');
+  $('opening-note').textContent = config.accessMode === 'beta' ? '전체 무료 베타 · 회원가입 없이' : `성격·장단점 무료 · 상세 보고서 ${config.price.toLocaleString()}원${config.mode !== 'live' ? ' (테스트 · 실제 과금 없음)' : ''} · 회원가입 없이`;
+  if ((current?.accessMode || config.accessMode) === 'beta') document.body.classList.add('beta-reading');
   $('seller-info').textContent = config.seller?.name
     ? `판매자: ${config.seller.name} / 대표: ${config.seller.representative} / 사업자등록번호: ${config.seller.registration} / 통신판매: ${config.seller.commerce} / 주소: ${config.seller.address} / 연락처: ${config.seller.contact}`
     : '실판매 전 판매자 사업자 정보를 등록할 예정이에요. 현재 실제 과금은 하지 않아요.';
@@ -486,7 +478,7 @@ async function init() {
       return o;
     }),
   );
-  if (config.accessMode === 'beta') {
+  if ((current?.accessMode || config.accessMode) === 'beta') {
     show('mode', true); $('mode').textContent = '전체 무료 베타 · 모든 장을 바로 읽을 수 있습니다.';
   } else if (config.mode !== 'live') {
     show('mode', true);
@@ -526,7 +518,7 @@ async function init() {
     const id = r.reportId || sessionStorage.getItem('saju-current');
     if (id) await load(id);
     tell(r.message || '결제가 확인되어 보고서가 열렸어요.');
-    if (current?.paid) renderChapter(0, true);
+    if (current?.paid) $('full-report').scrollIntoView({block:'start'});
     return;
   }
   if (route === '/saju/fail') {

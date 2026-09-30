@@ -1,0 +1,20 @@
+'use strict';
+// Explicit server-side projection: never send hidden sections/analysis/traces before purchase.
+function freeOffer(report, chart, scope = 3) {
+  const sections=report.sections;
+  const extract=(section,limit)=>{
+    const b=section.blocks[0],parts=b.parts||[{text:b.text}];
+    const visible=limit?parts.slice(0,limit):parts;
+    return {id:b.id,title:section.title,parts:visible.map(p=>({text:p.text})),text:visible.map(p=>p.text).join(' ')};
+  };
+  const preview=sections.slice(0,5).map((s,i)=>extract(s,i<2?0:(scope===4&&i===2?2:1)));
+  const flow=sections.find(s=>s.id==='flow');
+  const annual=flow?.blocks.find(b=>b.periods?.some(p=>p.startsWith(String(chart.referenceYear)+'년')));
+  if(annual){const part=annual.parts?.[0]||{text:annual.text};preview.push({id:'free-year',title:`${chart.referenceYear}년의 핵심 주제`,parts:[{text:part.text}],text:part.text});}
+  const money=sections.find(s=>s.id==='money').blocks[0];
+  const sampleText=(money.parts?.at(-1)||{text:money.text}).text;
+  return {version:report.version,title:report.title,
+    toc:['금전운 상세 이야기','직업운 상세 이야기','애정운과 관계 상세 이야기','시기별 흐름과 해석의 한계'],
+    preview,sample:{id:'paid-sample',title:'금전운 상세 풀이 중',parts:[{text:sampleText}],text:sampleText},evidence:{}};
+}
+module.exports={freeOffer};

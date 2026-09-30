@@ -65,7 +65,7 @@ test('HTTP funnel, privacy, admin protections, recovery, refund and erasure', as
   assert.match(html.r.headers.get('cache-control'), /no-store/);
   assert.equal(html.r.headers.get('referrer-policy'), 'no-referrer');
   const cfg = await request('/api/saju/config');
-  assert.equal(cfg.data.price, 6900);
+  assert.equal(cfg.data.price, 4900);
   assert.equal(cfg.data.mode, 'demo');
   assert.ok(!JSON.stringify(cfg.data).includes('secret'));
   assert.match(jar, /saju_owner=/);
@@ -87,7 +87,7 @@ test('HTTP funnel, privacy, admin protections, recovery, refund and erasure', as
   assert.equal(view.data.paid, false);
   assert.equal(view.data.chart.pillars.hour, null);
   assert.equal(view.data.report.sections, undefined);
-  assert.equal(view.data.report.toc.length, 7);
+  assert.equal(view.data.report.toc.length, 4);
   const originalJar = jar;
   jar = '';
   assert.equal((await request('/api/saju/reports/' + id)).r.status, 404);
@@ -96,14 +96,14 @@ test('HTTP funnel, privacy, admin protections, recovery, refund and erasure', as
     terms: true,
     recoverySaved: true,
   });
-  assert.equal(a.data.amount, 6900);
+  assert.equal(a.data.amount, 4900);
   const order = a.data.id;
   assert.equal(
     (await request('/api/saju/orders/' + order + '/confirm', { amount: 1 })).r.status,
     422,
   );
   assert.equal((await request('/api/saju/reports/' + id)).data.paid, false);
-  const approved = await request('/api/saju/orders/' + order + '/confirm', { amount: 6900 });
+  const approved = await request('/api/saju/orders/' + order + '/confirm', { amount: 4900 });
   assert.equal(approved.data.status, 'paid');
   view = await request('/api/saju/reports/' + id);
   assert.equal(view.data.report.sections.length, 7);

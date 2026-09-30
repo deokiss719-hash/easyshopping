@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS saju_settings (
- id INTEGER PRIMARY KEY CHECK(id=1), price INTEGER NOT NULL DEFAULT 6900 CHECK(price BETWEEN 100 AND 1000000),
+ id INTEGER PRIMARY KEY CHECK(id=1), price INTEGER NOT NULL DEFAULT 4900 CHECK(price BETWEEN 100 AND 1000000),
  report_version TEXT NOT NULL DEFAULT 'ko-evidence-1', free_sections INTEGER NOT NULL DEFAULT 3 CHECK(free_sections BETWEEN 3 AND 4), sales_enabled BOOLEAN NOT NULL DEFAULT FALSE
 );
 INSERT INTO saju_settings(id) VALUES(1) ON CONFLICT(id) DO NOTHING;
@@ -29,6 +29,13 @@ ALTER TABLE saju_orders ADD COLUMN IF NOT EXISTS last_checked_at TIMESTAMPTZ NOT
 
 -- Apply the new narrator default once; keep stored/purchased report snapshots intact.
 CREATE TABLE IF NOT EXISTS saju_content_migrations (version TEXT PRIMARY KEY);
+-- Change only the original launch price; preserve any price already chosen by the operator.
+WITH first_apply AS (
+ INSERT INTO saju_content_migrations(version) VALUES('saju-launch-price-4900')
+ ON CONFLICT(version) DO NOTHING RETURNING version
+)
+UPDATE saju_settings SET price=4900
+WHERE id=1 AND price=6900 AND EXISTS(SELECT 1 FROM first_apply);
 WITH first_apply AS (
  INSERT INTO saju_content_migrations(version) VALUES('ko-grandmother-2')
  ON CONFLICT(version) DO NOTHING RETURNING version
@@ -87,3 +94,13 @@ WITH first_apply AS (
 )
 UPDATE saju_settings SET report_version='ko-context-story-9'
 WHERE id=1 AND EXISTS(SELECT 1 FROM first_apply);
+
+-- Existing snapshots remain readable after a future paid rollout.
+ALTER TABLE saju_reports ADD COLUMN IF NOT EXISTS beta_access BOOLEAN NOT NULL DEFAULT FALSE;
+WITH first_apply AS (
+ INSERT INTO saju_content_migrations(version) VALUES('beta-access-preservation-1')
+ ON CONFLICT(version) DO NOTHING RETURNING version
+)
+UPDATE saju_reports SET beta_access=TRUE
+WHERE EXISTS(SELECT 1 FROM first_apply)
+AND NOT EXISTS(SELECT 1 FROM saju_orders WHERE report_id=saju_reports.id);

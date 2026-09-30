@@ -609,3 +609,9 @@ pre {
  .saju-experience .story-section > h3 { font-size: 22px; }
  .saju-experience .narrative article > .period-tags { font-size: 13px; }
 }
+/* Simple checkout choices; native radios remain keyboard-accessible. */
+.payment-methods { border: 1px solid #51432e; border-radius: 10px; padding: 16px; margin: 24px 0; min-width: 0; }
+.payment-methods legend { padding: 0 8px; }
+.payment-methods .check { padding: 12px; border: 1px solid #51432e; border-radius: 8px; cursor: pointer; }
+.payment-methods .check:has(input:checked) { border-color: #ceb27c; background: #302719; }
+#free-limits { margin: 24px 0; line-height: 1.8; }

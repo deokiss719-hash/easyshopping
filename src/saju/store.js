@@ -76,7 +76,7 @@ async function createStore(pool, secret) {
       );
       return row.count <= max;
     },
-    async create(payload, owner) {
+    async create(payload, owner, { betaAccess = false } = {}) {
       const id = crypto.randomUUID(),
         recovery = token(),
         link = token();
@@ -85,8 +85,8 @@ async function createStore(pool, secret) {
         .update(JSON.stringify(payload))
         .digest('hex');
       await pool.query(
-        "INSERT INTO saju_reports(id,payload,owner_hash,recovery_hash,link_hash,link_expires,expires_at,fingerprint) VALUES($1,$2,$3,$4,$5,NOW()+INTERVAL '7 days',NOW()+INTERVAL '7 days',$6)",
-        [id, crypt.seal(payload), hash(owner), hash(recovery), hash(link), fingerprint],
+        "INSERT INTO saju_reports(id,payload,owner_hash,recovery_hash,link_hash,link_expires,expires_at,fingerprint,beta_access) VALUES($1,$2,$3,$4,$5,NOW()+INTERVAL '7 days',NOW()+INTERVAL '7 days',$6,$7)",
+        [id, crypt.seal(payload), hash(owner), hash(recovery), hash(link), fingerprint, betaAccess],
       );
       return { id, recovery, link };
     },
