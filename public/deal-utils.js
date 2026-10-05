@@ -95,6 +95,7 @@
       url: safeExternalUrl(raw.url),
       isEnded: Boolean(raw.isEnded),
       isManual,
+      isCoupangAffiliate: isManual && raw.isCoupangAffiliate === true,
       showOnHome: isManual && raw.showOnHome === true,
       priority: Number.isSafeInteger(raw.priority) ? raw.priority : 0,
     };

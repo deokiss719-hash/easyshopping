@@ -1,9 +1,11 @@
 const express = require('express');
 const { InvalidQueryError } = require('./deal-store');
 const { TOSS_SHARELINK_DISCLOSURE } = require('./kakao-message');
+const { isCoupangPartnerLink } = require('./coupang-manual-link');
 
 function toApiDeal(deal) {
   const isManual = deal.source === 'manual';
+  const isCoupangAffiliate = isManual && isCoupangPartnerLink(deal.originalUrl);
   const manualImageUrl = isManual
     ? (/^\d+$/.test(String(deal.manualId || '')) && deal.hasManualImage === true
       ? `/api/public/manual-deals/${deal.manualId}/image`
@@ -28,6 +30,7 @@ function toApiDeal(deal) {
     originalPrice: deal.originalPriceAmount ?? null,
     description: deal.source === 'toss' ? TOSS_SHARELINK_DISCLOSURE : (deal.description ?? null),
     isManual,
+    isCoupangAffiliate,
     showOnHome: deal.showOnHome ?? false,
     priority: deal.priority ?? 0,
     url: deal.originalUrl,
@@ -57,7 +60,7 @@ function createLiveDealsRouter(store, { imageBaseUrls = [], allowedSources = ['p
       }
       const result = await store.list({
         q: req.query.q,
-        source: requestedSource === 'all' ? ['ppomppu', 'fmkorea', 'ruliweb', 'toss']
+        source: requestedSource === 'all' ? ['ppomppu', 'fmkorea', 'ruliweb', 'toss', 'manual']
           : requestedSource === 'community' ? ['ppomppu', 'fmkorea', 'ruliweb'] : requestedSource,
         category: req.query.category,
         sort: req.query.sort,

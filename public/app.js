@@ -81,7 +81,9 @@ function productCard(deal, { section = 'all-deals', position = 1 } = {}) {
   const manualBadge = deal.isManual
     ? '<span class="manual-deal-badge">실시간 핫딜</span>'
     : '';
-  if (section === 'phone' || deal.isManual) deal = { ...deal, url: `${location.origin}/phone.html?model=${encodeURIComponent(deal.title)}#consult` };
+  if ((section === 'phone' || deal.isManual) && !deal.isCoupangAffiliate) {
+    deal = { ...deal, url: `${location.origin}/phone.html?model=${encodeURIComponent(deal.title)}#consult` };
+  }
   return DealCardLink.renderCardContainer('deal-card', deal.url, `
       <div class="product-media tone-${escapeHtml(deal.imageTone)}">
         <span class="badge ${badgeClass(deal.badge)}">${escapeHtml(deal.badge)}</span>
@@ -90,17 +92,18 @@ function productCard(deal, { section = 'all-deals', position = 1 } = {}) {
         ${image}
       </div>
       <div class="card-body">
-        <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(sourceLabel(deal.source))}</span></div>
+        <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(deal.isCoupangAffiliate ? '쿠팡파트너스 · 제휴' : sourceLabel(deal.source))}</span></div>
         <h3 class="card-title">${escapeHtml(deal.title)}</h3>
         <div class="price-row"><strong class="current-price">${formatPrice(deal.price)}</strong></div>
         ${deal.originalPrice != null ? `<p class="original-price">${formatPrice(deal.originalPrice)}</p>` : ''}
         ${deal.tossRank ? `<p class="card-benefit">토스 베스트 ${deal.tossRank}위 · 평점 ${deal.reviewScore} · 리뷰 ${won.format(deal.reviewCount)}개</p>` : ''}
         ${deal.description && deal.source !== 'toss' ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}
+        ${deal.isCoupangAffiliate ? '<p class="card-benefit">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>' : ''}
         <span class="deal-cta">상품 보러가기 <span aria-hidden="true">→</span></span>
         <div class="card-meta"><span>${escapeHtml(deal.postedAt)}</span><span>${escapeHtml(deal.category)}</span></div>
       </div>`, {
     dealId: deal.id, section, position,
-    rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
+    rel: deal.source === 'toss' || deal.isCoupangAffiliate ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
 
@@ -112,9 +115,10 @@ function popularItem(deal, index) {
       <div class="rank-line"><span class="rank-number">${index + 1}</span>${visual}</div>
       <h3>${escapeHtml(deal.title)}</h3>
       <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>
-      ${deal.source === 'toss' ? '<p class="card-benefit">토스쇼핑 제휴 상품</p>' : ''}`, {
+      ${deal.source === 'toss' ? '<p class="card-benefit">토스쇼핑 제휴 상품</p>' : ''}
+      ${deal.isCoupangAffiliate ? '<p class="card-benefit">쿠팡파트너스 제휴 상품</p>' : ''}`, {
     dealId: deal.id, section: 'popular', position: index + 1,
-    rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
+    rel: deal.source === 'toss' || deal.isCoupangAffiliate ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
 
@@ -124,10 +128,10 @@ function latestItem(deal, index = 0) {
     : '';
   return DealCardLink.renderCardContainer('latest-item', deal.url, `
       <span class="latest-media" aria-hidden="true"><span class="latest-icon">${categoryEmoji(deal.category)}</span>${image}</span>
-      <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}${deal.source === 'toss' ? ' · 제휴' : ''}</small></div>
+      <div class="latest-copy"><strong>${escapeHtml(deal.title)}</strong><small>${escapeHtml(deal.store)} · ${escapeHtml(deal.postedAt)}${deal.source === 'toss' || deal.isCoupangAffiliate ? ' · 제휴' : ''}</small></div>
       <div class="latest-price"><strong>${formatPrice(deal.price)}</strong></div>`, {
     dealId: deal.id, section: 'latest', position: index + 1,
-    rel: deal.source === 'toss' ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
+    rel: deal.source === 'toss' || deal.isCoupangAffiliate ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
 }
 

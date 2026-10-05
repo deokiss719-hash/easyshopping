@@ -113,10 +113,11 @@ test('로그인과 MY UI 및 관련 동작 코드가 제거되어 있다', () =>
   assert.doesNotMatch(styles, /my-button/);
 });
 
-test('홈페이지에서 쿠팡 파트너스 홍보와 상품 호출을 노출하지 않는다', () => {
+test('홈페이지는 예전 쿠팡 전용 섹션 없이 직접 등록한 제휴 상품만 표시한다', () => {
   for (const content of [html, script, styles]) {
-    assert.doesNotMatch(content, /쿠팡 추천 상품|쿠팡 파트너스|link\.coupang\.com|coupangProductGrid|affiliate-section|affiliate-cta/);
+    assert.doesNotMatch(content, /coupangProductGrid|affiliate-section|affiliate-cta/);
   }
+  assert.match(script, /쿠팡파트너스 · 제휴/);
   assert.doesNotMatch(script, /source:\s*['"]coupang['"]/);
 });
 
