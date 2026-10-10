@@ -51,6 +51,12 @@ test('click endpoint accepts signed first-party visitor, ignores bots, cross-sit
  await send({origin:'https://evil.test'});await send({cookie:'daily_visitor=forged'});await send({'user-agent':'ExampleBot'});
  assert.equal(records.length,1);
  assert.equal((await send({}, {dealId:'1',clicks:1000})).status,400);
+ for(let i=0;i<40;i++) await send({}, {dealId:String(i+2),event:'impression'});
+ await send({}, {dealId:'99',event:'click'});
+ assert.equal(records.filter(x=>x.event==='impression').length,40);
+ assert.equal(records.filter(x=>x.event==='click').length,2);
+ for(let i=0;i<40;i++) await send({}, {dealId:'100',event:'click'});
+ assert.equal(records.filter(x=>x.event==='click').length,30);
  assert.match(records[0].visitorHash,/^[a-f0-9]{64}$/);assert.equal(Object.keys(records[0]).includes('ip'),false);
 });
 

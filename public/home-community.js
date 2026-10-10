@@ -3,18 +3,16 @@
   document.addEventListener('DOMContentLoaded', async () => {
     const list = document.getElementById('homeCommunityList');
     if (!list) return;
+    const section = list.closest('.home-community');
+    if (section) section.hidden = true;
     try {
       const response = await fetch('/api/community/popular', { credentials: 'same-origin' });
       if (!response.ok) throw new Error('community unavailable');
       const data = await response.json();
       const posts = Array.isArray(data.posts) ? data.posts : [];
       list.replaceChildren();
-      if (!posts.length) {
-        const empty = document.createElement('p');
-        empty.textContent = '첫 인기 글을 기다리고 있어요.';
-        list.append(empty);
-        return;
-      }
+      if (!posts.length) return;
+      if (section) section.hidden = false;
       posts.forEach((post) => {
         const row = document.createElement('div');
         row.className = 'home-community-row';
@@ -30,9 +28,7 @@
       });
     } catch {
       list.replaceChildren();
-      const empty = document.createElement('p');
-      empty.textContent = '커뮤니티 인기 글을 잠시 불러오지 못했어요.';
-      list.append(empty);
+      if (section) section.hidden = true;
     }
   });
 })();

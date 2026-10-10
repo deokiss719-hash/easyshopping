@@ -65,8 +65,9 @@
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="/phone.css"><link rel="stylesheet" href="/styles.css" />
 <link rel="stylesheet" href="/service-navigation.css">
+<link rel="stylesheet" href="/home-shopping.css">
 </head>
-<body>
+<body class="home-page">
   <!-- Meta Pixel Code -->
   <noscript><img hidden height="1" width="1" alt=""
   src="https://www.facebook.com/tr?id=1175739998075582&amp;ev=PageView&amp;noscript=1"></noscript>
@@ -90,8 +91,8 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
         <span class="eyebrow">EASY HOT DEAL</span>
-        <h1 id="hero-title">실시간 핫딜, 오늘 뭐가 싸지?</h1>
-        <p>토스쇼핑과 인기 커뮤니티의 오늘의 특가를 모았어요.</p>
+        <h1 id="hero-title">오늘 살 만한 핫딜, 한눈에</h1>
+        <p>가격과 구성을 비교하고, 마음에 드는 상품을 바로 확인하세요.</p>
         <a
           class="kakao-room-cta"
           href="https://open.kakao.com/o/pQIoypNi"
@@ -110,44 +111,22 @@
         </label>
         <div class="search-suggestions" aria-label="추천 검색어">
           <span>추천</span>
-          <button type="button">아이폰</button><button type="button">갤럭시</button><button type="button">에어팟</button><button type="button">노트북</button><button type="button">닌텐도</button><button type="button">생필품</button>
+          <button type="button">생수</button><button type="button">휴지</button><button type="button">커피</button><button type="button">라면</button><button type="button">아이폰</button><button type="button">갤럭시</button>
         </div>
       </div>
-<section class="ehd-hub" aria-labelledby="ehd-hub-title"><div class="ehd-hub-heading"><h2 id="ehd-hub-title">쇼핑도, 이야기도. 이지핫딜에서</h2><p>필요한 곳으로 바로 이어가세요.</p></div><div class="ehd-hub-grid">
-<a href="/community"><span class="ehd-hub-tag">함께 나누기</span><h3>커뮤니티 <span aria-hidden="true">→</span></h3><p>쇼핑 이야기부터 일상까지<br> 익명으로 편하게 나눠요.</p></a>
-<a href="/phone.html"><span class="ehd-hub-tag">바꾸기 전에</span><h3>휴대폰 상담 <span aria-hidden="true">→</span></h3><p>기종과 통신사에 맞춰<br> 가격과 구매 조건을 물어보세요.</p></a>
-<a href="/saju"><span class="ehd-hub-tag">잠깐 쉬어가기</span><h3>이지사주 <span aria-hidden="true">→</span></h3><p>내 성향부터 돈 일 관계까지 확인하러가기</p></a>
-</div></section>
-      <section class="phone-deals" id="phone-deals" aria-labelledby="phone-deal-title" hidden>
-        <div class="section-head compact">
-          <div>
-            <span class="section-kicker"><i></i> 실시간 핫딜</span>
-            <h2 id="phone-deal-title">휴대폰 초특가 핫딜</h2>
-          </div>
-        </div>
-        <div id="phoneDealGrid" class="deal-grid" aria-live="polite"></div>
-      </section>
     </section>
 
     <section class="popular-section section" id="popular" aria-labelledby="popular-title">
       <div class="section-head">
         <div>
           <span class="section-kicker"><i></i> 실시간 추천</span>
-          <h2 id="popular-title">지금 주목할 핫딜</h2>
+          <h2 id="popular-title">먼저 둘러볼 핫딜</h2><p>인기순으로 모은 상품이에요. 가격과 판매 조건은 판매처에서 확인하세요.</p>
         </div>
         <a href="#all-deals" class="text-link">전체 보기 <span>→</span></a>
       </div>
       <div id="popularList" class="popular-list skeleton-list" aria-live="polite">
         <div class="rank-skeleton"></div><div class="rank-skeleton"></div><div class="rank-skeleton"></div>
       </div>
-    </section>
-
-    <section class="section home-community" aria-labelledby="home-community-title">
-      <div class="section-head compact">
-        <div><span class="section-kicker"><i></i> COMMUNITY</span><h2 id="home-community-title">지금 커뮤니티에서 인기</h2></div>
-        <a href="/community" class="text-link">전체 보기 <span>→</span></a>
-      </div>
-      <div id="homeCommunityList" class="home-community-list"><p>인기 글을 불러오는 중...</p></div>
     </section>
 
     <section class="category-section section" id="categories" aria-labelledby="category-title">
@@ -178,7 +157,7 @@
       <div class="section-head deals-head">
         <div>
           <h2 id="deals-title">전체 핫딜</h2>
-          <p id="resultSummary">놓치기 아까운 딜을 가격순으로 정리했어요.</p>
+          <p id="resultSummary">상품을 불러오고 있어요.</p>
         </div>
         <div class="sort-control" role="group" aria-label="상품 정렬">
           <button class="active" data-sort="latest">최신순</button>
@@ -208,6 +187,29 @@
         <button id="resetSearch" type="button">전체 핫딜 보기</button>
       </div>
       <button id="loadMore" class="load-more" type="button">핫딜 더 보기</button>
+    </section>
+
+<div class="section home-more"><section class="ehd-hub" aria-labelledby="ehd-hub-title"><div class="ehd-hub-heading"><h2 id="ehd-hub-title">쇼핑도, 이야기도. 이지핫딜에서</h2><p>필요한 곳으로 바로 이어가세요.</p></div><div class="ehd-hub-grid">
+<a href="/community"><span class="ehd-hub-tag">함께 나누기</span><h3>커뮤니티 <span aria-hidden="true">→</span></h3><p>쇼핑 이야기부터 일상까지<br> 익명으로 편하게 나눠요.</p></a>
+<a href="/phone.html"><span class="ehd-hub-tag">바꾸기 전에</span><h3>휴대폰 상담 <span aria-hidden="true">→</span></h3><p>기종과 통신사에 맞춰<br> 가격과 구매 조건을 물어보세요.</p></a>
+<a href="/saju"><span class="ehd-hub-tag">잠깐 쉬어가기</span><h3>이지사주 <span aria-hidden="true">→</span></h3><p>내 성향부터 돈 일 관계까지 확인하러가기</p></a>
+</div></section>
+      <section class="phone-deals" id="phone-deals" aria-labelledby="phone-deal-title" hidden>
+        <div class="section-head compact">
+          <div>
+            <span class="section-kicker"><i></i> 실시간 핫딜</span>
+            <h2 id="phone-deal-title">휴대폰 초특가 핫딜</h2>
+          </div>
+        </div>
+        <div id="phoneDealGrid" class="deal-grid" aria-live="polite"></div>
+      </section>
+</div>
+    <section class="section home-community" hidden aria-labelledby="home-community-title">
+      <div class="section-head compact">
+        <div><span class="section-kicker"><i></i> COMMUNITY</span><h2 id="home-community-title">지금 커뮤니티에서 인기</h2></div>
+        <a href="/community" class="text-link">전체 보기 <span>→</span></a>
+      </div>
+      <div id="homeCommunityList" class="home-community-list"><p>인기 글을 불러오는 중...</p></div>
     </section>
 
     <section class="latest-section" id="latest" aria-labelledby="latest-title">
@@ -247,6 +249,7 @@
   <script src="/deal-clicks.js" defer></script>
   <script src="/cta-events.js" defer></script>
   <script src="/home-community.js" defer></script>
+  <script src="/deal-value.js" defer></script>
   <script src="/app.js" defer></script>
 </body>
 </html>

@@ -584,12 +584,12 @@ function createDealStore(pool) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        const result = await client.query("SELECT id, title, category FROM deals WHERE source <> 'manual' AND (category IS NULL OR category = '기타') FOR UPDATE");
+        const result = await client.query("SELECT id, title, category FROM deals WHERE source <> 'manual' AND (category IS NULL OR category = '기타' OR source = 'toss') FOR UPDATE");
         let updated = 0;
         for (const row of result.rows) {
           const category = classifier({ title: row.title });
           if (!isCategory(category)) throw new TypeError('classifier returned an unsupported category');
-          if (category !== row.category) {
+          if (category !== row.category && (category !== '기타' || row.category == null)) {
             const changed = await client.query(
               'UPDATE deals SET category = $1 WHERE id = $2',
               [category, row.id],

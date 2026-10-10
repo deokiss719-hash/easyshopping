@@ -82,8 +82,10 @@ function createDealClicksRouter({ store, secret, now = () => new Date() }) {
     const visitorHash = createHash('sha256').update(`deal-click-v1\0${day}\0${visitor}`).digest('hex');
     for (const [id, value] of rates) if (at.getTime() - value.at > 60000) rates.delete(id);
     if (!rates.has(visitorHash) && rates.size >= 10000) return res.sendStatus(204);
-    const rate = rates.get(visitorHash) || { at: at.getTime(), count: 0 };
-    if (++rate.count > 30) return res.sendStatus(204);
+    const rate = rates.get(visitorHash) || { at: at.getTime(), click: 0, impression: 0 };
+    const event = body.event || 'click';
+    // Scrolling past cards must not consume the allowance for genuine clicks.
+    if (++rate[event] > (event === 'click' ? 30 : 120)) return res.sendStatus(204);
     rates.set(visitorHash, rate);
     try { await store.record({ dealId: String(body.dealId), visitorHash, event: body.event || 'click', section: body.section || 'all-deals', now: at }); }
     catch { /* Tracking must never interrupt the original affiliate link. */ }

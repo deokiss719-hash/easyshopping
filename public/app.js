@@ -95,6 +95,7 @@ function productCard(deal, { section = 'all-deals', position = 1 } = {}) {
         <div class="card-store"><strong>${escapeHtml(deal.store)}</strong><span>${escapeHtml(deal.isCoupangAffiliate ? '쿠팡파트너스 · 제휴' : sourceLabel(deal.source))}</span></div>
         <h3 class="card-title">${escapeHtml(deal.title)}</h3>
         <div class="price-row"><strong class="current-price">${formatPrice(deal.price)}</strong></div>
+        ${DealValue.unitPrice(deal) ? `<p class="unit-price">${escapeHtml(DealValue.unitPrice(deal))}</p>` : ''}
         ${deal.originalPrice != null ? `<p class="original-price">${formatPrice(deal.originalPrice)}</p>` : ''}
         ${deal.tossRank ? `<p class="card-benefit">토스 베스트 ${deal.tossRank}위 · 평점 ${deal.reviewScore} · 리뷰 ${won.format(deal.reviewCount)}개</p>` : ''}
         ${deal.description && deal.source !== 'toss' ? `<p class="card-benefit">${escapeHtml(deal.description)}</p>` : ''}
@@ -115,8 +116,10 @@ function popularItem(deal, index) {
       <div class="rank-line"><span class="rank-number">${index + 1}</span>${visual}</div>
       <h3>${escapeHtml(deal.title)}</h3>
       <div class="rank-price"><strong>${formatPrice(deal.price)}</strong></div>
+      ${DealValue.unitPrice(deal) ? `<p class="unit-price">${escapeHtml(DealValue.unitPrice(deal))}</p>` : ''}
       ${deal.source === 'toss' ? '<p class="card-benefit">토스쇼핑 제휴 상품</p>' : ''}
-      ${deal.isCoupangAffiliate ? '<p class="card-benefit">쿠팡파트너스 제휴 상품</p>' : ''}`, {
+      ${deal.isCoupangAffiliate ? '<p class="card-benefit">쿠팡파트너스 제휴 상품</p>' : ''}
+      <span class="deal-cta">상품 확인하기 <span aria-hidden="true">→</span></span>`, {
     dealId: deal.id, section: 'popular', position: index + 1,
     rel: deal.source === 'toss' || deal.isCoupangAffiliate ? 'sponsored noopener noreferrer' : 'noopener noreferrer',
   });
@@ -255,7 +258,7 @@ async function loadHomeDeals() {
 
 async function loadPopular() {
   try {
-    const result = await DealPage.fetchLiveDealsPage({ source: 'all', page: 1, size: 5, sort: 'popular' });
+    const result = await DealPage.fetchLiveDealsPage({ source: 'all', page: 1, size: 6, sort: 'popular' });
     const deals = result.deals.map((deal) => DealUtils.normalizeDeal(deal));
     elements.popularList.classList.remove('skeleton-list');
     elements.popularList.innerHTML = deals.map(popularItem).join('');
@@ -421,5 +424,6 @@ syncDealUrl('replace');
 Promise.all([
   loadPopular(),
   loadLatest(),
-  loadSiteSettings().then(() => Promise.all([loadHomeDeals(), loadDeals()])),
+  loadDeals(),
+  loadSiteSettings().then(loadHomeDeals),
 ]);

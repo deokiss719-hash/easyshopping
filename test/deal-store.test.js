@@ -574,7 +574,7 @@ test('재분류 대상 행을 PostgreSQL FOR UPDATE로 잠근다', async () => {
 
   await store.reclassify(() => '기타');
 
-  assert.ok(queries.some((sql) => /SELECT id, title, category FROM deals WHERE source <> 'manual' AND \(category IS NULL OR category = '기타'\) FOR UPDATE/i.test(sql)));
+  assert.ok(queries.some((sql) => /SELECT id, title, category FROM deals WHERE source <> 'manual' AND \(category IS NULL OR category = '기타' OR source = 'toss'\) FOR UPDATE/i.test(sql)));
 });
 
 test('이미 유효한 카테고리는 시작 시 재분류로 덮어쓰지 않는다', async () => {
@@ -936,4 +936,16 @@ test('범용 collection lease unlock 실패는 잠금 보유 가능성이 있는
   const store = createDealStore({ connect: async () => client });
   await assert.rejects(() => store.withCollectionLease('ruliweb', async () => 'done'), /unlock/i);
   assert.equal(releaseArgument, true);
+});
+
+ test('자동 토스 분류는 명확한 새 규칙으로 보정하고 미확정 분류로 되돌리지 않는다', async () => {
+ const {pool,store}=await makeStore();
+ const item=await store.upsert({...firstDeal,source:'toss',sourceItemId:'44551',title:'쉬젤 믹싱볼 쌀함박 세트',category:'식품'});
+ await store.reclassify(require('../src/deal-category').classifyDeal);
+ let row=(await pool.query('SELECT category FROM deals WHERE id=$1',[item.id])).rows[0];
+ assert.equal(row.category,'생활/주방');
+ await store.reclassify(()=> '기타');
+ row=(await pool.query('SELECT category FROM deals WHERE id=$1',[item.id])).rows[0];
+ assert.equal(row.category,'생활/주방');
+ await pool.end();
 });
