@@ -57,3 +57,30 @@ test('public detail and sitemap exclude ended, stale Toss, drafts and unsupporte
   for (const row of [ended, stale, draft, other]) assert.equal(await store.getPublicById(row.id), null);
   assert.deepEqual((await store.listSitemapDeals()).map(x=>x.id), [active.id]);
 });
+
+test('shopping guides have crawlable complete content, matching metadata and contextual links', async (t) => {
+  const { GUIDES } = require('../src/shopping-guides');
+  const app = express(); app.use(createSeoPagesRouter({ list: async () => ({ items: [deal] }), getPublicById: async () => deal }));
+  const { server, origin } = await listen(app); t.after(() => new Promise(resolve => server.close(resolve)));
+  const index = await (await fetch(`${origin}/guides`)).text();
+  for (const guide of GUIDES) {
+    assert.ok(index.includes(`href="/guides/${guide.slug}"`));
+    const response = await fetch(`${origin}/guides/${guide.slug}`); assert.equal(response.status, 200);
+    const html = await response.text();
+    const data = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+    assert.equal(data['@graph'][0].headline, guide.title);
+    assert.ok(html.includes(`<h1>${guide.title}</h1>`));
+    for (const [heading, paragraph] of guide.sections) { assert.ok(html.includes(heading)); assert.ok(html.includes(paragraph)); }
+    for (const [url] of guide.links) assert.ok(html.includes(`href="${url}"`));
+    assert.ok(sitemapXml([]).includes(`/guides/${guide.slug}</loc>`));
+  }
+  assert.equal((await fetch(`${origin}/guides/missing`)).status, 404);
+  for (const path of ['/deals/42', '/hot-deals/food']) {
+    const html = await (await fetch(origin + path)).text();
+    assert.ok(html.includes('href="/guides/unit-price"'));
+    assert.ok(html.includes('href="/guides/checkout-price"'));
+  }
+  const fs = require('node:fs');
+  const home = fs.readFileSync(require('node:path').join(__dirname, '../public/index.html'), 'utf8');
+  for (const guide of GUIDES) assert.ok(home.includes(`href="/guides/${guide.slug}"`));
+});

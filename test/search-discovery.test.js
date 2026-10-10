@@ -14,5 +14,8 @@ test('only clean saju landing is indexable; private, payment and query URLs stay
 test('sitemap discovers public services without invented last-modified dates or private paths',()=>{
  const xml=sitemapXml([]);
  for(const path of ['/phone.html','/saju','/community'])assert.ok(xml.includes(`https://easyshoopping.com${path}</loc>`));
- assert.doesNotMatch(xml,/<lastmod>|recover|success|admin|report=/);
+ assert.doesNotMatch(xml,/recover|success|admin|report=/);
+ for (const entry of xml.matchAll(/<url>(.*?)<\/url>/g)) {
+   if (!entry[1].includes('/guides/')) assert.doesNotMatch(entry[1], /<lastmod>/);
+ }
 });
