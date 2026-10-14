@@ -151,7 +151,7 @@ function renderStory() {
 }
 function openCheckout() {
   show('checkout-panel', true);
-  window.SajuAds?.event('SajuCheckoutView',false,config.price);
+  window.SajuAds?.event('InitiateCheckout',true,config.price,'saju-checkout-'+current.id);
   $('checkout-summary').textContent = `나의 사주 기본 보고서 · ${config.price.toLocaleString()}원 (부가세 포함) · 전체 풀이 · 일회 결제${config.mode === 'live' ? '' : ' · 현재 실제 과금 없음'}`;
   $('close-checkout').textContent = current.paid ? '← 보고서로 돌아가기' : '← 무료 풀이로 돌아가기';
   $('checkout-title').focus({ preventScroll: true });
@@ -302,7 +302,7 @@ async function checkout(fail = false) {
     });
   const payment = TossPayments(order.clientKey).payment({ customerKey: TossPayments.ANONYMOUS });
   try {
-    window.SajuAds?.event('InitiateCheckout',true,order.amount);
+    window.SajuAds?.event('SajuPaymentRequest',false,order.amount,'saju-payment-request-'+order.id);
     await payment.requestPayment(window.SajuPaymentOptions.paymentRequest(order, 'CARD'));
   } catch (e) {
     throw Error('결제가 취소되었거나 결제창을 열지 못했어요. 같은 주문으로 다시 시도할 수 있어요.');

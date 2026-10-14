@@ -3,11 +3,11 @@ window.SajuAds=(()=>{
  let pixel=null,allowed=false,anonymousId=null;
  const safePage=()=>['/saju','/saju/'].includes(location.pathname)&&!location.hash&&[...new URLSearchParams(location.search).keys()].every(k=>['fbclid','utm_source','utm_medium','utm_campaign','utm_content','utm_term'].includes(k));
  const cookie=k=>document.cookie.split('; ').find(v=>v.startsWith(k+'='))?.slice(k.length+1);
- const send=(name,standard=false,value)=>{
+ const send=(name,standard=false,value,eventId)=>{
   if(!allowed||!safePage()||!window.fbq)return;
   const fields={content_ids:['saju-basic'],content_type:'product'};
   if(Number.isInteger(value)&&value>0){fields.value=value;fields.currency='KRW';}
-  window.fbq(standard?'trackSingle':'trackSingleCustom',pixel,name,fields,{eventID:crypto.randomUUID()});
+  window.fbq(standard?'trackSingle':'trackSingleCustom',pixel,name,fields,{eventID:eventId||crypto.randomUUID()});
  };
  const start=()=>{
   if(allowed||!pixel||!safePage())return;
