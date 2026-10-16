@@ -105,7 +105,7 @@ function createSajuRouter({ store, auth, env = process.env, provider }) {
   router.post(
     '/api/saju/events',
     wrap(async (req, res) => {
-      if (!['visit', 'input_start'].includes(req.body?.event)) return res.sendStatus(400);
+      if (!['visit', 'input_start', 'offer_view', 'payment_click', 'consent_missing', 'price_review', 'payment_request', 'payment_cancel', 'payment_error'].includes(req.body?.event)) return res.sendStatus(400);
       if (await store.limit(`event:${req.ip}:${req.body.event}`, 8, 600))
         await store.event(req.body.event, config.mode);
       res.sendStatus(204);

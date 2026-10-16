@@ -670,3 +670,7 @@ pre {
 .saju-experience .input-seal{width:100px;height:124px;margin:28px auto}.input-seal span{font-size:30px}.input-seal small{font-size:9px}
 
 .ad-consent{border:1px solid #756344;padding:16px;margin:24px 0;font-size:13px;line-height:1.8}.ad-consent button{margin:8px 8px 0 0;font-size:13px}
+
+/* Checkout continues in the reading page; no repeated intermediary action. */
+.purchase-benefits{max-width:30rem;margin:20px auto;padding-left:22px;text-align:left;line-height:1.9}
+#checkout-panel{margin-top:12px}#payment-feedback{color:#ffd0b3;line-height:1.6}#pay{width:100%;min-height:54px}#purchase-controls .check{align-items:flex-start;padding:14px 0}#save-return{margin:12px 0}

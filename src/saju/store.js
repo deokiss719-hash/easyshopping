@@ -35,7 +35,7 @@ async function createStore(pool, secret) {
   const one = async (q, args = []) => (await pool.query(q, args)).rows[0];
   async function event(name, mode = 'demo') {
     if (
-      !['visit', 'input_start', 'input_complete', 'preview', 'checkout', 'paid', 'refund'].includes(
+      !['visit', 'input_start', 'input_complete', 'preview', 'checkout', 'paid', 'refund', 'offer_view', 'payment_click', 'consent_missing', 'price_review', 'payment_request', 'payment_cancel', 'payment_error'].includes(
         name,
       )
     )

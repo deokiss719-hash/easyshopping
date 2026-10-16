@@ -58,6 +58,12 @@ test('HTTP funnel, privacy, admin protections, recovery, refund and erasure', as
     }
     return { r, data };
   }
+  for (const event of ['offer_view','payment_click','consent_missing','price_review','payment_request','payment_cancel','payment_error']) {
+    assert.equal((await request('/api/saju/events',{event})).r.status,204);
+    assert.equal(Number((await store.one('SELECT count FROM saju_events WHERE event=$1',[event])).count),1);
+  }
+  assert.equal((await request('/api/saju/events',{event:'paid'})).r.status,400);
+  assert.equal((await request('/api/saju/events',{event:'1990-01-01'})).r.status,400);
   const html = await request('/saju');
   assert.equal(html.r.status, 200);
   assert.ok(!html.data.includes('type="tel"'));

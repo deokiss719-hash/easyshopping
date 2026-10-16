@@ -119,7 +119,7 @@ function renderEvents(events) {
             input_start: '입력 시작',
             input_complete: '입력 완료',
             preview: '무료 결과 열람',
-            checkout: '결제 진입',
+            checkout: '주문 생성', offer_view:'구매 영역 노출', payment_click:'결제 버튼 클릭', consent_missing:'동의 누락', price_review:'기존 주문 가격 재확인', payment_request:'PG 결제 요청', payment_cancel:'결제 취소', payment_error:'결제 오류',
             paid: '결제 완료',
             refund: '환불',
           }[e.event],
@@ -161,7 +161,7 @@ function renderSummary() {
     $(id).textContent=s ? Number(s[`${period}_${key}`] || 0).toLocaleString('ko-KR')+suffix : '집계 불가';
   }
   const events=(dashboardData?.events || []).filter(e=>e.mode==='live' && (period!=='today' || String(e.day).slice(0,10)===s?.day));
-  $('funnel-summary').textContent=[['visit','방문'],['input_complete','풀이 생성'],['checkout','결제 진입']].map(([key,label])=>`${label} ${events.filter(e=>e.event===key).reduce((sum,e)=>sum+Number(e.count),0).toLocaleString('ko-KR')}회`).join(' → ');
+  $('funnel-summary').textContent=[['visit','방문'],['input_complete','풀이 생성'],['offer_view','구매 영역'],['payment_click','결제 클릭'],['checkout','주문 생성'],['paid','승인 완료']].map(([key,label])=>`${label} ${events.filter(e=>e.event===key).reduce((sum,e)=>sum+Number(e.count),0).toLocaleString('ko-KR')}회`).join(' → ');
   $('attention-count').textContent=s ? Number(s.attention_count || 0).toLocaleString('ko-KR')+'건' : '집계 불가';
   $('summary-period').textContent=s ? `${s.day} 기준 · ${period==='today'?'오늘':'오늘 포함 최근 30일'} · 한국시간 · 테스트 제외` : '통계를 불러오지 못했어요.';
 }

@@ -5,6 +5,14 @@ let config,
   access = {},
   paymentReturn = null;
 let stopReadingMotion = () => {};
+const measured = new Set();
+function measure(event, once = true) {
+ const key = (current?.id || 'page') + ':' + event;
+ if (once && measured.has(key)) return;
+ measured.add(key);
+ api('/events', {method:'POST',body:{event}}).catch(()=>{});
+}
+let offerObserver;
 const show = (id, yes) => ($(id).hidden = !yes);
 const tell = (t) => {
   $('message').textContent = t;
@@ -33,7 +41,9 @@ async function busy(button, fn) {
     await fn();
   } catch (e) {
     tell(e.message);
-    $('message').scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const feedback = button.id === 'pay' ? $('payment-feedback') : $('message');
+    feedback.textContent = e.message;
+    feedback.scrollIntoView({ block: 'center', behavior: 'smooth' });
   } finally {
     button.disabled = false;
   }
@@ -206,7 +216,7 @@ async function load(id) {
       ? '모의 결제 승인 · 실제 과금 없음'
       : config.mode === 'test'
         ? '테스트 결제하기 (실제 과금 없음)'
-        : `토스로 결제하기 · ${config.price.toLocaleString()}원`;
+        : `${config.price.toLocaleString()}원 결제하고 전체 풀이 읽기`;
   $('pay').disabled = !config.canPay;
   show('demo-fail', config.mode === 'demo');
   show('provider-note', config.mode !== 'demo');
@@ -219,7 +229,12 @@ async function load(id) {
   show('paid-offer', !current.paid);
   show('full-report', current.paid);
   show('free-reading', !current.paid);
-  show('checkout-panel', false);
+  show('checkout-panel', !current.paid);
+  offerObserver?.disconnect();
+  if (!current.paid) {
+    offerObserver = new IntersectionObserver(entries => { if(entries.some(e=>e.isIntersecting)){measure('offer_view');offerObserver.disconnect();} }, {threshold:0.25});
+    offerObserver.observe($('purchase-controls'));
+  }
   show('purchase-controls', !current.paid);
   $('continue-reading').textContent = config.mode === 'demo'
     ? '이어서 보기 · 과금 없는 체험'
@@ -250,6 +265,9 @@ async function load(id) {
     '보고서 보관·열람 기한: ' + new Date(current.expiresAt).toLocaleDateString('ko-KR');
 }
 async function checkout(fail = false) {
+  measure('payment_click', false);
+  $('payment-feedback').textContent = '';
+  if (!$('terms').checked) { $('terms').focus(); measure('consent_missing', false); }
   if (!$('terms').checked)
     throw Error('상품·환불 안내에 동의해 주세요.');
   const order = await api('/reports/' + current.id + '/orders', {
@@ -260,6 +278,9 @@ async function checkout(fail = false) {
   if (order.amount !== config.price) {
     config.price = order.amount;
     $('price').textContent = order.amount.toLocaleString() + '원 (현재 주문 금액)';
+    $('pay').textContent = `${order.amount.toLocaleString()}원 결제하고 전체 풀이 읽기`;
+    $('checkout-summary').textContent = `현재 주문 금액 ${order.amount.toLocaleString()}원 · 일회 결제`;
+    measure('price_review', false);
     $('terms').checked = false;
     throw Error(
       '이전에 만든 주문의 금액을 표시했어요. 가격을 확인한 뒤 구매 안내에 다시 동의해 주세요.',
@@ -297,14 +318,16 @@ async function checkout(fail = false) {
       const s = document.createElement('script');
       s.src = 'https://js.tosspayments.com/v2/standard';
       s.onload = resolve;
-      s.onerror = () => reject(Error('결제창을 불러오지 못했어요.'));
+      s.onerror = () => { measure('payment_error', false); reject(Error('결제창을 불러오지 못했어요. 네트워크를 확인하고 다시 눌러주세요.')); };
       document.head.append(s);
     });
   const payment = TossPayments(order.clientKey).payment({ customerKey: TossPayments.ANONYMOUS });
   try {
     window.SajuAds?.event('SajuPaymentRequest',false,order.amount,'saju-payment-request-'+order.id);
+    measure('payment_request', false);
     await payment.requestPayment(window.SajuPaymentOptions.paymentRequest(order, 'CARD'));
   } catch (e) {
+    measure(e.code === 'USER_CANCEL' ? 'payment_cancel' : 'payment_error', false);
     throw Error('결제가 취소되었거나 결제창을 열지 못했어요. 같은 주문으로 다시 시도할 수 있어요.');
   }
 }
@@ -424,6 +447,14 @@ $('new-analysis').onclick = () => {
   tell('');
   form.scrollIntoView();
 };
+$('save-return').onclick = () => busy($('save-return'), async () => {
+  if (!current?.paid) return;
+  const r = await api('/reports/' + current.id + '/link', {method:'POST',body:{}});
+  access.link = r.link;
+  sessionStorage.setItem('saju-access-' + current.id, JSON.stringify(access));
+  const blob = new Blob(['이지사주 개인용 다시 보기\n발급 후 7일 이내 1회 사용 가능합니다. 공유하지 마세요.\n다시 저장하면 이전 링크는 만료됩니다.\n\n' + r.link], {type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob), a=document.createElement('a');a.href=url;a.download='이지사주-다시보기.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
 $('pay').onclick = () => busy($('pay'), () => checkout());
 $('demo-fail').onclick = () => busy($('demo-fail'), () => checkout(true));
 $('recheck').onclick = () =>
@@ -516,6 +547,7 @@ async function init() {
     return;
   }
   if (route === '/saju/fail') {
+    measure(query.get('code') === 'USER_CANCEL' ? 'payment_cancel' : 'payment_error', false);
     const id = query.get('orderId') || sessionStorage.getItem('saju-order');
     if (id) {
       const r = await api('/orders/' + encodeURIComponent(id) + '/fail', {
