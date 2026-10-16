@@ -270,6 +270,7 @@ async function checkout(fail = false) {
   if (!$('terms').checked) { $('terms').focus(); measure('consent_missing', false); }
   if (!$('terms').checked)
     throw Error('상품·환불 안내에 동의해 주세요.');
+  window.SajuAds?.event('InitiateCheckout',true,config.price,'saju-checkout-'+current.id);
   const order = await api('/reports/' + current.id + '/orders', {
     method: 'POST',
     body: { terms: true, adAttribution:window.SajuAds?.context() },
